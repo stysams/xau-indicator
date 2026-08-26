@@ -930,6 +930,161 @@ try {
   .subbar[hidden] { display: none; }
   .subbar b { font-family: var(--font-mono); font-weight: 750; color: var(--ink-1); }
   .subbar .bw-spark { width: 96px; height: 18px; display: block; flex: 0 0 auto; }
+  .stack-line {
+    display: flex;
+    align-items: stretch;
+    gap: 12px 18px;
+    flex-wrap: wrap;
+    margin: 0 0 8px;
+    min-width: 0;
+  }
+  .stack-line[hidden] { display: none !important; }
+  .stackbar {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    flex: 0 1 420px;
+    width: min(420px, 100%);
+    margin: 0;
+    padding: 7px 8px 8px 10px;
+    background: color-mix(in srgb, var(--panel-2) 70%, transparent);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .stack-gloss {
+    flex: 1 1 240px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 7px;
+    padding: 2px 2px 2px 0;
+  }
+  .stack-gloss .now {
+    font-size: 13px;
+    font-weight: 750;
+    color: var(--ink-1);
+    line-height: 1.4;
+  }
+  .stack-gloss .now.up { color: var(--up); }
+  .stack-gloss .now.dn { color: var(--down); }
+  .stack-gloss .keys {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 3px 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 11.5px;
+    color: var(--ink-3);
+    line-height: 1.45;
+  }
+  .stack-gloss .keys li { min-width: 0; }
+  .stack-gloss .keys b {
+    font-weight: 800;
+    color: var(--ink-2);
+    margin-right: 6px;
+  }
+  .stack-gloss .keys li.is-on {
+    color: var(--ink-1);
+  }
+  .stack-gloss .keys li.is-on b { color: inherit; }
+  .stack-gloss .keys li.is-on.up { color: var(--up); }
+  .stack-gloss .keys li.is-on.dn { color: var(--down); }
+  .stack-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: grid;
+    gap: 5px;
+  }
+  .stack-head {
+    display: flex;
+    align-items: center;
+    gap: 8px 10px;
+    flex-wrap: wrap;
+    font-size: 11px;
+    color: var(--ink-2);
+  }
+  .stack-head .stack-name { font-weight: 750; color: var(--ink-3); }
+  .stack-head b { font-family: var(--font-mono); font-weight: 750; color: var(--ink-1); }
+  .stack-head .stack-kind.up { color: var(--up); }
+  .stack-head .stack-kind.dn { color: var(--down); }
+  .stack-head .stack-kind.mid { color: var(--ink-2); }
+  .stack-bias {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 4.2em;
+    padding: 0 10px 0 14px;
+    border-left: 1px solid var(--border);
+    font-size: clamp(16px, 2.1vh, 22px);
+    font-weight: 800;
+    letter-spacing: .08em;
+    line-height: 1;
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+  .stack-bias.up { color: var(--up); }
+  .stack-bias.dn { color: var(--down); }
+  .stack-bias.weak { opacity: .78; }
+  .stack-row {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) 64px;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .stack-row .tf {
+    font-size: 10px;
+    font-weight: 750;
+    color: var(--ink-3);
+    letter-spacing: .02em;
+  }
+  .stack-row .ph {
+    font-size: 10px;
+    font-weight: 750;
+    color: var(--ink-2);
+    text-align: right;
+    white-space: nowrap;
+  }
+  .stack-row.up .ph { color: var(--up); }
+  .stack-row.dn .ph { color: var(--down); }
+  .stack-track {
+    position: relative;
+    height: 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--ink-3) 14%, transparent);
+    min-width: 0;
+  }
+  .stack-track .mid {
+    position: absolute;
+    left: 50%;
+    top: -2px;
+    bottom: -2px;
+    width: 1px;
+    background: color-mix(in srgb, var(--ink-1) 22%, transparent);
+  }
+  .stack-track .mid, .stack-dot { display: block; font-style: normal; }
+  .stack-dot {
+    position: absolute;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    margin: -4px 0 0 -4px;
+    border-radius: 50%;
+    background: var(--ink-3);
+    box-shadow: 0 0 0 1.5px var(--bg);
+  }
+  .stack-row.up .stack-dot { background: var(--up); }
+  .stack-row.dn .stack-dot { background: var(--down); }
+  .stack-spine {
+    height: 2px;
+    border-radius: 2px;
+    background: var(--accent);
+    opacity: .42;
+    margin: 1px 40px 0 64px;
+  }
   .seg {
     display: inline-flex; background: var(--panel-2);
     border-radius: 999px; padding: 2px; gap: 2px;
@@ -1118,6 +1273,11 @@ try {
     width: 10px; height: 10px; border-radius: 0;
     background: var(--up);
     clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  }
+  .sw .stack-c {
+    width: 9px; height: 9px; border-radius: 1px;
+    background: var(--accent);
+    transform: rotate(45deg);
   }
   .sw .rsi-c {
     height: 8px; width: 14px; border-radius: 1px;
@@ -1616,7 +1776,7 @@ try {
             <button type="button" data-ind="macd" aria-pressed="true" title="MACD 副图与布林复合信号">MACD</button>
             <button type="button" data-ind="fast" aria-pressed="true" title="开单信号：1分/5分定方向，10秒回踩或触轨收回后给出开多/开空">开单</button>
             <div class="ind-more" id="indMore">
-              <button type="button" class="ind-caret" id="btnIndMore" aria-expanded="false" aria-haspopup="menu" aria-controls="indMoreMenu" aria-pressed="true" title="更多指标：高低、反弹、回踩、诱空诱多、SMC多空、EMA9、EMA21" aria-label="更多指标">
+              <button type="button" class="ind-caret" id="btnIndMore" aria-expanded="false" aria-haspopup="menu" aria-controls="indMoreMenu" aria-pressed="true" title="更多指标：高低、反弹、回踩、诱空诱多、SMC多空、套轨、EMA9、EMA21" aria-label="更多指标">
                 <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
                   <path d="M2.4 4.2L6 8l3.6-3.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
@@ -1627,6 +1787,7 @@ try {
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="pull" aria-pressed="true" aria-checked="true" title="拉升回踩 / 杀跌反抽：先有一段冲动，再回踩均线，收盘确认才算踩住"><i class="pull-c"></i>回踩</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="trap" aria-pressed="true" aria-checked="true" title="诱空 / 诱多：影线扫过前低或前高后收回。等低/等高更有效，收盘确认才计票"><i class="trap-c"></i>诱空诱多</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="smcSig" aria-pressed="true" aria-checked="true" title="SMC 做多/做空：转势或延续后回踩订单区块或缺口，收盘守住才标。正在走的那根不确认。只控制主图箭头，左侧 SMC 因子仍单独勾选"><i class="smcsig-c"></i>SMC多空</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="stack" aria-pressed="true" aria-checked="true" title="套轨：1小时定性、15分许可、5分与1分扳机。只输出顺势回中、套轨开口、宽轨收回。正在走的1分只预备。只控制主图菱形和套轨条，左侧套轨因子仍单独勾选"><i class="stack-c"></i>套轨</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="ema9" aria-pressed="true" aria-checked="true"><i class="ema9"></i>EMA9</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="ema21" aria-pressed="true" aria-checked="true"><i class="ema21"></i>EMA21</button>
               </div>
@@ -1668,6 +1829,7 @@ try {
           <span class="hint-wide">Wilder 平滑 · 70/30 超买超卖 · 50 中轴 · 副图可与 MACD 叠放</span>
         </div>
         <div class="subbar" id="bollStatus"></div>
+        <div class="stack-line" id="stackBar" hidden></div>
         <div class="chart-wrap" id="chartWrap">
           <svg id="chart" viewBox="0 0 960 400" preserveAspectRatio="none" role="img" aria-label="分钟 K 线，滚轮缩放，拖动平移"></svg>
           <div class="crosshair" id="crosshair" aria-hidden="true">
@@ -1689,7 +1851,7 @@ try {
     <details class="foot">
       <summary>数据说明与免责声明</summary>
       <p>
-        数据都来自 Gate.io 公共接口，不经过本仓库的 MCP。黄金走 CFD / TradFi：REST <code>/api/v4/tradfi</code>，推送 <code>wss://fx-ws.gateio.ws/v4/ws/tradfi</code>。ETH、BTC 走 USDT 永续：REST <code>/api/v4/futures/usdt</code>，推送 <code>wss://fx-ws.gateio.ws/v4/ws/usdt</code>。1 分、5 分、15 分、1 小时、4 小时、1 日 K 线与报价走实时推送（约 250 毫秒），历史根用 REST 补齐。黄金 10 秒线接口有历史，但推送通道不更新，所以用报价按 10 秒归桶合成正在走的那根；永续 10 秒线推送通道会更新。黄金 K 线没有成交量，永续 K 线有量，主图仍按价格结构画，没有另开量能副图。BOLL 默认 20 周期、2 倍标准差，可改周期和倍数，并可叠加 1σ / 3σ。带宽是（上轨−下轨）/中轨，%B 是收盘在主轨里的相对位置。MACD 为 12/26/9，柱状图为 2×(DIF−DEA)。布林配 MACD 的复合信号只描述近端结构是否对齐，不是下单指令。RSI 用 Wilder 平滑，默认 14，可改 6 或 9；副图固定 0–100，30/70 为超买超卖带，可与 MACD 叠放。主条仍只留 8 项，RSI 在主条，今日高低收到指标下拉。判断因子清单可单独勾选，RSI 因子的周期跟副图一致。SMC 只画近端结构突破、订单区块和未回补缺口。做多做空不在突破当根追价，要等转势或延续之后回踩订单区块或缺口，收盘守住才标信号；正在走的那根只观察。主图箭头由指标下拉的「SMC多空」单独开关，和结构图层分开；左侧 SMC 因子仍单独勾选。头肩用摆动高低点找左肩、头部、右肩，连接两个回落/反弹点作为颈线；右肩出现后仍只是形成中，收盘价穿过颈线才算完成，价格重新越过头部则视为失效。量度目标等于头部到颈线的高度，从破位处向外量一倍，只作结构参照。支撑压力用摆动高低点按约 0.4 倍 ATR 聚成水平位，触碰次数越多越有效；现价上方为压力、下方为支撑，收盘明显越过后角色互换。整数价位、昨收和今开（永续用 24 小时高低与参考开盘）若离现价不远也会并入。超跌反弹看急跌后收盘重新站上 EMA9，超涨回落相反；拉升回踩要先有一段冲动、再回踩均线并收盘确认，杀跌反抽相反。诱空是影线扫过前低（尤其是等低）后收盘回到该位上方，诱多是影线扫过前高（尤其是等高）后收盘回到该位下方；正在走的那根只标扫位，收盘收回才给方向票。判断因子由左侧栏标题旁的下拉单独勾选，和主图指标开关分开：可以只画不计入判断，也可以只判断不画。确认中的反弹/回踩/诱空诱多在对应因子启用时也算核心，避免和均线对打时硬判方向。近端 SMC 突破随后收回时，方向票交给诱空诱多，避免把假突破再计成真突破。RSI 超买超卖、轨外延伸、日内高低附近不加方向票。核心因子对打或只有外围凑票时，即使票数够也不报偏多偏空。这是结构对照，不预测涨跌，也不构成投资建议。开单信号用 1 分和 5 分定方向，10 秒回踩均线或触轨收回后给出开多/开空；正在走的那根只显示预备，收盘才开仓。纸面持仓大约 180 秒。止盈止损按 1 分钟波动放大；黄金仍用原先的美元距离上下限，永续按现价百分比夹紧。点差过大时暂停开单。模拟交易可同时记下多笔订单，按品种分开存在本机。开仓和平仓都按点击那一刻的最新价，盈亏按报价价差加减，不设止盈止损。快单触发后会把开仓价、平仓价和盈亏价差记入模拟订单。数据只留在本机，用来统计胜率，不会向交易所发单。盯盘时最新一根 K 线默认放在画面中间偏左，右侧留空。报价条下的时段只显示状态，不弹提醒：未开盘、开盘中、午盘中、夜盘中。未开盘给出下一盘北京时间区间，开盘中给出剩余时间。沪金按上期所黄金期货 09:00–10:15 / 10:30–11:30 / 13:30–15:00 与夜盘 21:00–02:30；上金所按 09:00–15:30 与夜盘 20:00–02:30；日本按 JPX 日盘 08:45–15:45、夜盘 17:00–06:00（东京时间）；欧亚盘为 COMEX Globex 美东 18:00 至次日 17:00；欧盘为伦敦 08:00–16:30；美盘为 COMEX 场内 08:20–13:30 美东；美股为纽交所、纳斯达克常规交易 09:30–16:00 美东。中国节假日按 2026 年上期所、上金所公告；美股节假日按纽交所、纳斯达克 2026 年日历，感恩节次日和圣诞前夕 13:00 美东提早收盘；COMEX、英、日节假日未计入。请先运行 <code>node serve.js</code>，再打开本页服务地址。
+        数据都来自 Gate.io 公共接口，不经过本仓库的 MCP。黄金走 CFD / TradFi：REST <code>/api/v4/tradfi</code>，推送 <code>wss://fx-ws.gateio.ws/v4/ws/tradfi</code>。ETH、BTC 走 USDT 永续：REST <code>/api/v4/futures/usdt</code>，推送 <code>wss://fx-ws.gateio.ws/v4/ws/usdt</code>。1 分、5 分、15 分、1 小时、4 小时、1 日 K 线与报价走实时推送（约 250 毫秒），历史根用 REST 补齐。黄金 10 秒线接口有历史，但推送通道不更新，所以用报价按 10 秒归桶合成正在走的那根；永续 10 秒线推送通道会更新。黄金 K 线没有成交量，永续 K 线有量，主图仍按价格结构画，没有另开量能副图。BOLL 默认 20 周期、2 倍标准差，可改周期和倍数，并可叠加 1σ / 3σ。带宽是（上轨−下轨）/中轨，%B 是收盘在主轨里的相对位置。MACD 为 12/26/9，柱状图为 2×(DIF−DEA)。布林配 MACD 的复合信号只描述近端结构是否对齐，不是下单指令。套轨用固定的 1 分、5 分、15 分、1 小时布林分层：1 小时定性、15 分钟许可、5 分与 1 分给扳机，只输出顺势回中、套轨开口、宽轨收回；正在走的 1 分钟只预备。四层对打、1 小时走轨时下层反手收回、或 1 分仍在轨外延伸时不加方向票。RSI 用 Wilder 平滑，默认 14，可改 6 或 9；副图固定 0–100，30/70 为超买超卖带，可与 MACD 叠放。主条仍只留 8 项，RSI 在主条，今日高低收到指标下拉。判断因子清单可单独勾选，RSI 因子的周期跟副图一致。SMC 只画近端结构突破、订单区块和未回补缺口。做多做空不在突破当根追价，要等转势或延续之后回踩订单区块或缺口，收盘守住才标信号；正在走的那根只观察。主图箭头由指标下拉的「SMC多空」单独开关，和结构图层分开；左侧 SMC 因子仍单独勾选。头肩用摆动高低点找左肩、头部、右肩，连接两个回落/反弹点作为颈线；右肩出现后仍只是形成中，收盘价穿过颈线才算完成，价格重新越过头部则视为失效。量度目标等于头部到颈线的高度，从破位处向外量一倍，只作结构参照。支撑压力用摆动高低点按约 0.4 倍 ATR 聚成水平位，触碰次数越多越有效；现价上方为压力、下方为支撑，收盘明显越过后角色互换。整数价位、昨收和今开（永续用 24 小时高低与参考开盘）若离现价不远也会并入。超跌反弹看急跌后收盘重新站上 EMA9，超涨回落相反；拉升回踩要先有一段冲动、再回踩均线并收盘确认，杀跌反抽相反。诱空是影线扫过前低（尤其是等低）后收盘回到该位上方，诱多是影线扫过前高（尤其是等高）后收盘回到该位下方；正在走的那根只标扫位，收盘收回才给方向票。判断因子由左侧栏标题旁的下拉单独勾选，和主图指标开关分开：可以只画不计入判断，也可以只判断不画。确认中的反弹/回踩/诱空诱多在对应因子启用时也算核心，避免和均线对打时硬判方向。近端 SMC 突破随后收回时，方向票交给诱空诱多，避免把假突破再计成真突破。RSI 超买超卖、轨外延伸、日内高低附近不加方向票。核心因子对打或只有外围凑票时，即使票数够也不报偏多偏空。这是结构对照，不预测涨跌，也不构成投资建议。开单信号用 1 分和 5 分定方向，10 秒回踩均线或触轨收回后给出开多/开空；正在走的那根只显示预备，收盘才开仓。纸面持仓大约 180 秒。止盈止损按 1 分钟波动放大；黄金仍用原先的美元距离上下限，永续按现价百分比夹紧。点差过大时暂停开单。模拟交易可同时记下多笔订单，按品种分开存在本机。开仓和平仓都按点击那一刻的最新价，盈亏按报价价差加减，不设止盈止损。快单触发后会把开仓价、平仓价和盈亏价差记入模拟订单。数据只留在本机，用来统计胜率，不会向交易所发单。盯盘时最新一根 K 线默认放在画面中间偏左，右侧留空。报价条下的时段只显示状态，不弹提醒：未开盘、开盘中、午盘中、夜盘中。未开盘给出下一盘北京时间区间，开盘中给出剩余时间。沪金按上期所黄金期货 09:00–10:15 / 10:30–11:30 / 13:30–15:00 与夜盘 21:00–02:30；上金所按 09:00–15:30 与夜盘 20:00–02:30；日本按 JPX 日盘 08:45–15:45、夜盘 17:00–06:00（东京时间）；欧亚盘为 COMEX Globex 美东 18:00 至次日 17:00；欧盘为伦敦 08:00–16:30；美盘为 COMEX 场内 08:20–13:30 美东；美股为纽交所、纳斯达克常规交易 09:30–16:00 美东。中国节假日按 2026 年上期所、上金所公告；美股节假日按纽交所、纳斯达克 2026 年日历，感恩节次日和圣诞前夕 13:00 美东提早收盘；COMEX、英、日节假日未计入。请先运行 <code>node serve.js</code>，再打开本页服务地址。
       </p>
     </details>
   </div>
@@ -1838,7 +2000,7 @@ try {
     drag: null,
     pointer: null,
     ind: {
-      ema9: true, ema21: true, boll: true, smc: true, smcSig: true, hs: true, sr: true, bounce: true, pull: true, trap: true, last: true, hl: true,
+      ema9: true, ema21: true, boll: true, smc: true, smcSig: true, stack: true, hs: true, sr: true, bounce: true, pull: true, trap: true, last: true, hl: true,
       boll1: false, boll2: true, boll3: false, macd: true, rsi: true, fast: true,
     },
     bollN: 20,
@@ -1846,6 +2008,8 @@ try {
     rsiN: 14,
     _bmKey: '',
     _bm: null,
+    _stackKey: '',
+    _stack: null,
     _hsKey: '',
     _hs: null,
     _srKey: '',
@@ -1884,6 +2048,7 @@ try {
     { k: 'boll', lab: '布林' },
     { k: 'macd', lab: 'MACD' },
     { k: 'sig', lab: '布林配 MACD' },
+    { k: 'stack', lab: '套轨' },
     { k: 'smc', lab: 'SMC' },
     { k: 'hs', lab: '头肩形态' },
     { k: 'sr', lab: '支撑压力' },
@@ -1971,13 +2136,14 @@ try {
     return Math.max(loaded, Math.min(fitAll, MAX_VIEW_SLOTS, loaded * 3));
   }
   const IND_KEY = 'gold-minute-ind';
-  const IND_KEYS = ['ema9', 'ema21', 'boll', 'smc', 'smcSig', 'hs', 'sr', 'bounce', 'pull', 'trap', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'fast'];
+  const IND_KEYS = ['ema9', 'ema21', 'boll', 'smc', 'smcSig', 'stack', 'hs', 'sr', 'bounce', 'pull', 'trap', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'fast'];
   const IND_MORE = [
     { k: 'hl', lab: '高低' },
     { k: 'bounce', lab: '反弹' },
     { k: 'pull', lab: '回踩' },
     { k: 'trap', lab: '诱空诱多' },
     { k: 'smcSig', lab: 'SMC多空' },
+    { k: 'stack', lab: '套轨' },
     { k: 'ema9', lab: 'EMA9' },
     { k: 'ema21', lab: 'EMA21' },
   ];
@@ -2019,6 +2185,8 @@ try {
     const st = $('bollStatus');
     if (bar) bar.hidden = !state.ind.boll;
     if (st) st.hidden = !state.ind.boll;
+    const stackEl = $('stackBar');
+    if (stackEl) stackEl.hidden = !state.ind.stack;
     document.querySelectorAll('button[data-boll-n]').forEach((b) => {
       b.setAttribute('aria-pressed', String(Number(b.dataset.bollN) === state.bollN));
     });
@@ -3047,6 +3215,381 @@ try {
     state._bmKey = key;
     state._bm = pack;
     return pack;
+  }
+
+  const STACK_TFS = [
+    { id: '1h', name: '1小时' },
+    { id: '15m', name: '15分' },
+    { id: '5m', name: '5分' },
+    { id: '1m', name: '1分' },
+  ];
+  const STACK_GLOSS = [
+    { lab: '偏多', cls: 'up', mean: '1 小时布林走在多头一侧，大周期趋势向上。' },
+    { lab: '偏空', cls: 'dn', mean: '1 小时布林走在空头一侧，大周期趋势向下。' },
+    { lab: '纠缠', cls: 'mid', mean: '1 小时和 15 分钟方向对打，先等大周期对齐。' },
+    { lab: '挤压', cls: 'mid', mean: '大周期带宽收窄，波动被压住，先等开口，不猜方向。' },
+    { lab: '宽幅', cls: 'mid', mean: '1 小时带宽偏宽且不是走轨，按回归而不是趋势。' },
+    { lab: '走平', cls: 'mid', mean: '1 小时没有方向，中性观望。' },
+  ];
+
+  function stackWalk(ph, dir) {
+    if (!ph) return false;
+    return dir > 0 ? ph.id === 'walk_up' : ph.id === 'walk_dn';
+  }
+  function stackPull(ph, dir) {
+    if (!ph) return false;
+    return dir > 0 ? (ph.id === 'pull_up' || ph.id === 'side_up') : (ph.id === 'pull_dn' || ph.id === 'side_dn');
+  }
+  function stackOpen(ph, dir) {
+    if (!ph) return false;
+    return dir > 0 ? ph.id === 'open_up' : ph.id === 'open_dn';
+  }
+  function stackSame(ph, dir) {
+    if (!ph || !ph.ok || !dir) return false;
+    if (dir > 0) return ph.dir > 0 && ph.id !== 'fade_up';
+    return ph.dir < 0 && ph.id !== 'fade_dn';
+  }
+  function stackFade(ph, dir) {
+    if (!ph) return false;
+    return dir > 0 ? ph.id === 'fade_dn' : ph.id === 'fade_up';
+  }
+  function stackAgainstFade(ph, dir) {
+    if (!ph) return false;
+    return dir > 0 ? ph.id === 'fade_up' : ph.id === 'fade_dn';
+  }
+  function stackExpanding(ph, dir) {
+    if (!ph || !ph.ok) return false;
+    if (stackOpen(ph, dir) || stackWalk(ph, dir)) return true;
+    return !!(ph.expandingFromSqueeze && ph.shape === '开口' && ph.dir === dir);
+  }
+
+  function stackLayer(klines, meta) {
+    const empty = {
+      ok: false, id: 'none', lab: '样本不足', dir: 0,
+      name: meta.name, tf: meta.id, lastPb: null, bwRank: null, lastBw: null,
+      squeeze: false, wide: false, reclaimUp: false, reclaimDn: false,
+      expandingFromSqueeze: false, shape: '', t: null, n: klines ? klines.length : 0,
+    };
+    const b = analyzeBoll(klines);
+    if (!b.ok) return empty;
+    const n = klines.length;
+    const last = n - 1;
+    const period = b.period || 20;
+    const core = bollCore(klines.map((k) => k.c), period);
+    const i8 = Math.max(period - 1, last - 8);
+    const midSlope = (core.mid[last] != null && core.mid[i8] != null) ? (core.mid[last] - core.mid[i8]) : 0;
+    const half = (core.sd[last] || 0) * (b.kMul || 2);
+    const slopeUp = midSlope > half * 0.08;
+    const slopeDn = midSlope < -half * 0.08;
+    let walkUpN = 0, walkDnN = 0;
+    for (let i = Math.max(period - 1, last - 2); i <= last; i++) {
+      const p = b.pb[i];
+      if (p == null) continue;
+      if (p >= 0.80) walkUpN++;
+      if (p <= 0.20) walkDnN++;
+    }
+    const walkUp = walkUpN >= 3 && slopeUp;
+    const walkDn = walkDnN >= 3 && slopeDn;
+    const squeeze = b.bwRank != null && b.bwRank <= 0.20;
+    const wide = b.bwRank != null && b.bwRank >= 0.70;
+    const pb = b.lastPb;
+    let id = 'chop';
+    let lab = '中性';
+    let dir = 0;
+    if (walkUp) { id = 'walk_up'; lab = '走轨上'; dir = 1; }
+    else if (walkDn) { id = 'walk_dn'; lab = '走轨下'; dir = -1; }
+    else if (squeeze && b.expandingFromSqueeze && b.shape === '开口' && pb != null && pb >= 0.55) {
+      id = 'open_up'; lab = '开口上'; dir = 1;
+    } else if (squeeze && b.expandingFromSqueeze && b.shape === '开口' && pb != null && pb <= 0.45) {
+      id = 'open_dn'; lab = '开口下'; dir = -1;
+    } else if (squeeze) { id = 'squeeze'; lab = '挤压'; dir = 0; }
+    else if (b.reclaimUp) { id = 'fade_up'; lab = '外收上'; dir = -1; }
+    else if (b.reclaimDn) { id = 'fade_dn'; lab = '外收下'; dir = 1; }
+    else if (slopeUp && pb != null && pb >= 0.35 && pb <= 0.62) { id = 'pull_up'; lab = '回中上'; dir = 1; }
+    else if (slopeDn && pb != null && pb >= 0.38 && pb <= 0.65) { id = 'pull_dn'; lab = '回中下'; dir = -1; }
+    else if (wide) { id = 'revert'; lab = '宽轨'; dir = 0; }
+    else if (pb != null && pb > 0.55 && (slopeUp || pb >= 0.62)) { id = 'side_up'; lab = '中上'; dir = 1; }
+    else if (pb != null && pb < 0.45 && (slopeDn || pb <= 0.38)) { id = 'side_dn'; lab = '中下'; dir = -1; }
+    const lastBar = klines[last];
+    return {
+      ok: true, id: id, lab: lab, dir: dir,
+      name: meta.name, tf: meta.id,
+      lastPb: pb, bwRank: b.bwRank, lastBw: b.lastBw, shape: b.shape,
+      squeeze: squeeze, wide: wide, slopeUp: slopeUp, slopeDn: slopeDn,
+      reclaimUp: !!b.reclaimUp, reclaimDn: !!b.reclaimDn,
+      expandingFromSqueeze: !!b.expandingFromSqueeze,
+      t: lastBar && lastBar.t, c: lastBar && lastBar.c, n: n,
+    };
+  }
+
+  function stackTrend(layers) {
+    const h = layers && layers['1h'];
+    const q = layers && layers['15m'];
+    if (!h || !h.ok) {
+      return { dir: 0, lab: '看不清', why: '1小时布林样本不足', cls: 'mid', weak: true };
+    }
+    if (h.id === 'squeeze' && (!q || !q.ok || q.id === 'squeeze' || !q.dir)) {
+      return { dir: 0, lab: '挤压', why: '1小时带宽收窄' + (q && q.ok ? '，15分' + q.lab : '') + '，先等开口', cls: 'mid', weak: false };
+    }
+    if (h.id === 'revert') {
+      return { dir: 0, lab: '宽幅', why: '1小时带宽偏宽且不是走轨，按回归而不是趋势', cls: 'mid', weak: false };
+    }
+    if (q && q.ok && h.dir && q.dir && h.dir !== q.dir) {
+      return { dir: 0, lab: '纠缠', why: '1小时' + h.lab + '，15分' + q.lab + '，大周期对打', cls: 'mid', weak: false };
+    }
+    const dir = h.dir || (q && q.dir) || 0;
+    if (!dir) {
+      return {
+        dir: 0,
+        lab: '走平',
+        why: '1小时' + h.lab + (q && q.ok ? '，15分' + q.lab : ''),
+        cls: 'mid',
+        weak: true,
+      };
+    }
+    const followed = !!(q && q.ok && stackSame(q, dir));
+    return {
+      dir: dir,
+      lab: dir > 0 ? '偏多' : '偏空',
+      why: '1小时' + h.lab + (q && q.ok ? '，15分' + q.lab : '') + (followed ? '' : '，15分还没跟上'),
+      cls: dir > 0 ? 'up' : 'dn',
+      weak: !followed,
+    };
+  }
+
+  function stackKindText(st) {
+    let t = (st && st.title) ? String(st.title) : '';
+    t = t.replace(/^预备/, '').replace(/^套轨/, '');
+    if (!t) t = '未对齐';
+    if (st && st.status === 'watch' && t.indexOf('预备') !== 0) t = '预备' + t;
+    return t;
+  }
+
+  function stackLine(layers) {
+    return STACK_TFS.map((x) => {
+      const L = layers[x.id];
+      return x.name + (L && L.lab ? L.lab : '不足');
+    }).join(' · ');
+  }
+
+  function stackResult(kind, layers, extra) {
+    const line = stackLine(layers);
+    return Object.assign({
+      kind: kind,
+      dir: 0,
+      vote: 0,
+      status: 'none',
+      title: '套轨',
+      label: '套轨',
+      why: extra && extra.why ? extra.why : ('套轨未对齐到具名结构。' + line),
+      line: line,
+      layers: layers,
+      t: layers['1m'] && layers['1m'].t,
+    }, extra || {});
+  }
+
+  function stackCompose(layers) {
+    const h = layers['1h'] || { ok: false };
+    const q = layers['15m'] || { ok: false };
+    const f = layers['5m'] || { ok: false };
+    const m = layers['1m'] || { ok: false };
+    const line = stackLine(layers);
+    if (!h.ok || !q.ok || !f.ok || !m.ok) {
+      return stackResult('none', layers, {
+        title: '套轨样本不足',
+        why: '套轨样本不足，需要 1分、5分、15分、1小时各约 ' + ((state.bollN || 20) + 20) + ' 根已收盘 K 线。',
+      });
+    }
+    if (h.dir && q.dir && h.dir !== q.dir) {
+      return stackResult('conflict', layers, {
+        title: '套轨不对齐',
+        why: '1小时' + h.lab + '，15分' + q.lab + '，大周期对打。' + line,
+      });
+    }
+    if (stackWalk(h, 1) && m.lastPb != null && m.lastPb > 1) {
+      return stackResult('stretch', layers, {
+        title: '套轨延伸中',
+        why: '1小时走轨上，但1分收盘仍在上轨外（%B ' + m.lastPb.toFixed(2) + '），延伸段不加多票。' + line,
+      });
+    }
+    if (stackWalk(h, -1) && m.lastPb != null && m.lastPb < 0) {
+      return stackResult('stretch', layers, {
+        title: '套轨延伸中',
+        why: '1小时走轨下，但1分收盘仍在下轨外（%B ' + m.lastPb.toFixed(2) + '），延伸段不加空票。' + line,
+      });
+    }
+    if (stackWalk(h, 1) && stackWalk(m, 1)) {
+      return stackResult('stretch', layers, {
+        title: '套轨延伸中',
+        why: '1小时走轨上，1分也在走轨，等回中轨，不追。' + line,
+      });
+    }
+    if (stackWalk(h, -1) && stackWalk(m, -1)) {
+      return stackResult('stretch', layers, {
+        title: '套轨延伸中',
+        why: '1小时走轨下，1分也在走轨，等回中轨，不追。' + line,
+      });
+    }
+    if (stackWalk(h, 1) && (stackAgainstFade(q, 1) || stackAgainstFade(f, 1) || stackAgainstFade(m, 1))) {
+      return stackResult('conflict', layers, {
+        title: '套轨不对齐',
+        why: '1小时走轨上，下层却在对外轨做反手收回，按错层处理。' + line,
+      });
+    }
+    if (stackWalk(h, -1) && (stackAgainstFade(q, -1) || stackAgainstFade(f, -1) || stackAgainstFade(m, -1))) {
+      return stackResult('conflict', layers, {
+        title: '套轨不对齐',
+        why: '1小时走轨下，下层却在对外轨做反手收回，按错层处理。' + line,
+      });
+    }
+    if (h.id === 'squeeze' && q.id === 'squeeze' && f.id === 'squeeze' && (m.id === 'squeeze' || m.id === 'chop')) {
+      return stackResult('squeeze', layers, {
+        title: '套轨挤压',
+        why: '四层仍在挤压，只提示等开口，不猜方向。' + line,
+      });
+    }
+
+    for (let d = 0; d < 2; d++) {
+      const dir = d === 0 ? 1 : -1;
+      if (!stackWalk(h, dir)) continue;
+      if (!(stackWalk(q, dir) || stackPull(q, dir))) continue;
+      if (stackAgainstFade(q, dir)) continue;
+      if (!(stackSame(f, dir) || stackPull(f, dir) || stackWalk(f, dir))) continue;
+      const pb = m.lastPb;
+      if (pb == null) continue;
+      const midOk = dir > 0 ? (pb >= 0.48 && pb <= 0.62) : (pb <= 0.52 && pb >= 0.38);
+      const tagged = dir > 0
+        ? (m.id === 'pull_up' || (pb >= 0.35 && pb <= 0.62))
+        : (m.id === 'pull_dn' || (pb <= 0.65 && pb >= 0.38));
+      if (!midOk || !tagged) continue;
+      const side = dir > 0 ? '多' : '空';
+      return stackResult('pull', layers, {
+        dir: dir,
+        vote: dir,
+        status: 'trigger',
+        title: '套轨顺势回中' + side,
+        label: '回中' + side,
+        why: '1小时走轨' + (dir > 0 ? '上' : '下') + '，15分' + q.lab + '，5分' + f.lab + '，1分回到中轨一带（%B ' + pb.toFixed(2) + '）并站回这一侧。只描述结构对齐，不是下单指令。',
+      });
+    }
+
+    for (let d = 0; d < 2; d++) {
+      const dir = d === 0 ? 1 : -1;
+      if (stackWalk(h, -dir) || stackWalk(q, -dir)) continue;
+      const htfSqueeze = h.id === 'squeeze' || q.id === 'squeeze' || stackOpen(h, dir) || stackOpen(q, dir);
+      if (!htfSqueeze) continue;
+      const m5open = stackExpanding(f, dir);
+      const m1open = stackExpanding(m, dir);
+      if (m1open && !m5open) {
+        const side = dir > 0 ? '上' : '下';
+        return stackResult('open', layers, {
+          dir: dir,
+          vote: 0,
+          status: 'watch',
+          title: '套轨开口观察',
+          label: '开口?',
+          why: '1分已经开口' + side + '，5分还没同向开口，先防假突破。' + line,
+        });
+      }
+      if (m1open && m5open) {
+        const side = dir > 0 ? '多' : '空';
+        const from = (h.id === 'squeeze' || stackOpen(h, dir)) ? '1小时' : '15分';
+        return stackResult('open', layers, {
+          dir: dir,
+          vote: dir,
+          status: 'trigger',
+          title: '套轨开口' + side,
+          label: '开口' + side,
+          why: from + '挤压或开口后，5分与1分同向开口。只描述结构对齐，不是下单指令。',
+        });
+      }
+    }
+
+    if (h.id === 'revert') {
+      for (let d = 0; d < 2; d++) {
+        const dir = d === 0 ? 1 : -1;
+        if (stackWalk(q, -dir)) continue;
+        const fadeOk = stackFade(q, dir) || stackFade(f, dir) || stackFade(m, dir);
+        const recOk = dir > 0 ? (m.reclaimDn || f.reclaimDn) : (m.reclaimUp || f.reclaimUp);
+        if (!fadeOk || !recOk) continue;
+        const side = dir > 0 ? '多' : '空';
+        return stackResult('fade', layers, {
+          dir: dir,
+          vote: dir,
+          status: 'trigger',
+          title: '套轨宽轨收回' + side,
+          label: '外收' + side,
+          why: '1小时带宽偏宽且不是走轨，下层刺破后收回。只在大周期允许回归时计票，不是下单指令。',
+        });
+      }
+    }
+
+    return stackResult('none', layers, {
+      title: '套轨未对齐',
+      why: '套轨未对齐到具名结构。' + line,
+    });
+  }
+
+  function stackAsWatch(sig) {
+    if (!sig || !sig.dir) return sig;
+    const title = sig.title || '套轨';
+    const label = sig.label || '套轨';
+    return Object.assign({}, sig, {
+      vote: 0,
+      status: 'watch',
+      title: title.indexOf('预备') === 0 ? title : ('预备' + title),
+      label: /[?？]$/.test(label) ? label : (label + '?'),
+      why: (sig.why || '') + ( /正在走的1分|还要等/.test(sig.why || '') ? '' : '正在走的1分只观察，收盘才确认。'),
+    });
+  }
+
+  function computeStack() {
+    const layers = {};
+    STACK_TFS.forEach((x) => {
+      layers[x.id] = stackLayer(klinesClosed(stackSrc(x.id), x.id), x);
+    });
+    const closed = stackCompose(layers);
+    const live1m = stackLayer(stackSrc('1m'), { id: '1m', name: '1分' });
+    const live = stackCompose(Object.assign({}, layers, { '1m': live1m }));
+    let sig = closed;
+    if (!closed.vote && live.vote) sig = stackAsWatch(live);
+    else if (!closed.vote && live.status === 'watch' && live.kind === 'open') sig = live;
+    sig.layers = layers;
+    sig.live1m = live1m;
+    sig.trend = stackTrend(layers);
+    return sig;
+  }
+
+  function getStack() {
+    const m1 = stackSrc('1m');
+    const m5 = stackSrc('5m');
+    const m15 = stackSrc('15m');
+    const h1 = stackSrc('1h');
+    const last = function (xs) { return xs && xs.length ? xs[xs.length - 1] : null; };
+    const a = last(m1), b = last(m5), c = last(m15), d = last(h1);
+    const key = [
+      m1.length, a && a.t, a && a.c,
+      m5.length, b && b.t, b && b.c,
+      m15.length, c && c.t, c && c.c,
+      h1.length, d && d.t, d && d.c,
+      state.bollN, state.bollK, state.tf,
+    ].join(':');
+    if (state._stackKey === key && state._stack) return state._stack;
+    const pack = computeStack();
+    state._stackKey = key;
+    state._stack = pack;
+    return pack;
+  }
+
+  function stackMarkIndex(klines, t) {
+    if (!klines || !klines.length || t == null) return -1;
+    let best = 0;
+    for (let i = 0; i < klines.length; i++) {
+      if (klines[i].t === t) return i;
+      if (klines[i].t <= t) best = i;
+      else break;
+    }
+    return best;
   }
 
   function smcSigLook(tf) {
@@ -4794,6 +5337,11 @@ try {
     return state.mtf['5m'] || [];
   }
 
+  function stackSrc(tf) {
+    if (state.tf === tf && state.klines && state.klines.length) return state.klines;
+    return (state.mtf && state.mtf[tf]) || [];
+  }
+
   function barsUpTo(src, t) {
     if (!src || !src.length || t == null) return src || [];
     let i = src.length;
@@ -6088,6 +6636,7 @@ try {
     let bollPack = null;
     let macdPack = null;
     let sigPack = null;
+    const stackPack = factorOn('stack') ? getStack() : null;
     if (factorOn('boll') || factorOn('macd') || factorOn('sig')) {
       const bm = getBollMacd(klines);
       if (factorOn('boll')) bollPack = bollVote(bm.boll);
@@ -6102,9 +6651,21 @@ try {
         }
       }
     }
+    if (stackPack && stackPack.vote) {
+      if (stackPack.kind === 'fade' && bollPack && bollPack.vote === stackPack.vote) {
+        bollPack = { vote: 0, why: bollPack.why + '。同一段已记入套轨宽轨收回，布林方向票不计' };
+      }
+      if (stackPack.kind === 'open' && sigPack && sigPack.vote === stackPack.vote) {
+        sigPack = Object.assign({}, sigPack, {
+          vote: 0,
+          why: sigPack.why + '。同一段已记入套轨开口，布林配 MACD 方向票不计。',
+        });
+      }
+    }
     if (bollPack) factors.push({ name: '布林', vote: bollPack.vote, why: bollPack.why });
     if (macdPack) factors.push({ name: 'MACD', vote: macdPack.vote, why: macdPack.why });
     if (sigPack) factors.push({ name: '布林配 MACD', vote: sigPack.vote, why: sigPack.why });
+    if (stackPack) factors.push({ name: '套轨', vote: stackPack.vote, why: stackPack.why, core: true });
     let trapPack = factorOn('trap') ? getTrap(klines) : null;
     if (factorOn('smc')) {
       let s = smcVote(klines);
@@ -6164,13 +6725,22 @@ try {
           why: pack.why + '。同一段已记入 SMC 做多/做空信号，方向票不计。',
         });
       };
+      const stealStack = (pack, kindNeed) => {
+        if (!stackPack || !stackPack.vote || !pack || !pack.vote) return pack;
+        if (pack.vote !== stackPack.vote) return pack;
+        if (kindNeed && stackPack.kind !== kindNeed) return pack;
+        return Object.assign({}, pack, {
+          vote: 0,
+          why: pack.why + '。同一段已记入' + (stackPack.title || '套轨') + '，方向票不计。',
+        });
+      };
       if (factorOn('bounce')) {
-        const b = stealPb(pb.bounce);
+        const b = stealStack(stealPb(pb.bounce), 'fade');
         const bName = b.dir < 0 ? '超涨回落' : '超跌反弹';
         factors.push({ name: bName, vote: b.vote, why: b.why, core: b.vote !== 0 });
       }
       if (factorOn('pull')) {
-        const p = stealPb(pb.pull);
+        const p = stealStack(stealPb(pb.pull), 'pull');
         const pName = p.dir < 0 ? '杀跌反抽' : '拉升回踩';
         factors.push({ name: pName, vote: p.vote, why: p.why, core: p.vote !== 0 });
       }
@@ -6235,7 +6805,15 @@ try {
       audit = '外围票偏空，但核心因子里有多头，按偏空处理不合理。';
       auditWarn = true;
     } else if (Math.abs(net) >= 3 && coreBull === 0 && coreBear === 0) {
-      audit = '方向票来自外围因子，均线、多周期或 SMC 还没表态，凑票定向不合理。';
+      audit = '方向票来自外围因子，均线、多周期、套轨或 SMC 还没表态，凑票定向不合理。';
+      auditWarn = true;
+    }
+
+    if (factorOn('stack') && stackPack && stackPack.kind === 'conflict' && (dir === '偏多' || dir === '偏空')) {
+      dir = '震荡';
+      cls = 'chop';
+      hint = '套轨四层不对齐，先等 1 小时与 15 分钟同向，而不是按均线凑票。';
+      audit = '套轨大周期对打或错层，即使其他核心同向也不按偏多偏空处理。';
       auditWarn = true;
     }
 
@@ -6887,6 +7465,51 @@ try {
       });
       svg.appendChild(gSig);
     }
+    if (state.ind.stack) {
+      const st = getStack();
+      if (st && st.dir && (st.status === 'trigger' || st.status === 'watch')) {
+        const ti = stackMarkIndex(klines, st.t);
+        if (ti >= view.start - 1 && ti <= view.end + 1 && klines[ti]) {
+          const bar = klines[ti];
+          const xc = vx(ti) + 8;
+          const upMk = st.dir > 0;
+          const op = st.status === 'trigger' ? '.95' : '.72';
+          const color = upMk ? 'var(--up)' : 'var(--down)';
+          let yy = upMk ? y(bar.l) + 28 : y(bar.h) - 28;
+          yy = Math.max(PAD.t + 16, Math.min(plotBottom - 20, yy));
+          const gSt = svgEl('g', {});
+          const tip = svgEl('title', {});
+          tip.textContent = st.why || st.title;
+          gSt.appendChild(tip);
+          gSt.appendChild(svgEl('polygon', {
+            points: xc.toFixed(1) + ',' + (yy - 7).toFixed(1) + ' ' +
+              (xc + 6).toFixed(1) + ',' + yy.toFixed(1) + ' ' +
+              xc.toFixed(1) + ',' + (yy + 7).toFixed(1) + ' ' +
+              (xc - 6).toFixed(1) + ',' + yy.toFixed(1),
+            fill: st.status === 'watch' ? 'none' : color,
+            stroke: color,
+            'stroke-width': '1.6',
+            opacity: op,
+          }));
+          const lab = svgEl('text', {
+            x: xc.toFixed(1),
+            y: (upMk ? yy + 18 : yy - 12).toFixed(1),
+            fill: color,
+            'font-size': '10.5',
+            'font-weight': '750',
+            'font-family': 'var(--font)',
+            'text-anchor': 'middle',
+            stroke: 'var(--bg)',
+            'stroke-width': '3',
+            'paint-order': 'stroke',
+            opacity: op,
+          });
+          lab.textContent = st.label || '套轨';
+          gSt.appendChild(lab);
+          svg.appendChild(gSt);
+        }
+      }
+    }
     const smcLab = $('smcLab');
     if (smcLab) {
       if (state.ind.smcSig && smcPack && smcPack.live) smcLab.textContent = smcPack.live.title || '';
@@ -7531,6 +8154,67 @@ try {
       macdHtml;
   }
 
+  function renderStackBar() {
+    const el = $('stackBar');
+    if (!el) return;
+    if (!state.ind.stack) {
+      el.hidden = true;
+      el.innerHTML = '';
+      return;
+    }
+    el.hidden = false;
+    const st = getStack();
+    const layers = (st && st.layers) || {};
+    const kindCls = st && st.dir > 0 ? 'up' : (st && st.dir < 0 ? 'dn' : 'mid');
+    const rows = STACK_TFS.map((x) => {
+      const L = layers[x.id] || { lab: '样本不足', lastPb: null, bwRank: null, dir: 0 };
+      const pb = L.lastPb;
+      const left = pb == null ? 50 : Math.max(2, Math.min(98, pb * 100));
+      const thick = L.bwRank == null ? 8 : Math.max(5, Math.min(12, 5 + L.bwRank * 7));
+      const rowCls = L.dir > 0 ? 'up' : (L.dir < 0 ? 'dn' : 'mid');
+      return '<div class="stack-row ' + rowCls + '">' +
+        '<span class="tf">' + x.name + '</span>' +
+        '<span class="stack-track" style="height:' + thick.toFixed(0) + 'px">' +
+          '<i class="mid"></i>' +
+          '<i class="stack-dot" style="left:' + left.toFixed(1) + '%"></i>' +
+        '</span>' +
+        '<span class="ph">' + L.lab + '</span>' +
+      '</div>';
+    }).join('');
+    const aligned = st && st.layers && stackSame(st.layers['1h'], st.layers['1h'] && st.layers['1h'].dir)
+      && stackSame(st.layers['15m'], st.layers['1h'] && st.layers['1h'].dir)
+      && stackSame(st.layers['5m'], st.layers['1h'] && st.layers['1h'].dir);
+    const spine = aligned && st.layers['1h'] && st.layers['1h'].dir ? '<div class="stack-spine" aria-hidden="true"></div>' : '';
+    const kindLab = stackKindText(st);
+    const trend = (st && st.trend) || stackTrend(layers);
+    const trendCls = (trend && trend.cls) || 'mid';
+    const trendLab = (trend && trend.lab) ? trend.lab : '走平';
+    const trendWhy = (trend && trend.why) ? trend.why : '';
+    const mean = (STACK_GLOSS.filter(function (g) { return g.lab === trendLab; })[0] || {}).mean
+      || '1 小时布林样本还不够，不能定性。';
+    const whyNorm = String(trendWhy || '').replace(/\s+/g, '').replace(/[。，]/g, '');
+    const meanNorm = String(mean || '').replace(/\s+/g, '').replace(/[。，]/g, '');
+    const extraWhy = whyNorm && meanNorm.indexOf(whyNorm) < 0 && whyNorm.indexOf(meanNorm) < 0;
+    const keys = STACK_GLOSS.map(function (g) {
+      const on = g.lab === trendLab;
+      return '<li class="' + (on ? ('is-on ' + g.cls) : '') + '"><b>' + g.lab + '</b> ' + g.mean + '</li>';
+    }).join('');
+    el.innerHTML =
+      '<div class="stackbar">' +
+        '<div class="stack-main">' +
+          '<div class="stack-head">' +
+            '<span class="stack-name">套轨</span>' +
+            '<b class="stack-kind ' + kindCls + '">' + kindLab + '</b>' +
+          '</div>' + spine + rows +
+        '</div>' +
+        '<div class="stack-bias ' + trendCls + (trend && trend.weak ? ' weak' : '') + '" title="' + String(trendWhy).replace(/"/g, '&quot;') + '">' + trendLab + '</div>' +
+      '</div>' +
+      '<aside class="stack-gloss">' +
+        '<p class="now ' + trendCls + '">' + trendLab + '：' + mean + (extraWhy ? ('当前分层：' + trendWhy + '。') : '') + '</p>' +
+        '<ul class="keys">' + keys + '</ul>' +
+      '</aside>';
+  }
+
   function renderQuote() {
     const t = state.ticker;
     $('clock').textContent = fmtClock();
@@ -7564,6 +8248,7 @@ try {
   function renderHeavy(klines) {
     renderFastPanel();
     renderBollStatus(klines);
+    renderStackBar();
     const t = state.ticker;
     const j = judge(klines, t, state.mtf);
 
@@ -8037,9 +8722,11 @@ try {
     state._smcKey = '';
     state._pbKey = '';
     state._trapKey = '';
+    state._stackKey = '';
     const klines = barsForChart();
     drawChart(klines, state.ticker, state.hover);
     renderBollStatus(klines);
+    renderStackBar();
     if (key === 'fast') renderFastPanel();
     if (key === 'rsi') renderHeavy(klines);
   }
@@ -8590,6 +9277,7 @@ try {
     saveFac();
     syncFacButtons();
     state._pbKey = '';
+    state._stackKey = '';
     renderHeavy(barsForChart());
   }
   function bindFacMenu() {
@@ -8672,6 +9360,7 @@ try {
     parseStreamName: (name) => parseStreamName(name),
     getTrap: (kl) => getTrap(kl || state.klines),
     getSmc: (kl) => getSmc(kl || state.klines),
+    getStack: () => getStack(),
     judge: (kl) => judge(kl || state.klines, state.ticker, state.mtf),
     evalFastSetup: (bars, ticker, preview) => evalFastSetup(bars, ticker, preview),
     mtfLean: (kl) => mtfLean(kl),
@@ -8703,6 +9392,7 @@ try {
       state._hsKey = '';
       state._smcKey = '';
       state._bmKey = '';
+      state._stackKey = '';
       state.viewCount = null;
       state.viewEnd = null;
       state.followLive = true;
@@ -8712,6 +9402,26 @@ try {
       return {
         trap: getTrap(used),
         smc: getSmc(used),
+        stack: getStack(),
+        judge: judge(used, state.ticker, state.mtf),
+      };
+    },
+    applyStack: (pack) => {
+      pack = pack || {};
+      const tf = pack.tf || '1m';
+      const klines = pack.klines || pack['1m'] || [];
+      window.__goldTest.applyKlines(klines, tf);
+      state.mtf = Object.assign({}, state.mtf, {
+        '1m': pack['1m'] || klines,
+        '5m': pack['5m'] || [],
+        '15m': pack['15m'] || [],
+        '1h': pack['1h'] || [],
+      });
+      state._stackKey = '';
+      render();
+      const used = barsForChart();
+      return {
+        stack: getStack(),
         judge: judge(used, state.ticker, state.mtf),
       };
     },
