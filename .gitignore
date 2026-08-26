@@ -1,0 +1,8 @@
+.finesse/
+nul
+memory/_*.js
+memory/_*.mjs
+node_modules/
+*.log
+
+memory/*.md
