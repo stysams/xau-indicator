@@ -129,6 +129,67 @@ try {
   }
   .chip.open { background: var(--accent-soft); color: var(--accent); }
   .chip.closed { background: rgba(183, 122, 22, .12); color: var(--warn); }
+  .sess-rail {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+    min-width: 0;
+    position: relative;
+    z-index: 2;
+  }
+  .sess-rail[hidden] { display: none !important; }
+  .sess-track {
+    display: flex;
+    gap: 6px;
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  .sess-item {
+    flex: 1 1 0;
+    min-width: 108px;
+    padding: 5px 8px 6px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    background: var(--bg);
+    box-shadow: var(--shadow);
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 8px;
+    row-gap: 1px;
+    align-items: baseline;
+  }
+  .sess-item .sess-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink-3);
+  }
+  .sess-item .sess-state {
+    font-size: 12px;
+    font-weight: 800;
+    text-align: right;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .sess-item .sess-next {
+    grid-column: 1 / -1;
+    font-size: 10px;
+    color: var(--ink-3);
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sess-item.is-open {
+    background: var(--accent-soft);
+    border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+  }
+  .sess-item.is-open .sess-state { color: var(--accent); }
   .live { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
   .live.on { animation: pulse 1.8s ease-out infinite; }
   @keyframes pulse {
@@ -669,6 +730,8 @@ try {
   .fast.bull { background: color-mix(in srgb, var(--up) 9%, var(--bg)); }
   .fast.bear { background: color-mix(in srgb, var(--down) 9%, var(--bg)); }
   .fast.chop { background: var(--panel-2); }
+  .fast.armed { background: color-mix(in srgb, var(--warn) 12%, var(--bg)); }
+  .fast-dir.is-armed { color: var(--warn); }
   .fast.is-dragging {
     box-shadow: 0 22px 48px -24px rgba(19, 61, 74, .42);
   }
@@ -790,6 +853,39 @@ try {
     display: none;
   }
   .lvl-tag.show { display: block; }
+  .open-badge {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    z-index: 6;
+    pointer-events: none;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    padding: 5px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--panel-2) 88%, var(--bg));
+    color: var(--ink-1);
+    box-shadow: var(--shadow);
+    display: none;
+  }
+  .open-badge.show { display: block; }
+  .open-badge.bull {
+    color: var(--up);
+    background: var(--up-soft);
+    border-color: color-mix(in srgb, var(--up) 28%, var(--border));
+  }
+  .open-badge.bear {
+    color: var(--down);
+    background: var(--down-soft);
+    border-color: color-mix(in srgb, var(--down) 28%, var(--border));
+  }
+  .open-badge.armed {
+    color: var(--warn);
+    background: rgba(183, 122, 22, .14);
+    border-color: rgba(183, 122, 22, .32);
+  }
   .lvl-tag.entry { background: var(--ink-1); color: var(--bg); }
   .lvl-tag.tp { background: var(--up); color: var(--bg); }
   .lvl-tag.sl { background: var(--down); color: var(--bg); }
@@ -1017,6 +1113,11 @@ try {
     width: 8px; height: 11px; border-radius: 0; background: none;
     border-left: 1.6px solid var(--accent);
     box-shadow: inset 0 -3px 0 0 var(--accent-2);
+  }
+  .sw .smcsig-c {
+    width: 10px; height: 10px; border-radius: 0;
+    background: var(--up);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
   }
   .sw .rsi-c {
     height: 8px; width: 14px; border-radius: 1px;
@@ -1318,6 +1419,7 @@ try {
     }
     .mtf { display: flex; flex: 0 0 auto; height: auto; border-top: 0; }
     .mtf-item { flex: 0 0 92px; }
+    .sess-item { flex: 0 0 132px; }
     .desk,
     .desk.is-bias-collapsed { grid-template-columns: minmax(0, 1fr); }
     .chart-card { min-height: 62dvh; order: -1; }
@@ -1395,6 +1497,7 @@ try {
       <span class="chip" id="sessChip"><i class="live" id="liveDot"></i><span id="sessText">连接中</span></span>
       <div class="top-actions">
         <button type="button" class="btn" id="btnSim" aria-haspopup="dialog" aria-expanded="false" title="纸面模拟交易，只记在本机">模拟交易<span class="sim-live" id="simLive" hidden></span></button>
+        <button type="button" class="btn" id="btnSess" aria-pressed="true" title="显示或隐藏各交易所开盘时间">开盘时间</button>
         <div class="seg" role="group" aria-label="涨跌配色">
           <button type="button" data-color="cn" aria-pressed="false" title="A股习惯，上涨为红、下跌为绿">红涨绿跌</button>
           <button type="button" data-color="us" aria-pressed="true" title="国际习惯，上涨为绿、下跌为红">红跌绿涨</button>
@@ -1438,6 +1541,8 @@ try {
       </article>
       <div class="mtf" id="mtf" aria-label="多周期对照"></div>
     </section>
+
+    <section class="sess-rail" id="sessRail" aria-label="交易所开盘时段"></section>
 
     <div class="desk" id="desk">
       <aside class="card bias" id="biasCard">
@@ -1503,15 +1608,15 @@ try {
           <span class="lab">指标</span>
           <div class="seg" role="group" aria-label="指标">
             <button type="button" data-ind="boll" aria-pressed="true">BOLL</button>
-            <button type="button" data-ind="smc" aria-pressed="true">SMC</button>
+            <button type="button" data-ind="smc" aria-pressed="true" title="SMC：结构突破、订单区块、未回补缺口。做多做空箭头在指标下拉的「SMC多空」里单独开关">SMC</button>
             <button type="button" data-ind="hs" aria-pressed="true" title="头肩顶 / 头肩底：摆动点识别，收盘破颈线才算完成">头肩</button>
             <button type="button" data-ind="sr" aria-pressed="true" title="支撑位 / 压力位：摆动点聚类，破位后角色互换">支压</button>
             <button type="button" data-ind="last" aria-pressed="true" title="现价水平线">现价</button>
             <button type="button" data-ind="rsi" aria-pressed="true" title="RSI 副图：Wilder 平滑，默认 14，可改 6/9。70/30 超买超卖带，超买超卖不加方向票">RSI</button>
             <button type="button" data-ind="macd" aria-pressed="true" title="MACD 副图与布林复合信号">MACD</button>
-            <button type="button" data-ind="fast" aria-pressed="true" title="两三分钟纸面快单：10 秒触发，1 分钟过滤">快单</button>
+            <button type="button" data-ind="fast" aria-pressed="true" title="开单信号：1分/5分定方向，10秒回踩或触轨收回后给出开多/开空">开单</button>
             <div class="ind-more" id="indMore">
-              <button type="button" class="ind-caret" id="btnIndMore" aria-expanded="false" aria-haspopup="menu" aria-controls="indMoreMenu" aria-pressed="true" title="更多指标：高低、反弹、回踩、诱空诱多、EMA9、EMA21" aria-label="更多指标">
+              <button type="button" class="ind-caret" id="btnIndMore" aria-expanded="false" aria-haspopup="menu" aria-controls="indMoreMenu" aria-pressed="true" title="更多指标：高低、反弹、回踩、诱空诱多、SMC多空、EMA9、EMA21" aria-label="更多指标">
                 <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
                   <path d="M2.4 4.2L6 8l3.6-3.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
@@ -1521,6 +1626,7 @@ try {
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="bounce" aria-pressed="true" aria-checked="true" title="超跌反弹 / 超涨回落：急跌或急涨后，收盘重新越过 EMA9 才算收回"><i class="bounce-c"></i>反弹</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="pull" aria-pressed="true" aria-checked="true" title="拉升回踩 / 杀跌反抽：先有一段冲动，再回踩均线，收盘确认才算踩住"><i class="pull-c"></i>回踩</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="trap" aria-pressed="true" aria-checked="true" title="诱空 / 诱多：影线扫过前低或前高后收回。等低/等高更有效，收盘确认才计票"><i class="trap-c"></i>诱空诱多</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="smcSig" aria-pressed="true" aria-checked="true" title="SMC 做多/做空：转势或延续后回踩订单区块或缺口，收盘守住才标。正在走的那根不确认。只控制主图箭头，左侧 SMC 因子仍单独勾选"><i class="smcsig-c"></i>SMC多空</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="ema9" aria-pressed="true" aria-checked="true"><i class="ema9"></i>EMA9</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="ema21" aria-pressed="true" aria-checked="true"><i class="ema21"></i>EMA21</button>
               </div>
@@ -1568,6 +1674,7 @@ try {
             <div class="cross-h" id="crossH"></div>
             <div class="cross-price num" id="crossPrice">--</div>
           </div>
+          <div class="open-badge" id="openBadge" hidden>等待开单</div>
           <div class="lvl-tag entry num" id="fastEntryTag">--</div>
           <div class="lvl-tag tp num" id="fastTpTag">--</div>
           <div class="lvl-tag sl num" id="fastSlTag">--</div>
@@ -1582,7 +1689,7 @@ try {
     <details class="foot">
       <summary>数据说明与免责声明</summary>
       <p>
-        数据都来自 Gate.io 公共接口，不经过本仓库的 MCP。黄金走 CFD / TradFi：REST <code>/api/v4/tradfi</code>，推送 <code>wss://fx-ws.gateio.ws/v4/ws/tradfi</code>。ETH、BTC 走 USDT 永续：REST <code>/api/v4/futures/usdt</code>，推送 <code>wss://fx-ws.gateio.ws/v4/ws/usdt</code>。1 分、5 分、15 分、1 小时、4 小时、1 日 K 线与报价走实时推送（约 250 毫秒），历史根用 REST 补齐。黄金 10 秒线接口有历史，但推送通道不更新，所以用报价按 10 秒归桶合成正在走的那根；永续 10 秒线推送通道会更新。黄金 K 线没有成交量，永续 K 线有量，主图仍按价格结构画，没有另开量能副图。BOLL 默认 20 周期、2 倍标准差，可改周期和倍数，并可叠加 1σ / 3σ。带宽是（上轨−下轨）/中轨，%B 是收盘在主轨里的相对位置。MACD 为 12/26/9，柱状图为 2×(DIF−DEA)。布林配 MACD 的复合信号只描述近端结构是否对齐，不是下单指令。RSI 用 Wilder 平滑，默认 14，可改 6 或 9；副图固定 0–100，30/70 为超买超卖带，可与 MACD 叠放。主条仍只留 8 项，RSI 在主条，今日高低收到指标下拉。判断因子清单可单独勾选，RSI 因子的周期跟副图一致。SMC 只画近端结构突破、订单区块和未回补缺口。头肩用摆动高低点找左肩、头部、右肩，连接两个回落/反弹点作为颈线；右肩出现后仍只是形成中，收盘价穿过颈线才算完成，价格重新越过头部则视为失效。量度目标等于头部到颈线的高度，从破位处向外量一倍，只作结构参照。支撑压力用摆动高低点按约 0.4 倍 ATR 聚成水平位，触碰次数越多越有效；现价上方为压力、下方为支撑，收盘明显越过后角色互换。整数价位、昨收和今开（永续用 24 小时高低与参考开盘）若离现价不远也会并入。超跌反弹看急跌后收盘重新站上 EMA9，超涨回落相反；拉升回踩要先有一段冲动、再回踩均线并收盘确认，杀跌反抽相反。诱空是影线扫过前低（尤其是等低）后收盘回到该位上方，诱多是影线扫过前高（尤其是等高）后收盘回到该位下方；正在走的那根只标扫位，收盘收回才给方向票。判断因子由左侧栏标题旁的下拉单独勾选，和主图指标开关分开：可以只画不计入判断，也可以只判断不画。确认中的反弹/回踩/诱空诱多在对应因子启用时也算核心，避免和均线对打时硬判方向。近端 SMC 突破随后收回时，方向票交给诱空诱多，避免把假突破再计成真突破。RSI 超买超卖、轨外延伸、日内高低附近不加方向票。核心因子对打或只有外围凑票时，即使票数够也不报偏多偏空。这是结构对照，不预测涨跌，也不构成投资建议。快单只在 10 秒 K 收盘后描述一个大约 180 秒的纸面进出场。止盈止损按 1 分钟波动放大；黄金仍用原先的美元距离上下限，永续按现价百分比夹紧。点差过大时不出信号。模拟交易可同时记下多笔订单，按品种分开存在本机。开仓和平仓都按点击那一刻的最新价，盈亏按报价价差加减，不设止盈止损。快单触发后会把开仓价、平仓价和盈亏价差记入模拟订单。数据只留在本机，用来统计胜率，不会向交易所发单。盯盘时最新一根 K 线默认放在画面中间偏左，右侧留空。请先运行 <code>node serve.js</code>，再打开本页服务地址。
+        数据都来自 Gate.io 公共接口，不经过本仓库的 MCP。黄金走 CFD / TradFi：REST <code>/api/v4/tradfi</code>，推送 <code>wss://fx-ws.gateio.ws/v4/ws/tradfi</code>。ETH、BTC 走 USDT 永续：REST <code>/api/v4/futures/usdt</code>，推送 <code>wss://fx-ws.gateio.ws/v4/ws/usdt</code>。1 分、5 分、15 分、1 小时、4 小时、1 日 K 线与报价走实时推送（约 250 毫秒），历史根用 REST 补齐。黄金 10 秒线接口有历史，但推送通道不更新，所以用报价按 10 秒归桶合成正在走的那根；永续 10 秒线推送通道会更新。黄金 K 线没有成交量，永续 K 线有量，主图仍按价格结构画，没有另开量能副图。BOLL 默认 20 周期、2 倍标准差，可改周期和倍数，并可叠加 1σ / 3σ。带宽是（上轨−下轨）/中轨，%B 是收盘在主轨里的相对位置。MACD 为 12/26/9，柱状图为 2×(DIF−DEA)。布林配 MACD 的复合信号只描述近端结构是否对齐，不是下单指令。RSI 用 Wilder 平滑，默认 14，可改 6 或 9；副图固定 0–100，30/70 为超买超卖带，可与 MACD 叠放。主条仍只留 8 项，RSI 在主条，今日高低收到指标下拉。判断因子清单可单独勾选，RSI 因子的周期跟副图一致。SMC 只画近端结构突破、订单区块和未回补缺口。做多做空不在突破当根追价，要等转势或延续之后回踩订单区块或缺口，收盘守住才标信号；正在走的那根只观察。主图箭头由指标下拉的「SMC多空」单独开关，和结构图层分开；左侧 SMC 因子仍单独勾选。头肩用摆动高低点找左肩、头部、右肩，连接两个回落/反弹点作为颈线；右肩出现后仍只是形成中，收盘价穿过颈线才算完成，价格重新越过头部则视为失效。量度目标等于头部到颈线的高度，从破位处向外量一倍，只作结构参照。支撑压力用摆动高低点按约 0.4 倍 ATR 聚成水平位，触碰次数越多越有效；现价上方为压力、下方为支撑，收盘明显越过后角色互换。整数价位、昨收和今开（永续用 24 小时高低与参考开盘）若离现价不远也会并入。超跌反弹看急跌后收盘重新站上 EMA9，超涨回落相反；拉升回踩要先有一段冲动、再回踩均线并收盘确认，杀跌反抽相反。诱空是影线扫过前低（尤其是等低）后收盘回到该位上方，诱多是影线扫过前高（尤其是等高）后收盘回到该位下方；正在走的那根只标扫位，收盘收回才给方向票。判断因子由左侧栏标题旁的下拉单独勾选，和主图指标开关分开：可以只画不计入判断，也可以只判断不画。确认中的反弹/回踩/诱空诱多在对应因子启用时也算核心，避免和均线对打时硬判方向。近端 SMC 突破随后收回时，方向票交给诱空诱多，避免把假突破再计成真突破。RSI 超买超卖、轨外延伸、日内高低附近不加方向票。核心因子对打或只有外围凑票时，即使票数够也不报偏多偏空。这是结构对照，不预测涨跌，也不构成投资建议。开单信号用 1 分和 5 分定方向，10 秒回踩均线或触轨收回后给出开多/开空；正在走的那根只显示预备，收盘才开仓。纸面持仓大约 180 秒。止盈止损按 1 分钟波动放大；黄金仍用原先的美元距离上下限，永续按现价百分比夹紧。点差过大时暂停开单。模拟交易可同时记下多笔订单，按品种分开存在本机。开仓和平仓都按点击那一刻的最新价，盈亏按报价价差加减，不设止盈止损。快单触发后会把开仓价、平仓价和盈亏价差记入模拟订单。数据只留在本机，用来统计胜率，不会向交易所发单。盯盘时最新一根 K 线默认放在画面中间偏左，右侧留空。报价条下的时段只显示状态，不弹提醒：未开盘、开盘中、午盘中、夜盘中。未开盘给出下一盘北京时间区间，开盘中给出剩余时间。沪金按上期所黄金期货 09:00–10:15 / 10:30–11:30 / 13:30–15:00 与夜盘 21:00–02:30；上金所按 09:00–15:30 与夜盘 20:00–02:30；日本按 JPX 日盘 08:45–15:45、夜盘 17:00–06:00（东京时间）；欧亚盘为 COMEX Globex 美东 18:00 至次日 17:00；欧盘为伦敦 08:00–16:30；美盘为 COMEX 场内 08:20–13:30 美东；美股为纽交所、纳斯达克常规交易 09:30–16:00 美东。中国节假日按 2026 年上期所、上金所公告；美股节假日按纽交所、纳斯达克 2026 年日历，感恩节次日和圣诞前夕 13:00 美东提早收盘；COMEX、英、日节假日未计入。请先运行 <code>node serve.js</code>，再打开本页服务地址。
       </p>
     </details>
   </div>
@@ -1591,11 +1698,11 @@ try {
     <div class="fast-head" id="fastDrag" title="拖动标题栏可移动位置，双击恢复默认">
       <div class="fast-head-main">
         <span class="fast-grip" aria-hidden="true"></span>
-        <h2 id="fastTitle">快单 2–3 分钟</h2>
+        <h2 id="fastTitle">开单信号</h2>
       </div>
       <div class="fast-actions">
         <button type="button" class="btn" id="btnFastBeep" aria-pressed="true" title="开仓时短促提示音">提示音</button>
-        <button type="button" class="btn" id="btnFastClose" title="关闭快单窗口">关闭</button>
+        <button type="button" class="btn" id="btnFastClose" title="关闭开单窗口">关闭</button>
       </div>
     </div>
     <div class="fast-dir" id="fastDir" aria-live="polite">读取中</div>
@@ -1605,7 +1712,7 @@ try {
       <div class="cell"><span class="k">止盈</span><b>--</b></div>
       <div class="cell"><span class="k">止损</span><b>--</b></div>
     </div>
-    <p class="hint" id="fastWhy">10 秒收盘后才开仓。止盈止损按 1 分钟波动放大，覆盖每秒一两个点的跳动。这是纸面信号，不是下单指令。</p>
+    <p class="hint" id="fastWhy">1 分和 5 分定方向。10 秒回踩均线或触轨收回后给出开多/开空。正在走的那根只显示预备，收盘才开仓。纸面信号，不是下单指令。</p>
     <div class="fast-hist" id="fastHist"></div>
   </aside>
 
@@ -1636,14 +1743,14 @@ try {
             <button type="button" class="btn" id="btnSimClear">清空已平</button>
           </div>
           <p class="sim-msg" id="simMsg" role="status"></p>
-          <p class="sim-note">手动开平仓按点击那一刻的最新价。快单触发后也会记进来，记下开仓价、平仓价和盈亏价差。盈亏是美元价差：多单用平仓价减开仓价，空单用开仓价减平仓价。</p>
+          <p class="sim-note">手动开平仓按点击那一刻的最新价。开单信号触发后也会记进来，记下开仓价、平仓价和盈亏价差。盈亏是美元价差：多单用平仓价减开仓价，空单用开仓价减平仓价。</p>
         </div>
         <div class="sim-hist">
           <div class="hist-head">
             <h3>订单</h3>
           </div>
           <div id="simHistBox">
-            <p class="sim-empty">点开仓或快单触发后，订单会出现在这里。</p>
+            <p class="sim-empty">点开仓或开单信号触发后，订单会出现在这里。</p>
           </div>
         </div>
       </div>
@@ -1731,7 +1838,7 @@ try {
     drag: null,
     pointer: null,
     ind: {
-      ema9: true, ema21: true, boll: true, smc: true, hs: true, sr: true, bounce: true, pull: true, trap: true, last: true, hl: true,
+      ema9: true, ema21: true, boll: true, smc: true, smcSig: true, hs: true, sr: true, bounce: true, pull: true, trap: true, last: true, hl: true,
       boll1: false, boll2: true, boll3: false, macd: true, rsi: true, fast: true,
     },
     bollN: 20,
@@ -1757,6 +1864,7 @@ try {
     fastCoolUntil: 0,
     fastLastEvalT: 0,
     fastReplay: false,
+    fastWatch: null,
     fastBeep: true,
     fastPos: null,
     fastDrag: null,
@@ -1863,12 +1971,13 @@ try {
     return Math.max(loaded, Math.min(fitAll, MAX_VIEW_SLOTS, loaded * 3));
   }
   const IND_KEY = 'gold-minute-ind';
-  const IND_KEYS = ['ema9', 'ema21', 'boll', 'smc', 'hs', 'sr', 'bounce', 'pull', 'trap', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'fast'];
+  const IND_KEYS = ['ema9', 'ema21', 'boll', 'smc', 'smcSig', 'hs', 'sr', 'bounce', 'pull', 'trap', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'fast'];
   const IND_MORE = [
     { k: 'hl', lab: '高低' },
     { k: 'bounce', lab: '反弹' },
     { k: 'pull', lab: '回踩' },
     { k: 'trap', lab: '诱空诱多' },
+    { k: 'smcSig', lab: 'SMC多空' },
     { k: 'ema9', lab: 'EMA9' },
     { k: 'ema21', lab: 'EMA21' },
   ];
@@ -2198,6 +2307,280 @@ try {
   function fmtClock() {
     const d = new Date();
     return pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+  }
+
+  const SESS_VENUES = [
+    { id: 'eurasia', short: '欧亚', name: '欧亚盘', hint: 'COMEX Globex：周日到周五美东 18:00 开到次日 17:00，每日 17:00–18:00 日切。' },
+    { id: 'japan', short: '日本', name: '日本', hint: 'JPX 黄金：日盘 08:45–15:45 东京，夜盘 17:00–次日 06:00 东京。' },
+    { id: 'shfe', short: '沪金', name: '沪金', hint: '上期所黄金期货 AU：09:00–10:15、10:30–11:30、13:30–15:00，夜盘 21:00–02:30。' },
+    { id: 'sge', short: '上金', name: '上金所', hint: '上海黄金交易所：日盘 09:00–15:30，夜盘 20:00–02:30。' },
+    { id: 'london', short: '欧盘', name: '欧盘', hint: '伦敦 08:00–16:30。夏令时北京 15:00–23:30，冬令时 16:00–00:30。' },
+    { id: 'comex', short: '美盘', name: '美盘', hint: 'COMEX 场内 08:20–13:30 美东。' },
+    { id: 'nyse', short: '美股', name: '美股', hint: '纽交所、纳斯达克常规交易 09:30–16:00 美东。夏令时北京 21:30–04:00，冬令时 22:30–05:00。感恩节次日和圣诞前夕提早 13:00 美东收盘。' },
+  ];
+  const CN_HOLIDAYS = [
+    [20260101, 20260103],
+    [20260215, 20260223],
+    [20260404, 20260406],
+    [20260501, 20260505],
+    [20260619, 20260621],
+    [20260925, 20260927],
+    [20261001, 20261007],
+  ];
+  const CN_NO_NIGHT = [20251231, 20260213, 20260403, 20260430, 20260618, 20260924, 20260930];
+  const US_EQUITY_CLOSED = [20260101, 20260119, 20260216, 20260403, 20260525, 20260619, 20260703, 20260907, 20261126, 20261225];
+  const US_EQUITY_EARLY = [20261127, 20261224];
+  function usEquityOpenDay(y, mo, d, w) {
+    if (w === 0 || w === 6) return false;
+    return US_EQUITY_CLOSED.indexOf(ymdNum(y, mo, d)) < 0;
+  }
+
+  function ymdNum(y, mo, d) { return y * 10000 + mo * 100 + d; }
+  function ymdAdd(y, mo, d, n) {
+    const dt = new Date(Date.UTC(y, mo - 1, d + n));
+    return { y: dt.getUTCFullYear(), mo: dt.getUTCMonth() + 1, d: dt.getUTCDate(), w: dt.getUTCDay() };
+  }
+  function cnHoliday(y, mo, d) {
+    const n = ymdNum(y, mo, d);
+    for (let i = 0; i < CN_HOLIDAYS.length; i++) {
+      if (n >= CN_HOLIDAYS[i][0] && n <= CN_HOLIDAYS[i][1]) return true;
+    }
+    return false;
+  }
+  function cnWorkday(y, mo, d, w) {
+    if (w === 0 || w === 6) return false;
+    return !cnHoliday(y, mo, d);
+  }
+  function cnNightStart(y, mo, d, w) {
+    if (!cnWorkday(y, mo, d, w)) return false;
+    return CN_NO_NIGHT.indexOf(ymdNum(y, mo, d)) < 0;
+  }
+  function tzParts(timeZone, date) {
+    const cache = tzParts._c || (tzParts._c = Object.create(null));
+    let dtf = cache[timeZone];
+    if (!dtf) {
+      dtf = cache[timeZone] = new Intl.DateTimeFormat('en-GB', {
+        timeZone: timeZone,
+        weekday: 'short',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        hourCycle: 'h23',
+      });
+    }
+    const map = {};
+    dtf.formatToParts(date).forEach((part) => { map[part.type] = part.value; });
+    const wd = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    let h = +map.hour;
+    if (h === 24) h = 0;
+    return {
+      y: +map.year,
+      mo: +map.month,
+      d: +map.day,
+      h: h,
+      mi: +map.minute,
+      s: +map.second,
+      w: wd[map.weekday],
+    };
+  }
+  function fromZoned(timeZone, y, mo, d, h, mi, sec) {
+    const want = Date.UTC(y, mo - 1, d, h, mi, sec || 0);
+    let utc = want;
+    for (let i = 0; i < 4; i++) {
+      const part = tzParts(timeZone, new Date(utc));
+      const got = Date.UTC(part.y, part.mo - 1, part.d, part.h, part.mi, part.s);
+      const next = utc + (want - got);
+      if (next === utc) break;
+      utc = next;
+    }
+    return utc;
+  }
+  function fmtBj(ms) {
+    const part = tzParts('Asia/Shanghai', new Date(ms));
+    return pad2(part.h) + ':' + pad2(part.mi);
+  }
+  function fmtRange(start, end) {
+    if (start == null || end == null) return '--';
+    return fmtBj(start) + '–' + fmtBj(end);
+  }
+  function sessRemain(ms) {
+    if (ms == null || !Number.isFinite(ms)) return '--';
+    if (ms <= 0) return '已结束';
+    const s = Math.max(0, Math.round(ms / 1000));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (h > 0) return h + '小时' + m + '分';
+    if (m > 0) return m + '分' + pad2(sec) + '秒';
+    return sec + '秒';
+  }
+  function addWin(list, venueId, phase, start, end) {
+    if (!start || !end || end <= start) return;
+    list.push({ venueId: venueId, phase: phase, start: start, end: end });
+  }
+  function collectWindows(now) {
+    const out = [];
+    const sh = tzParts('Asia/Shanghai', new Date(now));
+    const tk = tzParts('Asia/Tokyo', new Date(now));
+    const ny = tzParts('America/New_York', new Date(now));
+    const ld = tzParts('Europe/London', new Date(now));
+    for (let i = -1; i <= 10; i++) {
+      const cSh = ymdAdd(sh.y, sh.mo, sh.d, i);
+      const cTk = ymdAdd(tk.y, tk.mo, tk.d, i);
+      const cNy = ymdAdd(ny.y, ny.mo, ny.d, i);
+      const cLd = ymdAdd(ld.y, ld.mo, ld.d, i);
+      if (cNy.w >= 0 && cNy.w <= 4) {
+        const nx = ymdAdd(cNy.y, cNy.mo, cNy.d, 1);
+        addWin(out, 'eurasia', '开盘中',
+          fromZoned('America/New_York', cNy.y, cNy.mo, cNy.d, 18, 0, 0),
+          fromZoned('America/New_York', nx.y, nx.mo, nx.d, 17, 0, 0));
+      }
+      if (cNy.w >= 1 && cNy.w <= 5) {
+        addWin(out, 'comex', '开盘中',
+          fromZoned('America/New_York', cNy.y, cNy.mo, cNy.d, 8, 20, 0),
+          fromZoned('America/New_York', cNy.y, cNy.mo, cNy.d, 13, 30, 0));
+      }
+      if (usEquityOpenDay(cNy.y, cNy.mo, cNy.d, cNy.w)) {
+        const early = US_EQUITY_EARLY.indexOf(ymdNum(cNy.y, cNy.mo, cNy.d)) >= 0;
+        addWin(out, 'nyse', '开盘中',
+          fromZoned('America/New_York', cNy.y, cNy.mo, cNy.d, 9, 30, 0),
+          fromZoned('America/New_York', cNy.y, cNy.mo, cNy.d, early ? 13 : 16, 0, 0));
+      }
+      if (cTk.w >= 1 && cTk.w <= 5) {
+        addWin(out, 'japan', '开盘中',
+          fromZoned('Asia/Tokyo', cTk.y, cTk.mo, cTk.d, 8, 45, 0),
+          fromZoned('Asia/Tokyo', cTk.y, cTk.mo, cTk.d, 15, 45, 0));
+        const n1 = ymdAdd(cTk.y, cTk.mo, cTk.d, 1);
+        addWin(out, 'japan', '夜盘中',
+          fromZoned('Asia/Tokyo', cTk.y, cTk.mo, cTk.d, 17, 0, 0),
+          fromZoned('Asia/Tokyo', n1.y, n1.mo, n1.d, 6, 0, 0));
+      }
+      if (cnWorkday(cSh.y, cSh.mo, cSh.d, cSh.w)) {
+        addWin(out, 'shfe', '开盘中',
+          fromZoned('Asia/Shanghai', cSh.y, cSh.mo, cSh.d, 9, 0, 0),
+          fromZoned('Asia/Shanghai', cSh.y, cSh.mo, cSh.d, 10, 15, 0));
+        addWin(out, 'shfe', '开盘中',
+          fromZoned('Asia/Shanghai', cSh.y, cSh.mo, cSh.d, 10, 30, 0),
+          fromZoned('Asia/Shanghai', cSh.y, cSh.mo, cSh.d, 11, 30, 0));
+        addWin(out, 'shfe', '午盘中',
+          fromZoned('Asia/Shanghai', cSh.y, cSh.mo, cSh.d, 13, 30, 0),
+          fromZoned('Asia/Shanghai', cSh.y, cSh.mo, cSh.d, 15, 0, 0));
+        addWin(out, 'sge', '开盘中',
+          fromZoned('Asia/Shanghai', cSh.y, cSh.mo, cSh.d, 9, 0, 0),
+          fromZoned('Asia/Shanghai', cSh.y, cSh.mo, cSh.d, 15, 30, 0));
+      }
+      if (cnNightStart(cSh.y, cSh.mo, cSh.d, cSh.w)) {
+        const n1 = ymdAdd(cSh.y, cSh.mo, cSh.d, 1);
+        addWin(out, 'shfe', '夜盘中',
+          fromZoned('Asia/Shanghai', cSh.y, cSh.mo, cSh.d, 21, 0, 0),
+          fromZoned('Asia/Shanghai', n1.y, n1.mo, n1.d, 2, 30, 0));
+        addWin(out, 'sge', '夜盘中',
+          fromZoned('Asia/Shanghai', cSh.y, cSh.mo, cSh.d, 20, 0, 0),
+          fromZoned('Asia/Shanghai', n1.y, n1.mo, n1.d, 2, 30, 0));
+      }
+      if (cLd.w >= 1 && cLd.w <= 5) {
+        addWin(out, 'london', '开盘中',
+          fromZoned('Europe/London', cLd.y, cLd.mo, cLd.d, 8, 0, 0),
+          fromZoned('Europe/London', cLd.y, cLd.mo, cLd.d, 16, 30, 0));
+      }
+    }
+    out.sort(function (a, b) { return a.start - b.start; });
+    return out;
+  }
+  function matchVenue(id, now, windows) {
+    const mine = windows.filter(function (w) { return w.venueId === id; });
+    const cur = mine.find(function (w) { return now >= w.start && now < w.end; });
+    if (cur) return { open: true, phase: cur.phase, start: cur.start, end: cur.end };
+    const next = mine.find(function (w) { return w.start > now; });
+    if (next) return { open: false, phase: '未开盘', start: next.start, end: next.end };
+    return { open: false, phase: '未开盘', start: null, end: null };
+  }
+  function sessSnapshot(now) {
+    now = now || Date.now();
+    const windows = collectWindows(now);
+    const items = SESS_VENUES.map(function (v) {
+      const st = matchVenue(v.id, now, windows);
+      return {
+        id: v.id,
+        short: v.short,
+        name: v.name,
+        hint: v.hint,
+        open: !!st.open,
+        phase: st.phase,
+        start: st.start,
+        end: st.end,
+      };
+    });
+    return { items: items, now: now };
+  }
+  function venueState(id, now) {
+    now = now || Date.now();
+    return matchVenue(id, now, collectWindows(now));
+  }
+  const SESS_SHOW_KEY = 'gold-minute-sess-show';
+  function sessForGold() { return mkt().id === 'xau'; }
+  function sessRailOn() {
+    try {
+      const raw = localStorage.getItem(SESS_SHOW_KEY);
+      if (raw === '0') return false;
+      if (raw === '1') return true;
+    } catch (e) {}
+    return true;
+  }
+  function applySessChrome() {
+    const gold = sessForGold();
+    const btn = $('btnSess');
+    const el = $('sessRail');
+    if (btn) {
+      btn.hidden = !gold;
+      btn.setAttribute('aria-pressed', String(gold && sessRailOn()));
+    }
+    if (!gold) {
+      if (el) el.hidden = true;
+      return;
+    }
+    const on = sessRailOn();
+    if (el) el.hidden = !on;
+    if (on) renderSessRail(Date.now());
+  }
+  function setSessRailOn(on) {
+    if (!sessForGold()) return;
+    try { localStorage.setItem(SESS_SHOW_KEY, on ? '1' : '0'); } catch (e) {}
+    applySessChrome();
+  }
+  function renderSessRail(now) {
+    const el = $('sessRail');
+    if (!el) return;
+    if (!sessForGold() || el.hidden) return;
+    const snap = sessSnapshot(now);
+    el.innerHTML = '<div class="sess-track">' + snap.items.map(function (x) {
+      const cls = 'sess-item' + (x.open ? ' is-open' : '');
+      const range = x.start ? fmtRange(x.start, x.end) : '近 10 天无开盘';
+      const next = x.open
+        ? (range + ' · 还剩 ' + sessRemain(x.end - snap.now))
+        : range;
+      return '<div class="' + cls + '" title="' + x.hint + '">' +
+        '<span class="sess-name">' + x.short + '</span>' +
+        '<b class="sess-state">' + x.phase + '</b>' +
+        '<span class="sess-next num">' + next + '</span></div>';
+    }).join('') + '</div>';
+  }
+  function tickSess(now) {
+    renderSessRail(now || Date.now());
+  }
+  function bindSessRail() {
+    const btn = $('btnSess');
+    applySessChrome();
+    if (btn) {
+      btn.addEventListener('click', () => {
+        if (!sessForGold()) return;
+        setSessRailOn(!sessRailOn());
+      });
+    }
   }
 
   async function getJson(path) {
@@ -2666,8 +3049,204 @@ try {
     return pack;
   }
 
+  function smcSigLook(tf) {
+    if (tf === '10s') return { recency: 18, maxWait: 52, doneAtr: 0.85 };
+    if (tf === '1m') return { recency: 12, maxWait: 36, doneAtr: 0.85 };
+    if (tf === '5m' || tf === '15m') return { recency: 10, maxWait: 28, doneAtr: 0.8 };
+    return { recency: 8, maxWait: 20, doneAtr: 0.75 };
+  }
+
+  function smcPoiTap(bar, poi) {
+    return bar.l <= poi.top && bar.h >= poi.bot;
+  }
+
+  function smcPoiHold(dir, bar, poi) {
+    const span = Math.max(poi.top - poi.bot, 1e-9);
+    if (dir > 0) return bar.c >= poi.bot && bar.c >= poi.bot + span * 0.2;
+    return bar.c <= poi.top && bar.c <= poi.top - span * 0.2;
+  }
+
+  function smcPoiThrough(dir, bar, poi) {
+    if (dir > 0) return bar.c < poi.bot;
+    return bar.c > poi.top;
+  }
+
+  function smcEventPois(ev, fvgsAll) {
+    if (ev.ob) {
+      return [{ kind: 'ob', i: ev.ob.i, top: ev.ob.top, bot: ev.ob.bot }];
+    }
+    const pois = [];
+    (fvgsAll || []).forEach((g) => {
+      if (g.dir !== ev.dir) return;
+      if (g.i1 < ev.from || g.i1 > ev.i + 1) return;
+      pois.push({ kind: 'fvg', i: g.i0, top: g.top, bot: g.bot });
+    });
+    return pois;
+  }
+
+  function smcSignalFromEvent(klines, ev, pois, end, atrv, cfg) {
+    if (!pois.length) return null;
+    const n = klines.length;
+    const last = klines[n - 1];
+    if (ev.i >= end) return null;
+    if (end - ev.i > cfg.maxWait) return null;
+    const start = ev.i + 1;
+    if (start >= n) return null;
+
+    let tapI = -1;
+    let tapPoi = null;
+    let holdI = -1;
+    let failI = -1;
+    let liveTap = false;
+
+    for (let i = start; i < n; i++) {
+      const bar = klines[i];
+      const closed = i <= end;
+      if (tapI < 0) {
+        let hit = null;
+        for (let p = 0; p < pois.length; p++) {
+          if (!smcPoiTap(bar, pois[p])) continue;
+          if (!hit || pois[p].kind === 'ob') hit = pois[p];
+        }
+        if (hit) {
+          tapI = i;
+          tapPoi = hit;
+          if (!closed) liveTap = true;
+        }
+      }
+      if (tapI < 0) continue;
+      if (smcPoiThrough(ev.dir, bar, tapPoi)) {
+        if (holdI < 0) {
+          failI = i;
+          break;
+        }
+        if (closed) {
+          failI = i;
+          break;
+        }
+      }
+      if (holdI < 0 && smcPoiHold(ev.dir, bar, tapPoi)) {
+        if (closed) holdI = i;
+        else liveTap = true;
+      }
+    }
+
+    if (tapI < 0) return null;
+    if (failI >= 0 && holdI < 0) return null;
+
+    const poi = tapPoi;
+    const away = ev.dir > 0 ? (last.c - poi.top) : (poi.bot - last.c);
+    let status = 'watch';
+    if (failI >= 0 && holdI >= 0) status = 'fail';
+    else if (liveTap && holdI < 0) status = 'watch';
+    else if (holdI >= 0 && away >= atrv * cfg.doneAtr) status = 'done';
+    else if (holdI >= 0) status = 'trigger';
+    else status = 'watch';
+
+    if (status === 'fail' && end - failI > 3) return null;
+    if (status === 'done' && end - holdI > cfg.recency) return null;
+    if (status === 'watch' && !liveTap && end - tapI > cfg.recency && holdI < 0) return null;
+
+    const sigI = holdI >= 0 ? holdI : tapI;
+    if (n - 1 - sigI > cfg.maxWait) return null;
+
+    const side = ev.dir > 0 ? '做多' : '做空';
+    const poiName = poi.kind === 'ob' ? '订单区块' : '缺口';
+    const evName = ev.kind === 'CHoCH' ? '转势' : '延续突破';
+    let title = 'SMC ' + side + '等待';
+    if (status === 'trigger') title = 'SMC ' + side + ' · 回踩' + poiName;
+    else if (status === 'watch') title = liveTap ? ('SMC ' + side + '回踩中') : ('SMC ' + side + '等待收盘');
+    else if (status === 'done') title = 'SMC ' + side + '已走完';
+    else if (status === 'fail') title = 'SMC ' + side + '失效';
+
+    let vote = 0;
+    if (status === 'trigger') vote = ev.dir;
+
+    let why = 'SMC ' + side + '：' + evName + '后回踩' + poiName +
+      ' ' + px(poi.bot) + '–' + px(poi.top) + '。';
+    if (status === 'trigger') {
+      why += sigI === tapI
+        ? '同一根已经踩进该区并收在区内。只描述结构，不是下单指令。'
+        : '踩进该区后收盘守住。只描述结构，不是下单指令。';
+    } else if (status === 'watch') {
+      why += liveTap
+        ? '正在回踩该区，还要等这根收盘守住才算信号。'
+        : '已经踩到该区，还要等收盘守住才算信号。';
+    } else if (status === 'done') {
+      why += '信号后已经离开该区较远，这段不宜再当新信号。';
+    } else {
+      why += '回踩后收盘穿过该区，信号失效。';
+    }
+
+    return {
+      dir: ev.dir,
+      status: status,
+      vote: vote,
+      i: sigI,
+      tapI: tapI,
+      holdI: holdI,
+      failI: failI,
+      eventI: ev.i,
+      eventKind: ev.kind,
+      poiKind: poi.kind,
+      poi: poi,
+      title: title,
+      label: status === 'watch' ? (side + '?') : side,
+      why: why,
+      live: liveTap,
+    };
+  }
+
+  function smcBuildSignals(klines, events, fvgsAll) {
+    const out = [];
+    if (!klines || !events || !events.length) return out;
+    const end = pbClosedEnd(klines);
+    if (end < 6) return out;
+    const last = klines[klines.length - 1];
+    const atrv = atr(klines, 14) || atrFallback(last.c);
+    const cfg = smcSigLook(state.tf);
+    const byBar = {};
+    for (let e = 0; e < events.length; e++) {
+      const ev = events[e];
+      const pois = smcEventPois(ev, fvgsAll);
+      const sig = smcSignalFromEvent(klines, ev, pois, end, atrv, cfg);
+      if (!sig) continue;
+      const prev = byBar[sig.i];
+      if (!prev) {
+        byBar[sig.i] = sig;
+        continue;
+      }
+      const better = (sig.eventKind === 'CHoCH' && prev.eventKind !== 'CHoCH')
+        || (sig.eventKind === prev.eventKind && sig.poiKind === 'ob' && prev.poiKind !== 'ob');
+      if (better) byBar[sig.i] = sig;
+    }
+    Object.keys(byBar).forEach((k) => out.push(byBar[k]));
+    out.sort((a, b) => a.i - b.i);
+    return out;
+  }
+
+  function smcLiveOf(signals, n, recency) {
+    if (!signals || !signals.length) return null;
+    let best = null;
+    let bestR = -1;
+    signals.forEach((s) => {
+      const age = n - 1 - s.i;
+      if (s.status === 'fail' || s.status === 'done') return;
+      if (s.status !== 'watch' && age > recency) return;
+      let r = s.status === 'trigger' ? 4 : 3;
+      r += s.eventKind === 'CHoCH' ? 0.4 : 0;
+      r += s.poiKind === 'ob' ? 0.2 : 0;
+      r += Math.max(0, 1 - age / Math.max(recency, 1));
+      if (r > bestR) {
+        bestR = r;
+        best = s;
+      }
+    });
+    return best;
+  }
+
   function computeSmc(klines) {
-    const empty = { events: [], obs: [], fvgs: [], trend: 0, label: '' };
+    const empty = { events: [], obs: [], fvgs: [], signals: [], live: null, trend: 0, label: '' };
     if (!klines || klines.length < 8) return empty;
     const k = 2;
     const swings = [];
@@ -2739,7 +3318,7 @@ try {
       if (mit == null) obs.push(ob);
     });
 
-    const fvgs = [];
+    const fvgsAll = [];
     const minGap = (klines[klines.length - 1].c || 1) * 0.00008;
     for (let i = 2; i < klines.length; i++) {
       const a = klines[i - 2];
@@ -2753,23 +3332,30 @@ try {
         if (gap.dir > 0 && klines[j].l <= gap.bot) { mit = j; break; }
         if (gap.dir < 0 && klines[j].h >= gap.top) { mit = j; break; }
       }
-      if (mit != null) continue;
-      gap.end = klines.length - 1;
-      fvgs.push(gap);
+      gap.mit = mit;
+      gap.end = mit == null ? klines.length - 1 : mit;
+      fvgsAll.push(gap);
     }
+    const fvgs = fvgsAll.filter((g) => g.mit == null).slice(-8);
+
+    const cfg = smcSigLook(state.tf);
+    const signals = smcBuildSignals(klines, events, fvgsAll);
+    const live = smcLiveOf(signals, klines.length, cfg.recency);
 
     const last = events[events.length - 1];
     let label = '';
-    if (last) {
-      label = last.kind + ' ' + (last.dir > 0 ? '偏多' : '偏空');
-    } else if (trend > 0) label = '结构偏多';
+    if (live) label = live.title;
+    else if (last) label = last.kind + ' ' + (last.dir > 0 ? '偏多' : '偏空');
+    else if (trend > 0) label = '结构偏多';
     else if (trend < 0) label = '结构偏空';
     else label = '结构未定';
 
     return {
       events: events.slice(-8),
       obs: obs.slice(-5),
-      fvgs: fvgs.slice(-8),
+      fvgs: fvgs,
+      signals: signals.slice(-8),
+      live: live,
       trend: trend,
       label: label,
     };
@@ -4167,7 +4753,14 @@ try {
   }
 
   function mtfBias(klines) {
-    if (!klines || klines.length < 21) return { vote: 0, label: '样本不足', closes: [] };
+    const lean = mtfLean(klines);
+    return { vote: lean.vote, label: lean.label, closes: lean.closes, last: lean.last, a: lean.a, b: lean.b };
+  }
+
+  function mtfLean(klines) {
+    if (!klines || klines.length < 21) {
+      return { vote: 0, label: '样本不足', stacked: false, closes: [], last: null, a: null, b: null };
+    }
     const closes = klines.map((k) => k.c);
     const e9 = ema(closes, 9);
     const e21 = ema(closes, 21);
@@ -4175,10 +4768,20 @@ try {
     const a = e9[e9.length - 1], b = e21[e21.length - 1];
     const slope = a - e9[Math.max(0, e9.length - 8)];
     let vote = 0;
-    if (last > a && a > b && slope > 0) vote = 1;
-    else if (last < a && a < b && slope < 0) vote = -1;
+    if (last > a && a >= b) vote = 1;
+    else if (last < a && a <= b) vote = -1;
+    else if (last > a && last > b) vote = 1;
+    else if (last < a && last < b) vote = -1;
+    const stacked = (vote > 0 && a > b && slope > 0) || (vote < 0 && a < b && slope < 0);
     const label = vote > 0 ? '偏多' : vote < 0 ? '偏空' : '纠缠';
-    return { vote, label, closes, last, a, b };
+    return { vote, label, stacked, closes, last, a, b };
+  }
+
+  function barsClosedAsOf(src, spanSec, t) {
+    if (!src || !src.length || t == null) return src || [];
+    let i = src.length;
+    while (i > 0 && src[i - 1].t + spanSec > t) i--;
+    return src.slice(0, i);
   }
 
   function minuteBars() {
@@ -4288,7 +4891,7 @@ try {
     };
   }
 
-  function makeFastTrade(dir, bars, i, atr1, spread, reason, setup) {
+  function makeFastTrade(dir, bars, i, atr1, spread, reason, setup, spanSec) {
     const bar = bars[i];
     const entry = bar.c;
     if (entry == null || atr1 == null || atr1 <= 0) return null;
@@ -4298,21 +4901,20 @@ try {
     const bounds = fastBounds(entry);
     let tpDist = clampFastDist(spec.tpAtr * atr1, bounds.tpMin, bounds.tpMax);
     let slDist = clampFastDist(Math.max(spec.slAtr * atr1, wick * 1.8), bounds.slMin, bounds.slMax);
-    if (spread != null) {
-      if (tpDist < 8 * spread || spread >= 0.12 * tpDist) return null;
-      slDist = Math.max(slDist, 6 * spread);
-    }
+    if (spreadTooWide(spread, tpDist)) return null;
+    if (spread != null) slDist = Math.max(slDist, 4 * spread);
     const tp = dir > 0 ? entry + tpDist : entry - tpDist;
     const sl = dir > 0 ? entry - slDist : entry + slDist;
     if (dir > 0 && !(tp > entry && sl < entry)) return null;
     if (dir < 0 && !(tp < entry && sl > entry)) return null;
+    const span = spanSec || 10;
     return {
       dir: dir,
       entry: entry,
       tp: tp,
       sl: sl,
       t: bar.t,
-      entryAt: (bar.t + 10) * 1000,
+      entryAt: (bar.t + span) * 1000,
       reason: reason,
       setup: setup,
       status: 'open',
@@ -4321,42 +4923,131 @@ try {
     };
   }
 
-  function evalFastSetup(bars, ticker) {
-    if (!bars || bars.length < 30) return null;
+  function spreadTooWide(spread, tpDist) {
+    if (spread == null || !(spread > 0)) return false;
+    if (tpDist == null || !(tpDist > 0)) return spread >= 0.8;
+    return spread >= 0.28 * tpDist || tpDist < 3 * spread;
+  }
+
+  function fastContext(bars, ticker) {
+    if (!bars || bars.length < 12) return null;
     const n = bars.length;
     const t = bars[n - 1].t;
-    const m1 = barsUpTo(minuteBars(), t);
-    const m5 = barsUpTo(fiveBars(), t);
-    const m1b = mtfBias(m1);
-    const m5b = mtfBias(m5);
+    const m1 = barsClosedAsOf(minuteBars(), 60, t);
+    const m5 = barsClosedAsOf(fiveBars(), 300, t);
+    const m1b = mtfLean(m1);
+    const m5b = mtfLean(m5);
     const spread = spreadOf(ticker);
     const a1 = atr(m1, 14);
-    if (a1 == null) return null;
     const closes = bars.map((k) => k.c);
     const e9 = ema(closes, 9);
     const a = e9[n - 1];
     const last = bars[n - 1];
     const r = rsi(closes, 14);
-    const allowLong = m1b.vote >= 0 && m5b.vote >= 0;
-    const allowShort = m1b.vote <= 0 && m5b.vote <= 0;
-    const trendLong = m1b.vote > 0 && m5b.vote >= 0;
-    const trendShort = m1b.vote < 0 && m5b.vote <= 0;
+    const ready = m1.length >= 21 && m5.length >= 21;
+    const allowLong = ready && m1b.vote >= 0 && m5b.vote >= 0;
+    const allowShort = ready && m1b.vote <= 0 && m5b.vote <= 0;
+    const trendLong = ready && m1b.vote > 0 && m5b.vote >= 0;
+    const trendShort = ready && m1b.vote < 0 && m5b.vote <= 0;
+    return {
+      n: n, t: t, m1: m1, m5: m5, m1b: m1b, m5b: m5b,
+      spread: spread, a1: a1, a: a, last: last, r: r,
+      allowLong: allowLong, allowShort: allowShort,
+      trendLong: trendLong, trendShort: trendShort,
+    };
+  }
 
-    if (reclaimOnBar(bars, 1) && allowLong && a != null && last.c > a && !(r != null && r > 78)) {
-      const tr = makeFastTrade(1, bars, n - 1, a1, spread, '10秒下轨收回并站上均线，1分钟不空', 'reclaim');
+  function fastWaitWhy(ctx, ticker) {
+    if (!isMarketOpen(ticker)) return '休市，开盘后再给开单信号。';
+    if (!ctx) return '还在补 10 秒 K 线。';
+    if (ctx.a1 == null) return '还在补 1 分钟波动，样本不够。';
+    const bounds = fastBounds(ctx.last && ctx.last.c);
+    const spec = mkt().fast;
+    const tpGuess = clampFastDist((spec.tpAtr || 1.2) * ctx.a1, bounds.tpMin, bounds.tpMax);
+    if (spreadTooWide(ctx.spread, tpGuess)) {
+      return '点差 ' + px(ctx.spread, 2) + ' 相对目标过大，暂停开单。';
+    }
+    if (ctx.m5b.vote > 0 && ctx.m1b.vote < 0) return '5分钟偏多，1分钟还偏空。等1分钟转多再开。';
+    if (ctx.m5b.vote < 0 && ctx.m1b.vote > 0) return '5分钟偏空，1分钟还偏多。等1分钟转空再开。';
+    if (ctx.m5b.vote === 0 && ctx.m1b.vote === 0) {
+      return '1分和5分都还缠着。等扫到布林外轨收回，或均线重新排开。';
+    }
+    if (ctx.allowLong && ctx.r != null && ctx.r > 78) return '方向可以做多，但 RSI 过高，不追多。等回落。';
+    if (ctx.allowShort && ctx.r != null && ctx.r < 22) return '方向可以做空，但 RSI 过低，不追空。等反抽。';
+    if (ctx.trendLong) return '1分5分偏多。等10秒回踩 EMA9 后收盘站上，或下轨收回。';
+    if (ctx.trendShort) return '1分5分偏空。等10秒反抽 EMA9 后收盘跌破，或上轨收回。';
+    if (ctx.allowLong) return '方向不空。等下轨收回并站上均线。';
+    if (ctx.allowShort) return '方向不多。等上轨收回并跌破均线。';
+    return '等 10 秒收盘后的回踩或触轨收回。';
+  }
+
+  function tryFastDir(dir, ok, rsiV, bars, i, atr1, spread, reason, setup, spanSec) {
+    if (!ok) return null;
+    if (dir > 0 && rsiV != null && rsiV > 78) return null;
+    if (dir < 0 && rsiV != null && rsiV < 22) return null;
+    return makeFastTrade(dir, bars, i, atr1, spread, reason, setup, spanSec);
+  }
+
+  function evalFastSetup(bars, ticker, preview) {
+    if (!bars || bars.length < 30) return null;
+    const ctx = fastContext(bars, ticker);
+    if (!ctx || ctx.a1 == null) return null;
+    const n = ctx.n;
+    const last = ctx.last;
+    const a = ctx.a;
+    const r = ctx.r;
+    const a1 = ctx.a1;
+    const spread = ctx.spread;
+
+    if (reclaimOnBar(bars, 1) && a != null && last.c > a) {
+      const tr = tryFastDir(1, ctx.allowLong, r, bars, n - 1, a1, spread,
+        '10秒下轨收回并站上均线，1分钟不空', 'reclaim', 10);
       if (tr) return tr;
     }
-    if (reclaimOnBar(bars, -1) && allowShort && a != null && last.c < a && !(r != null && r < 22)) {
-      const tr = makeFastTrade(-1, bars, n - 1, a1, spread, '10秒上轨收回并跌破均线，1分钟不多', 'reclaim');
+    if (reclaimOnBar(bars, -1) && a != null && last.c < a) {
+      const tr = tryFastDir(-1, ctx.allowShort, r, bars, n - 1, a1, spread,
+        '10秒上轨收回并跌破均线，1分钟不多', 'reclaim', 10);
       if (tr) return tr;
     }
-    if (emaPullback(bars, 1) && trendLong && !(r != null && r > 78)) {
-      const tr = makeFastTrade(1, bars, n - 1, a1, spread, '10秒回踩EMA9后收盘站上，1分钟偏多', 'ema');
+    if (emaPullback(bars, 1)) {
+      const tr = tryFastDir(1, ctx.trendLong, r, bars, n - 1, a1, spread,
+        '10秒回踩EMA9后收盘站上，1分钟偏多', 'ema', 10);
       if (tr) return tr;
     }
-    if (emaPullback(bars, -1) && trendShort && !(r != null && r < 22)) {
-      const tr = makeFastTrade(-1, bars, n - 1, a1, spread, '10秒回抽EMA9后收盘跌破，1分钟偏空', 'ema');
+    if (emaPullback(bars, -1)) {
+      const tr = tryFastDir(-1, ctx.trendShort, r, bars, n - 1, a1, spread,
+        '10秒回抽EMA9后收盘跌破，1分钟偏空', 'ema', 10);
       if (tr) return tr;
+    }
+    if (!preview && ctx.m1 && ctx.m1.length >= 30) {
+      const m1 = ctx.m1;
+      const close1 = m1[m1.length - 1].t + 60;
+      const just1 = close1 > ctx.t && close1 <= ctx.t + 10;
+      if (just1) {
+        const m1last = m1[m1.length - 1];
+        const m1e9 = ema(m1.map((k) => k.c), 9);
+        const m1a = m1e9[m1e9.length - 1];
+        if (reclaimOnBar(m1, 1) && m1a != null && m1last.c > m1a) {
+          const tr = tryFastDir(1, ctx.allowLong, r, m1, m1.length - 1, a1, spread,
+            '1分钟下轨收回并站上均线', 'reclaim1', 60);
+          if (tr) return tr;
+        }
+        if (reclaimOnBar(m1, -1) && m1a != null && m1last.c < m1a) {
+          const tr = tryFastDir(-1, ctx.allowShort, r, m1, m1.length - 1, a1, spread,
+            '1分钟上轨收回并跌破均线', 'reclaim1', 60);
+          if (tr) return tr;
+        }
+        if (emaPullback(m1, 1)) {
+          const tr = tryFastDir(1, ctx.trendLong, r, m1, m1.length - 1, a1, spread,
+            '1分钟回踩EMA9后收盘站上', 'ema1', 60);
+          if (tr) return tr;
+        }
+        if (emaPullback(m1, -1)) {
+          const tr = tryFastDir(-1, ctx.trendShort, r, m1, m1.length - 1, a1, spread,
+            '1分钟反抽EMA9后收盘跌破', 'ema1', 60);
+          if (tr) return tr;
+        }
+      }
     }
     return null;
   }
@@ -4477,6 +5168,7 @@ try {
     state.fastHist = state.fastHist.concat([done]).slice(-6);
     state.fastMarks = state.fastMarks.concat([{ t: tr.t, dir: tr.dir }]).slice(-12);
     state.fastTrade = null;
+    state.fastWatch = null;
     state.fastCoolUntil = now + FAST_COOL_MS;
     recordFastSimClose(done, simId);
     state.chartScale = null;
@@ -4505,6 +5197,52 @@ try {
     return true;
   }
 
+  function formingFastBars(nowMs) {
+    const list = state.fast || [];
+    if (!list.length) return null;
+    const bucket = bucket10(nowMs || Date.now());
+    const last = list[list.length - 1];
+    if (last.t !== bucket) return null;
+    return list;
+  }
+
+  function updateFastWatch(now, ticker) {
+    const prev = state.fastWatch;
+    function sameWatch(a, b) {
+      if (!a && !b) return true;
+      if (!a || !b) return false;
+      return a.dir === b.dir && a.setup === b.setup && a.reason === b.reason;
+    }
+    if (!state.ind.fast || (state.fastTrade && state.fastTrade.status === 'open')) {
+      state.fastWatch = null;
+      return !sameWatch(prev, null);
+    }
+    if (!isMarketOpen(ticker) || now < state.fastCoolUntil) {
+      state.fastWatch = null;
+      return !sameWatch(prev, null);
+    }
+    const forming = formingFastBars(now);
+    if (!forming || forming.length < 30) {
+      state.fastWatch = null;
+      return !sameWatch(prev, null);
+    }
+    const setup = evalFastSetup(forming, ticker, true);
+    if (!setup) {
+      state.fastWatch = null;
+      return !sameWatch(prev, null);
+    }
+    const side = setup.dir > 0 ? '多' : '空';
+    state.fastWatch = {
+      dir: setup.dir,
+      entry: setup.entry,
+      tp: setup.tp,
+      sl: setup.sl,
+      setup: setup.setup,
+      reason: '这根10秒若这样收盘，就开' + side + '。' + setup.reason,
+    };
+    return !sameWatch(prev, state.fastWatch);
+  }
+
   function tickFastOpen() {
     const t = state.ticker || {};
     const now = Date.now();
@@ -4512,7 +5250,10 @@ try {
       if (stepFastTrade(now, t)) return;
       const remainEl = $('fastRemain');
       if (remainEl && state.ind.fast) remainEl.textContent = '剩余 ' + remainFast(state.fastTrade, now);
+      return;
     }
+    const changed = updateFastWatch(now, t);
+    if (changed && state.ind.fast) renderFastPanel();
   }
 
   function tryOpenFast(now, ticker) {
@@ -4525,8 +5266,12 @@ try {
     const last = closed[closed.length - 1];
     if (last.t === state.fastLastEvalT) return;
     state.fastLastEvalT = last.t;
-    const setup = evalFastSetup(closed, ticker);
-    if (!setup) return;
+    const setup = evalFastSetup(closed, ticker, false);
+    if (!setup) {
+      updateFastWatch(now, ticker);
+      return;
+    }
+    state.fastWatch = null;
     state.fastTrade = setup;
     state.fastLast = null;
     recordFastSimOpen(setup);
@@ -4541,6 +5286,7 @@ try {
     const now = Date.now();
     stepFastTrade(now, t);
     tryOpenFast(now, t);
+    updateFastWatch(now, t);
     renderFastPanel();
   }
 
@@ -4561,7 +5307,52 @@ try {
   function simSourceLabel(o) {
     if (!o || o.source !== 'fast') return '手';
     const k = fastKindLabel(o.kind);
-    return k ? '快单·' + k : '快单';
+    return k ? '开单·' + k : '开单';
+  }
+
+  function setupKindLabel(setup) {
+    if (setup === 'ema' || setup === 'ema1') return '回踩';
+    if (setup === 'reclaim' || setup === 'reclaim1') return '收回';
+    return '';
+  }
+
+  function openSignalView() {
+    const tr = (state.fastTrade && state.fastTrade.status === 'open') ? state.fastTrade : null;
+    const watch = state.fastWatch;
+    const last = state.fastLast;
+    const now = Date.now();
+    if (tr) {
+      return {
+        mode: 'open', dir: tr.dir, title: tr.dir > 0 ? '开多' : '开空',
+        why: tr.reason, cls: tr.dir > 0 ? 'bull' : 'bear', show: tr,
+      };
+    }
+    if (watch) {
+      return {
+        mode: 'armed', dir: watch.dir, title: watch.dir > 0 ? '预备开多' : '预备开空',
+        why: watch.reason, cls: 'armed', show: watch,
+      };
+    }
+    if (last && now - last.exitAt < 12000) {
+      return {
+        mode: 'done', dir: last.dir, title: '刚平 · ' + fastKindLabel(last.status),
+        why: last.reason, cls: last.pnl >= 0 ? 'bull' : 'bear', show: last,
+      };
+    }
+    return { mode: 'wait', dir: 0, title: '等待开单', why: '', cls: 'chop', show: null };
+  }
+
+  function placeOpenBadge(sig) {
+    const el = $('openBadge');
+    if (!el) return;
+    if (!state.ind.fast || !sig || sig.mode === 'wait') {
+      el.hidden = true;
+      el.className = 'open-badge';
+      return;
+    }
+    el.hidden = false;
+    el.textContent = sig.title;
+    el.className = 'open-badge show' + (sig.cls ? ' ' + sig.cls : '');
   }
 
   function renderFastPanel() {
@@ -4577,7 +5368,9 @@ try {
         closeFastTrade('off', pxNow, Date.now());
         return;
       }
+      state.fastWatch = null;
       placeFastTags();
+      placeOpenBadge(null);
       return;
     }
     const dirEl = $('fastDir');
@@ -4587,36 +5380,49 @@ try {
     const histEl = $('fastHist');
     if (!dirEl || !lvEl) return;
     const now = Date.now();
-    const tr = (state.fastTrade && state.fastTrade.status === 'open') ? state.fastTrade : null;
-    const last = state.fastLast;
-    let title = '等待结构';
+    const closed = closedFastBars(now);
+    const ctx = fastContext(closed.length ? closed : (state.fast || []), state.ticker);
+    const sig = openSignalView();
+    let title = sig.title;
     let remain = '';
-    let why = '等 10 秒收盘后的下轨收回并站上均线，或 1 分钟偏多/偏空时的 EMA9 回踩。止盈止损按 1 分钟波动放大，覆盖每秒一两个点的跳动。纸面信号，不是下单指令。';
-    let showLv = null;
-    if (!isMarketOpen(state.ticker) && !tr) {
-      title = '休市';
-      why = '当前时段不可交易，开盘后再看 10 秒结构。';
-    } else if (closedFastBars(now).length < 30) {
-      title = '样本不足';
-      why = '还在补 10 秒 K 线，至少需要约 30 根收盘棒。';
-    } else if (tr) {
-      title = tr.dir > 0 ? '做多' : '做空';
+    let why = sig.why || fastWaitWhy(ctx, state.ticker);
+    let showLv = sig.show;
+    if (sig.mode === 'wait') {
+      if (!isMarketOpen(state.ticker)) {
+        title = '休市';
+        why = '当前时段不可交易，开盘后再给开单信号。';
+      } else if (closed.length < 30) {
+        title = '样本不足';
+        why = '还在补 10 秒 K 线，至少需要约 30 根收盘棒。';
+      } else if (now < state.fastCoolUntil) {
+        title = '冷却';
+        remain = '下一单 ' + Math.max(0, Math.ceil((state.fastCoolUntil - now) / 1000)) + ' 秒后';
+        why = '刚平过一单，短暂停一下避免连打。';
+      } else {
+        title = '等待开单';
+        if (ctx && ctx.m1b && ctx.m5b) {
+          remain = '1分 ' + ctx.m1b.label + '  ·  5分 ' + ctx.m5b.label;
+        }
+      }
+    } else if (sig.mode === 'open') {
+      const tr = sig.show;
       remain = '盈 ' + px(Math.abs(tr.tp - tr.entry), 2) + '  损 ' + px(Math.abs(tr.sl - tr.entry), 2) +
-        '  ·  剩余 ' + remainFast(tr, now) + (tr.setup === 'ema' ? ' · 回踩' : ' · 收回');
-      why = tr.reason;
-      showLv = tr;
-    } else if (last && now - last.exitAt < 12000) {
-      title = '刚平 · ' + fastKindLabel(last.status);
+        '  ·  剩余 ' + remainFast(tr, now) +
+        (setupKindLabel(tr.setup) ? ' · ' + setupKindLabel(tr.setup) : '');
+    } else if (sig.mode === 'armed') {
+      remain = '等这根10秒收盘确认';
+    } else if (sig.mode === 'done') {
+      const last = sig.show;
       remain = (last.dir > 0 ? '多' : '空') + '  ' + (last.pnl >= 0 ? '+' : '') + px(last.pnl, 2);
-      why = last.reason;
-      showLv = last;
-    } else if (now < state.fastCoolUntil) {
-      title = '冷却';
-      remain = '下一单 ' + Math.max(0, Math.ceil((state.fastCoolUntil - now) / 1000)) + ' 秒后';
     }
     dirEl.textContent = title;
+    dirEl.classList.toggle('is-armed', sig.mode === 'armed');
+    if (box) {
+      box.classList.remove('bull', 'bear', 'chop', 'armed');
+      box.classList.add(sig.cls || 'chop');
+    }
     if (remainEl) remainEl.textContent = remain;
-    if (showLv) {
+    if (showLv && showLv.entry != null) {
       const tpD = (showLv.dir > 0 ? '+' : '-') + px(Math.abs(showLv.tp - showLv.entry), 2);
       const slD = (showLv.dir > 0 ? '-' : '+') + px(Math.abs(showLv.sl - showLv.entry), 2);
       lvEl.innerHTML =
@@ -4640,6 +5446,8 @@ try {
         }).join('');
       }
     }
+    placeFastTags();
+    placeOpenBadge(sig);
   }
 
   function openFastTrade() {
@@ -4663,8 +5471,8 @@ try {
   }
 
   function placeFastTags() {
-    const tr = openFastTrade();
-    const show = !!(state.ind.fast && tr);
+    const tr = openFastTrade() || (state.ind.fast ? state.fastWatch : null);
+    const show = !!(state.ind.fast && tr && tr.entry != null);
     placeLevelTag('fastEntryTag', tr && tr.entry, show, '入 ');
     placeLevelTag('fastTpTag', tr && tr.tp, show, '盈 ');
     placeLevelTag('fastSlTag', tr && tr.sl, show, '损 ');
@@ -4804,7 +5612,7 @@ try {
       '负 <b class="dn">' + s.losses + '</b>',
       '合计 <b class="' + sumCls + '">' + fmtUsd(s.sum) + '</b>'
     );
-    if (fastN) parts.push('快单 <b>' + fastN + '</b>');
+    if (fastN) parts.push('开单 <b>' + fastN + '</b>');
     el.innerHTML = parts.join('  ');
   }
 
@@ -4817,12 +5625,12 @@ try {
     let html = '';
     html += '<h3 class="sim-sec">持仓 ' + opens.length + '</h3>';
     if (!opens.length) {
-      html += '<p class="sim-empty">当前没有持仓。点开仓会按现价记一笔，快单触发后也会出现在这里。</p>';
+      html += '<p class="sim-empty">当前没有持仓。点开仓会按现价记一笔，开单信号触发后也会出现在这里。</p>';
     } else {
       html += opens.map((o) => {
         const pnl = last != null ? simPnl(o.entry, last, o.dir) : null;
         const cls = pnl > 0 ? 'up' : pnl < 0 ? 'dn' : '';
-        const src = o.source === 'fast' ? '<span class="sim-src">快单</span>' : '';
+        const src = o.source === 'fast' ? '<span class="sim-src">开单</span>' : '';
         return '<div class="sim-order">' +
           '<span class="dir ' + (o.dir > 0 ? 'up' : 'dn') + '">' + (o.dir > 0 ? '多' : '空') + src + '</span>' +
           '<span class="num">开 ' + px(o.entry) + '</span>' +
@@ -4988,7 +5796,7 @@ try {
     }
     if (o.source === 'fast' && state.fastTrade && state.fastTrade.status === 'open' && state.fastTrade.simId === o.id) {
       closeFastTrade('manual', last, Date.now());
-      setSimMsg('已平仓快单 ' + (o.dir > 0 ? '多' : '空') + '  开 ' + px(o.entry) + '  平 ' + px(o.exit) + '  ' + fmtUsd(o.pnl), o.pnl > 0 ? 'ok' : o.pnl < 0 ? 'err' : '');
+      setSimMsg('已平仓开单 ' + (o.dir > 0 ? '多' : '空') + '  开 ' + px(o.entry) + '  平 ' + px(o.exit) + '  ' + fmtUsd(o.pnl), o.pnl > 0 ? 'ok' : o.pnl < 0 ? 'err' : '');
       renderSimDialog();
       return true;
     }
@@ -5174,6 +5982,15 @@ try {
     const lastEv = smc.events && smc.events.length ? smc.events[smc.events.length - 1] : null;
     const age = lastEv ? (n - 1 - lastEv.i) : null;
     const lastRecent = lastEv && age <= recentN;
+    const live = smc.live;
+    if (live) {
+      return { vote: live.vote, why: live.why, core: true, signal: live };
+    }
+    const recentDone = (smc.signals || []).filter((s) => s.status === 'done' && (n - 1 - s.i) <= recentN);
+    if (recentDone.length) {
+      const d = recentDone[recentDone.length - 1];
+      return { vote: 0, why: d.why, core: true, signal: d };
+    }
     let inOb = null;
     (smc.obs || []).forEach((ob) => {
       if (last.l <= ob.top && last.h >= ob.bot) inOb = ob;
@@ -5185,12 +6002,13 @@ try {
     const extra = [];
     if (inOb) extra.push('现价触及未回补' + (inOb.dir > 0 ? '多头' : '空头') + '订单区块');
     if (inFvg) extra.push('落在未回补' + (inFvg.dir > 0 ? '上行' : '下行') + '缺口');
+    const wait = '还不是入场信号，要等回踩订单区块或缺口并收盘守住';
     const tail = extra.length ? '。' + extra.join('，') : '';
     if (lastRecent && lastEv.kind === 'CHoCH') {
-      return { vote: lastEv.dir, why: '近端 CHoCH ' + (lastEv.dir > 0 ? '转多' : '转空') + '（' + age + ' 根前）' + tail, core: true };
+      return { vote: lastEv.dir, why: '近端 CHoCH ' + (lastEv.dir > 0 ? '转多' : '转空') + '（' + age + ' 根前）。' + wait + tail, core: true };
     }
     if (lastRecent && lastEv.kind === 'BOS') {
-      return { vote: lastEv.dir, why: '近端 BOS ' + (lastEv.dir > 0 ? '延续偏多' : '延续偏空') + '（' + age + ' 根前）' + tail, core: true };
+      return { vote: lastEv.dir, why: '近端 BOS ' + (lastEv.dir > 0 ? '延续偏多' : '延续偏空') + '（' + age + ' 根前）。' + wait + tail, core: true };
     }
     if (inOb) {
       return { vote: inOb.dir, why: extra.join('，') + '。近端突破已过期，只按区块方向计票', core: true };
@@ -5287,18 +6105,29 @@ try {
     if (bollPack) factors.push({ name: '布林', vote: bollPack.vote, why: bollPack.why });
     if (macdPack) factors.push({ name: 'MACD', vote: macdPack.vote, why: macdPack.why });
     if (sigPack) factors.push({ name: '布林配 MACD', vote: sigPack.vote, why: sigPack.why });
-    const trapPack = factorOn('trap') ? getTrap(klines) : null;
+    let trapPack = factorOn('trap') ? getTrap(klines) : null;
     if (factorOn('smc')) {
       let s = smcVote(klines);
+      const smcPack = getSmc(klines);
+      const lastEv = smcPack.events && smcPack.events.length ? smcPack.events[smcPack.events.length - 1] : null;
       if (trapPack && trapPack.vote && s.vote && s.vote !== trapPack.vote) {
-        const smcPack = getSmc(klines);
-        const lastEv = smcPack.events && smcPack.events.length ? smcPack.events[smcPack.events.length - 1] : null;
         if (lastEv && Math.abs(lastEv.i - trapPack.sweepI) <= 2) {
           s = {
             vote: 0,
             why: s.why + '。近端突破随后收回，按诱空/诱多处理，SMC 方向票不计',
             core: true,
           };
+        }
+      }
+      if (trapPack && trapPack.vote && s.vote && s.vote === trapPack.vote && trapPack.status === 'trigger') {
+        const near = s.signal
+          ? Math.abs(s.signal.i - trapPack.sweepI) <= 3
+          : (lastEv && Math.abs(lastEv.i - trapPack.sweepI) <= 2);
+        if (near) {
+          trapPack = Object.assign({}, trapPack, {
+            vote: 0,
+            why: trapPack.why + '。同一段已记入 SMC 做多/做空，诱空诱多方向票不计。',
+          });
         }
       }
       factors.push({ name: 'SMC', vote: s.vote, why: s.why, core: true });
@@ -5324,13 +6153,24 @@ try {
     }
     if (factorOn('bounce') || factorOn('pull')) {
       const pb = getPb(klines);
+      const smcLive = factorOn('smc') ? ((getSmc(klines) || {}).live) : null;
+      const stealPb = (pack) => {
+        if (!smcLive || smcLive.status !== 'trigger' || !pack || !pack.vote) return pack;
+        if (pack.vote !== smcLive.dir) return pack;
+        const near = Math.abs((pack.pbI || pack.recI || pack.extI || 0) - smcLive.i) <= 3;
+        if (!near) return pack;
+        return Object.assign({}, pack, {
+          vote: 0,
+          why: pack.why + '。同一段已记入 SMC 做多/做空信号，方向票不计。',
+        });
+      };
       if (factorOn('bounce')) {
-        const b = pb.bounce;
+        const b = stealPb(pb.bounce);
         const bName = b.dir < 0 ? '超涨回落' : '超跌反弹';
         factors.push({ name: bName, vote: b.vote, why: b.why, core: b.vote !== 0 });
       }
       if (factorOn('pull')) {
-        const p = pb.pull;
+        const p = stealPb(pb.pull);
         const pName = p.dir < 0 ? '杀跌反抽' : '拉升回踩';
         factors.push({ name: pName, vote: p.vote, why: p.why, core: p.vote !== 0 });
       }
@@ -5736,7 +6576,8 @@ try {
     const vis = view.bars;
     const e9 = view.e9;
     const e21 = view.e21;
-    const smc = state.ind.smc ? getSmc(klines) : null;
+    const smcPack = (state.ind.smc || state.ind.smcSig) ? getSmc(klines) : null;
+    const smc = state.ind.smc ? smcPack : null;
     const hs = state.ind.hs ? getHs(klines) : null;
     const sr = state.ind.sr ? getSr(klines) : null;
     const pbPack = (state.ind.bounce || state.ind.pull) ? getPb(klines) : null;
@@ -6003,11 +6844,54 @@ try {
         gEv.appendChild(lab);
       });
       svg.appendChild(gEv);
-      const smcLab = $('smcLab');
-      if (smcLab) smcLab.textContent = smc.label || '';
-    } else {
-      const smcLab = $('smcLab');
-      if (smcLab) smcLab.textContent = '';
+    }
+    if (state.ind.smcSig && smcPack) {
+      const gSig = svgEl('g', {});
+      (smcPack.signals || []).forEach((sig) => {
+        if (sig.i < view.start - 1 || sig.i > view.end + 1) return;
+        const bar = klines[sig.i];
+        if (!bar) return;
+        const xc = vx(sig.i);
+        const upMk = sig.dir > 0;
+        const op = sig.status === 'trigger' ? '.95' : (sig.status === 'watch' ? '.78' : '.42');
+        const color = upMk ? 'var(--up)' : 'var(--down)';
+        let yy = upMk ? y(bar.l) + 16 : y(bar.h) - 16;
+        yy = Math.max(PAD.t + 14, Math.min(plotBottom - 18, yy));
+        const gOne = svgEl('g', {});
+        const tip = svgEl('title', {});
+        tip.textContent = sig.why || sig.title;
+        gOne.appendChild(tip);
+        gOne.appendChild(svgEl('polygon', {
+          points: upMk
+            ? xc.toFixed(1) + ',' + (yy - 8).toFixed(1) + ' ' + (xc - 6.5).toFixed(1) + ',' + (yy + 4).toFixed(1) + ' ' + (xc + 6.5).toFixed(1) + ',' + (yy + 4).toFixed(1)
+            : xc.toFixed(1) + ',' + (yy + 8).toFixed(1) + ' ' + (xc - 6.5).toFixed(1) + ',' + (yy - 4).toFixed(1) + ' ' + (xc + 6.5).toFixed(1) + ',' + (yy - 4).toFixed(1),
+          fill: color,
+          opacity: op,
+        }));
+        const lab = svgEl('text', {
+          x: xc.toFixed(1),
+          y: (upMk ? yy + 16 : yy - 10).toFixed(1),
+          fill: color,
+          'font-size': '10.5',
+          'font-weight': '750',
+          'font-family': 'var(--font)',
+          'text-anchor': 'middle',
+          stroke: 'var(--bg)',
+          'stroke-width': '3',
+          'paint-order': 'stroke',
+          opacity: op,
+        });
+        lab.textContent = sig.label || (upMk ? '做多' : '做空');
+        gOne.appendChild(lab);
+        gSig.appendChild(gOne);
+      });
+      svg.appendChild(gSig);
+    }
+    const smcLab = $('smcLab');
+    if (smcLab) {
+      if (state.ind.smcSig && smcPack && smcPack.live) smcLab.textContent = smcPack.live.title || '';
+      else if (smc) smcLab.textContent = smc.label || '';
+      else smcLab.textContent = '';
     }
 
     const hsLab = $('hsLab');
@@ -6686,14 +7570,16 @@ try {
     const card = $('biasCard');
     card.classList.remove('bull', 'bear', 'chop');
     if (j.cls) card.classList.add(j.cls);
-    const fastTone = $('fastBox');
-    if (fastTone) {
-      fastTone.classList.remove('bull', 'bear', 'chop');
-      if (j.cls) fastTone.classList.add(j.cls);
-    }
     $('biasDir').textContent = j.dir;
     $('biasAgree').textContent = j.agree;
     $('biasHint').textContent = j.hint;
+    const sig = openSignalView();
+    if (sig && (sig.mode === 'open' || sig.mode === 'armed')) {
+      card.classList.remove('bull', 'bear', 'chop');
+      card.classList.add(sig.dir > 0 ? 'bull' : 'bear');
+      $('biasDir').textContent = sig.title;
+      if (sig.why) $('biasHint').textContent = sig.why;
+    }
     const auditEl = $('biasAudit');
     if (auditEl) {
       auditEl.textContent = j.audit || '';
@@ -7063,6 +7949,7 @@ try {
     });
     if ($('remainLab')) $('remainLab').textContent = m.hasSession ? '本时段剩余' : '下次资金费';
     if ($('openLab')) $('openLab').textContent = m.hasSession ? '今开 / 昨收' : '24h开 / 参考昨收';
+    applySessChrome();
     if ($('chartEmpty') && (!state.klines || !state.klines.length)) {
       $('chartEmpty').textContent = '正在拉取 ' + m.symbol + ' K 线';
     }
@@ -7076,6 +7963,7 @@ try {
     state.mtf = {};
     state.fast = [];
     state.fastTrade = null;
+    state.fastWatch = null;
     state.fastLast = null;
     state.fastHist = [];
     state.fastMarks = [];
@@ -7767,16 +8655,28 @@ try {
   }
   bindBiasPane();
   bindFacMenu();
+  bindSessRail();
   bindFastFloat();
 
   window.__goldTest = {
     mkt: () => mkt(),
     switchMarket: (id) => switchMarket(id),
+    sessAt: (ms) => sessSnapshot(Number(ms) || Date.now()),
+    sessVenue: (id, ms) => venueState(id, Number(ms) || Date.now()),
+    fromZoned: (tz, y, mo, d, h, mi, s) => fromZoned(tz, y, mo, d, h, mi, s),
+    fmtBj: (ms) => fmtBj(Number(ms)),
+    fmtRange: (a, b) => fmtRange(a, b),
+    tickSess: (ms) => tickSess(Number(ms) || Date.now()),
     parseTicker: (raw) => parseTicker(raw),
     parseKlines: (raw) => parseKlines(raw),
     parseStreamName: (name) => parseStreamName(name),
     getTrap: (kl) => getTrap(kl || state.klines),
+    getSmc: (kl) => getSmc(kl || state.klines),
     judge: (kl) => judge(kl || state.klines, state.ticker, state.mtf),
+    evalFastSetup: (bars, ticker, preview) => evalFastSetup(bars, ticker, preview),
+    mtfLean: (kl) => mtfLean(kl),
+    spreadTooWide: (spread, tpDist) => spreadTooWide(spread, tpDist),
+    openSignalView: () => openSignalView(),
     applyKlines: (klines, tf) => {
       state.paused = true;
       if (state.ws) {
@@ -7811,6 +8711,7 @@ try {
       const used = barsForChart();
       return {
         trap: getTrap(used),
+        smc: getSmc(used),
         judge: judge(used, state.ticker, state.mtf),
       };
     },
@@ -7837,6 +8738,7 @@ try {
   setInterval(() => {
     $('clock').textContent = fmtClock();
     if (state.ticker) $('remain').textContent = remainText(state.ticker.closeTime);
+    tickSess(Date.now());
     if (state.fastTrade && state.fastTrade.status === 'open') {
       stepFastTrade(Date.now(), state.ticker || {});
       renderFastPanel();
