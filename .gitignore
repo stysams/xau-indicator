@@ -2,7 +2,6 @@
 nul
 memory/_*.js
 memory/_*.mjs
+memory/*.md
 node_modules/
 *.log
-
-memory/*.md
