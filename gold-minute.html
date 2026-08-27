@@ -236,6 +236,19 @@ try {
       background: color-mix(in srgb, var(--accent) 18%, var(--bg));
       color: var(--accent);
     }
+    .boll-swatch-face:hover {
+      border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+    }
+    .boll-fill-tog:hover {
+      color: var(--ink-1);
+      background: var(--panel-2);
+    }
+    .boll-fill-tog[aria-pressed="true"]:hover {
+      background: color-mix(in srgb, var(--accent) 18%, var(--bg));
+      color: var(--accent);
+    }
+    .boll-style #btnBollStyle:hover,
+    .boll-style #btnBollStyleReset:hover { background: var(--panel-2); }
     .bias-resizer:hover::before {
       background: var(--accent);
       height: 36px;
@@ -244,7 +257,8 @@ try {
   .btn:focus-visible, .seg button:focus-visible, summary:focus-visible,
   .sim-dlg input:focus-visible, .sim-dlg button:focus-visible,
   .bias-toggle:focus-visible, .bias-resizer:focus-visible,
-  .fast-head .btn:focus-visible, .fac-menu button:focus-visible {
+  .fast-head .btn:focus-visible, .fac-menu button:focus-visible,
+  .boll-fill-tog:focus-visible, .boll-swatch-face:focus-within {
     outline: 3px solid var(--accent-soft);
     outline-offset: 2px;
   }
@@ -921,6 +935,179 @@ try {
     color: var(--ink-3);
     margin-left: auto;
   }
+  .seg button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+  }
+  .boll-chip {
+    width: 7px;
+    height: 7px;
+    border-radius: 99px;
+    background: var(--boll);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink-1) 18%, transparent);
+    flex: 0 0 auto;
+  }
+  .seg button[aria-pressed="true"] .boll-chip {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--on-accent) 55%, transparent);
+  }
+  #bollBar.sub-toolbar {
+    flex-wrap: nowrap;
+  }
+  .boll-style {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    flex: 0 0 auto;
+    z-index: 5;
+  }
+  .boll-style.is-open { z-index: 8; }
+  .boll-style #btnBollStyle[aria-expanded="true"] {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: transparent;
+  }
+  .boll-style #btnBollStyle,
+  .boll-style #btnBollStyleReset {
+    min-height: 28px;
+    padding: 0 10px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .boll-style-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    left: auto;
+    z-index: 8;
+    width: min(420px, calc(100vw - 24px));
+    padding: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .boll-style-panel[hidden] { display: none !important; }
+  .boll-style-tracks {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+  .boll-style-track {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px 4px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    min-width: 0;
+  }
+  .boll-style-track.is-off { opacity: .58; }
+  .boll-style-name {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--ink-2);
+    border-left: 3px solid var(--track-line, var(--boll));
+    padding-left: 6px;
+    line-height: 1;
+    white-space: nowrap;
+    min-width: 2.4em;
+  }
+  .boll-style-track .seg button {
+    min-height: 26px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+  .boll-swatch {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    min-width: 0;
+  }
+  .boll-swatch-k {
+    font-size: 10px;
+    font-weight: 750;
+    color: var(--ink-3);
+  }
+  .boll-swatch-face {
+    position: relative;
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    border: 1px solid color-mix(in srgb, var(--ink-1) 14%, transparent);
+    overflow: hidden;
+    flex: 0 0 auto;
+    outline: 3px solid transparent;
+    outline-offset: 2px;
+    background:
+      linear-gradient(45deg, color-mix(in srgb, var(--ink-1) 12%, transparent) 25%, transparent 25%) 0 0 / 8px 8px,
+      linear-gradient(45deg, transparent 75%, color-mix(in srgb, var(--ink-1) 12%, transparent) 75%) 0 0 / 8px 8px,
+      var(--panel-2);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bg) 70%, transparent);
+  }
+  .boll-swatch-face i {
+    display: block;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  .boll-swatch-face input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    border: 0;
+    padding: 0;
+    background: transparent;
+  }
+  .boll-swatch-face.is-off i { background: transparent !important; }
+  .boll-swatch-face.is-off::after {
+    content: "";
+    position: absolute;
+    left: -2px;
+    right: -2px;
+    top: 50%;
+    height: 1.5px;
+    background: color-mix(in srgb, var(--ink-1) 45%, transparent);
+    transform: rotate(-45deg);
+    pointer-events: none;
+  }
+  .boll-fill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .boll-fill-tog {
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--ink-3);
+    border-radius: 8px;
+    min-height: 26px;
+    padding: 0 8px;
+    font-size: 11px;
+    font-weight: 750;
+    outline: 3px solid transparent;
+    outline-offset: 2px;
+  }
+  .boll-fill-tog[aria-pressed="true"] {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: transparent;
+  }
+  .boll-fill-tog:active, .boll-swatch-face:active {
+    transform: translateY(1px);
+  }
   .subbar {
     display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap;
     font-size: 11px; color: var(--ink-2);
@@ -1279,6 +1466,24 @@ try {
     background: var(--accent);
     transform: rotate(45deg);
   }
+  .sw .hkld-c {
+    width: 14px; height: 10px; border-radius: 0; background: none;
+    border-top: 2px solid var(--down);
+    border-bottom: 2px solid var(--up);
+  }
+  .sw .fib-c {
+    width: 14px; height: 10px; border-radius: 0; background: none;
+    box-shadow:
+      inset 0 1.5px 0 0 var(--accent),
+      inset 0 -1.5px 0 0 var(--accent);
+    border-top: 0;
+    position: relative;
+  }
+  .sw .fib-c::after {
+    content: "";
+    position: absolute; left: 0; right: 2px; top: 4px;
+    border-top: 1.6px solid var(--warn);
+  }
   .sw .rsi-c {
     height: 8px; width: 14px; border-radius: 1px;
     background: var(--accent);
@@ -1532,9 +1737,12 @@ try {
     .live.on { animation: none; }
   }
   @media (pointer: coarse) {
-    button, .seg button, .ohlc summary, .foot summary, .sim-order .btn, .ind-menu button, .fac-menu button { min-height: 44px; }
+    button, .seg button, .ohlc summary, .foot summary, .sim-order .btn, .ind-menu button, .fac-menu button,
+    .boll-fill-tog, .boll-style #btnBollStyle, .boll-style #btnBollStyleReset { min-height: 44px; }
     .bias-toggle { width: 44px; min-width: 44px; height: 44px; min-height: 44px; }
     .fast-head .btn { min-height: 44px; }
+    .boll-style-track { min-height: 44px; padding: 4px 10px; }
+    .boll-swatch-face { width: 32px; height: 32px; }
   }
   @media (max-width: 1280px) {
     .quote-bar { grid-template-columns: minmax(0, 1fr) minmax(200px, 28%) minmax(0, 1fr); }
@@ -1547,6 +1755,7 @@ try {
     .desk.is-bias-collapsed { grid-template-columns: 56px minmax(0, 1fr); }
   }
   @media (max-width: 768px) {
+    #bollBar.sub-toolbar { flex-wrap: wrap; }
     html, body { height: auto; overflow-x: clip; overflow-y: auto; }
     body { height: auto; min-height: 100dvh; overflow-x: clip; overflow-y: auto; }
     .shell {
@@ -1760,36 +1969,37 @@ try {
           </div>
           <span class="lab">根数</span>
           <div class="seg" role="group" aria-label="K线根数">
-            <button type="button" data-n="60" aria-pressed="false">60</button>
-            <button type="button" data-n="120" aria-pressed="true">120</button>
-            <button type="button" data-n="180" aria-pressed="false">180</button>
+            <button type="button" data-n="180" aria-pressed="true">180</button>
             <button type="button" data-n="360" aria-pressed="false">360</button>
+            <button type="button" data-n="480" aria-pressed="false">480</button>
           </div>
           <span class="lab">指标</span>
           <div class="seg" role="group" aria-label="指标">
-            <button type="button" data-ind="boll" aria-pressed="true">BOLL</button>
-            <button type="button" data-ind="smc" aria-pressed="true" title="SMC：结构突破、订单区块、未回补缺口。做多做空箭头在指标下拉的「SMC多空」里单独开关">SMC</button>
-            <button type="button" data-ind="hs" aria-pressed="true" title="头肩顶 / 头肩底：摆动点识别，收盘破颈线才算完成">头肩</button>
-            <button type="button" data-ind="sr" aria-pressed="true" title="支撑位 / 压力位：摆动点聚类，破位后角色互换">支压</button>
-            <button type="button" data-ind="last" aria-pressed="true" title="现价水平线">现价</button>
-            <button type="button" data-ind="rsi" aria-pressed="true" title="RSI 副图：Wilder 平滑，默认 14，可改 6/9。70/30 超买超卖带，超买超卖不加方向票">RSI</button>
-            <button type="button" data-ind="macd" aria-pressed="true" title="MACD 副图与布林复合信号">MACD</button>
-            <button type="button" data-ind="fast" aria-pressed="true" title="开单信号：1分/5分定方向，10秒回踩或触轨收回后给出开多/开空">开单</button>
+            <button type="button" data-ind="boll" aria-pressed="false">BOLL</button>
+            <button type="button" data-ind="smc" aria-pressed="false" title="SMC：结构突破、订单区块、未回补缺口。做多做空箭头在指标下拉的「SMC多空」里单独开关">SMC</button>
+            <button type="button" data-ind="hs" aria-pressed="false" title="头肩顶 / 头肩底：摆动点识别，收盘破颈线才算完成">头肩</button>
+            <button type="button" data-ind="sr" aria-pressed="false" title="支撑位 / 压力位：摆动点聚类，破位后角色互换">支压</button>
+            <button type="button" data-ind="last" aria-pressed="false" title="现价水平线">现价</button>
+            <button type="button" data-ind="rsi" aria-pressed="false" title="RSI 副图：Wilder 平滑，默认 14，可改 6/9。70/30 超买超卖带，超买超卖不加方向票">RSI</button>
+            <button type="button" data-ind="macd" aria-pressed="false" title="MACD 副图与布林复合信号">MACD</button>
+            <button type="button" data-ind="fast" aria-pressed="false" title="开单信号：1分/5分定方向，10秒回踩或触轨收回后给出开多/开空">开单</button>
             <div class="ind-more" id="indMore">
-              <button type="button" class="ind-caret" id="btnIndMore" aria-expanded="false" aria-haspopup="menu" aria-controls="indMoreMenu" aria-pressed="true" title="更多指标：高低、反弹、回踩、诱空诱多、SMC多空、套轨、EMA9、EMA21" aria-label="更多指标">
+              <button type="button" class="ind-caret" id="btnIndMore" aria-expanded="false" aria-haspopup="menu" aria-controls="indMoreMenu" aria-pressed="false" title="更多指标：高低、反弹、回踩、诱空诱多、SMC多空、套轨、高空低多、斐波那契、EMA9、EMA21" aria-label="更多指标">
                 <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
                   <path d="M2.4 4.2L6 8l3.6-3.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </button>
               <div class="ind-menu" id="indMoreMenu" role="menu" hidden>
-                <button type="button" class="sw" role="menuitemcheckbox" data-ind="hl" aria-pressed="true" aria-checked="true" title="今日最高最低"><i class="hl-c"></i>高低</button>
-                <button type="button" class="sw" role="menuitemcheckbox" data-ind="bounce" aria-pressed="true" aria-checked="true" title="超跌反弹 / 超涨回落：急跌或急涨后，收盘重新越过 EMA9 才算收回"><i class="bounce-c"></i>反弹</button>
-                <button type="button" class="sw" role="menuitemcheckbox" data-ind="pull" aria-pressed="true" aria-checked="true" title="拉升回踩 / 杀跌反抽：先有一段冲动，再回踩均线，收盘确认才算踩住"><i class="pull-c"></i>回踩</button>
-                <button type="button" class="sw" role="menuitemcheckbox" data-ind="trap" aria-pressed="true" aria-checked="true" title="诱空 / 诱多：影线扫过前低或前高后收回。等低/等高更有效，收盘确认才计票"><i class="trap-c"></i>诱空诱多</button>
-                <button type="button" class="sw" role="menuitemcheckbox" data-ind="smcSig" aria-pressed="true" aria-checked="true" title="SMC 做多/做空：转势或延续后回踩订单区块或缺口，收盘守住才标。正在走的那根不确认。只控制主图箭头，左侧 SMC 因子仍单独勾选"><i class="smcsig-c"></i>SMC多空</button>
-                <button type="button" class="sw" role="menuitemcheckbox" data-ind="stack" aria-pressed="true" aria-checked="true" title="套轨：1小时定性、15分许可、5分与1分扳机。只输出顺势回中、套轨开口、宽轨收回。正在走的1分只预备。只控制主图菱形和套轨条，左侧套轨因子仍单独勾选"><i class="stack-c"></i>套轨</button>
-                <button type="button" class="sw" role="menuitemcheckbox" data-ind="ema9" aria-pressed="true" aria-checked="true"><i class="ema9"></i>EMA9</button>
-                <button type="button" class="sw" role="menuitemcheckbox" data-ind="ema21" aria-pressed="true" aria-checked="true"><i class="ema21"></i>EMA21</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="hl" aria-pressed="false" aria-checked="false" title="今日最高最低"><i class="hl-c"></i>高低</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="bounce" aria-pressed="false" aria-checked="false" title="超跌反弹 / 超涨回落：急跌或急涨后，收盘重新越过 EMA9 才算收回"><i class="bounce-c"></i>反弹</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="pull" aria-pressed="false" aria-checked="false" title="拉升回踩 / 杀跌反抽：先有一段冲动，再回踩均线，收盘确认才算踩住"><i class="pull-c"></i>回踩</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="trap" aria-pressed="false" aria-checked="false" title="诱空 / 诱多：影线扫过前低或前高后收回。等低/等高更有效，收盘确认才计票"><i class="trap-c"></i>诱空诱多</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="smcSig" aria-pressed="false" aria-checked="false" title="SMC 做多/做空：转势或延续后回踩订单区块或缺口，收盘守住才标。正在走的那根不确认。只控制主图箭头，左侧 SMC 因子仍单独勾选"><i class="smcsig-c"></i>SMC多空</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="stack" aria-pressed="false" aria-checked="false" title="套轨：1小时定性、15分许可、5分与1分扳机。只输出顺势回中、套轨开口、宽轨收回。正在走的1分只预备。只控制主图菱形和套轨条，左侧套轨因子仍单独勾选"><i class="stack-c"></i>套轨</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="hkld" aria-pressed="false" aria-checked="false" title="高空低多：15 分钟定高低结构，5 分钟细化位置。震荡里在相对高位标空、相对低位标多。15 分钟还在中部时，本图近端高低不加票。收盘越过 15 分钟前高或跌破前低，按突破反转。影线收回仍按高空低多。只画位置，不是下单指令。左侧因子仍单独勾选"><i class="hkld-c"></i>高空低多</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="fib" aria-pressed="false" aria-checked="false" title="斐波那契：近端足够大的摆动自动画回撤。0% 在冲动终点，100% 在起点。回踩 0.5 / 0.618 / 0.786 后收盘收回才计票，穿过 100% 算原段失效。正在走的那根只观察。左侧因子仍单独勾选"><i class="fib-c"></i>斐波那契</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="ema9" aria-pressed="false" aria-checked="false"><i class="ema9"></i>EMA9</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="ema21" aria-pressed="false" aria-checked="false"><i class="ema21"></i>EMA21</button>
               </div>
             </div>
           </div>
@@ -1798,7 +2008,7 @@ try {
             <button type="button" class="btn" id="btnZoomReset" disabled>复位</button>
           </span>
         </div>
-        <div class="toolbar sub-toolbar" id="bollBar">
+        <div class="toolbar sub-toolbar" id="bollBar" hidden>
           <span class="lab">布林周期</span>
           <div class="seg" role="group" aria-label="布林周期">
             <button type="button" data-boll-n="10" aria-pressed="false">10</button>
@@ -1813,13 +2023,89 @@ try {
           </div>
           <span class="lab">轨</span>
           <div class="seg" role="group" aria-label="布林轨道">
-            <button type="button" data-ind="boll1" aria-pressed="false" title="1 倍标准差，当通道">1σ</button>
-            <button type="button" data-ind="boll2" aria-pressed="true" title="主轨，宽度等于所选倍数">主轨</button>
-            <button type="button" data-ind="boll3" aria-pressed="false" title="3 倍标准差，看极端">3σ</button>
+            <button type="button" data-ind="boll1" aria-pressed="false" title="1 倍标准差，当通道"><i class="boll-chip" data-boll-chip="1" aria-hidden="true"></i>1σ</button>
+            <button type="button" data-ind="boll2" aria-pressed="false" title="主轨，宽度等于所选倍数"><i class="boll-chip" data-boll-chip="2" aria-hidden="true"></i>主轨</button>
+            <button type="button" data-ind="boll3" aria-pressed="false" title="3 倍标准差，看极端"><i class="boll-chip" data-boll-chip="3" aria-hidden="true"></i>3σ</button>
           </div>
-          <span class="hint-wide">1σ 通道 · 主轨随倍数 · 3σ 极端 · MACD 12/26/9</span>
+          <div class="boll-style" id="bollStyleWrap">
+            <button type="button" class="btn" id="btnBollStyleReset" title="把 1σ、主轨、3σ 的线型、线条颜色和背景恢复为预设">重置样式</button>
+            <button type="button" class="btn" id="btnBollStyle" aria-expanded="false" aria-haspopup="true" aria-controls="bollStylePanel" title="1σ、主轨、3σ 的线型、线条颜色和背景">样式</button>
+            <div class="boll-style-panel" id="bollStylePanel" role="dialog" aria-label="轨道样式" hidden>
+          <div class="boll-style-tracks">
+            <div class="boll-style-track" data-boll-track="1">
+              <span class="boll-style-name">1σ</span>
+              <div class="seg" role="group" aria-label="1σ 线型">
+                <button type="button" data-boll-line="solid" aria-pressed="false">实线</button>
+                <button type="button" data-boll-line="dash" aria-pressed="true">虚线</button>
+              </div>
+              <label class="boll-swatch" title="1σ 线条颜色">
+                <span class="boll-swatch-k">线</span>
+                <span class="boll-swatch-face">
+                  <input type="color" data-boll-color="line" value="#4a8f8d" aria-label="1σ 线条颜色">
+                  <i data-boll-swatch="line"></i>
+                </span>
+              </label>
+              <div class="boll-fill">
+                <button type="button" class="boll-fill-tog" data-boll-fill-tog="1" aria-pressed="false" title="开关 1σ 背景" aria-label="开关 1σ 背景">底</button>
+                <label class="boll-swatch" title="1σ 背景颜色">
+                  <span class="boll-swatch-face">
+                    <input type="color" data-boll-color="fill" value="#4a8f8d" aria-label="1σ 背景颜色">
+                    <i data-boll-swatch="fill"></i>
+                  </span>
+                </label>
+              </div>
+            </div>
+            <div class="boll-style-track" data-boll-track="2">
+              <span class="boll-style-name">主轨</span>
+              <div class="seg" role="group" aria-label="主轨 线型">
+                <button type="button" data-boll-line="solid" aria-pressed="false">实线</button>
+                <button type="button" data-boll-line="dash" aria-pressed="true">虚线</button>
+              </div>
+              <label class="boll-swatch" title="主轨线条颜色">
+                <span class="boll-swatch-k">线</span>
+                <span class="boll-swatch-face">
+                  <input type="color" data-boll-color="line" value="#176c6b" aria-label="主轨线条颜色">
+                  <i data-boll-swatch="line"></i>
+                </span>
+              </label>
+              <div class="boll-fill">
+                <button type="button" class="boll-fill-tog" data-boll-fill-tog="2" aria-pressed="true" title="开关主轨背景" aria-label="开关主轨背景">底</button>
+                <label class="boll-swatch" title="主轨背景颜色">
+                  <span class="boll-swatch-face">
+                    <input type="color" data-boll-color="fill" value="#176c6b" aria-label="主轨背景颜色">
+                    <i data-boll-swatch="fill"></i>
+                  </span>
+                </label>
+              </div>
+            </div>
+            <div class="boll-style-track" data-boll-track="3">
+              <span class="boll-style-name">3σ</span>
+              <div class="seg" role="group" aria-label="3σ 线型">
+                <button type="button" data-boll-line="solid" aria-pressed="false">实线</button>
+                <button type="button" data-boll-line="dash" aria-pressed="true">虚线</button>
+              </div>
+              <label class="boll-swatch" title="3σ 线条颜色">
+                <span class="boll-swatch-k">线</span>
+                <span class="boll-swatch-face">
+                  <input type="color" data-boll-color="line" value="#6b7d7c" aria-label="3σ 线条颜色">
+                  <i data-boll-swatch="line"></i>
+                </span>
+              </label>
+              <div class="boll-fill">
+                <button type="button" class="boll-fill-tog" data-boll-fill-tog="3" aria-pressed="false" title="开关 3σ 背景" aria-label="开关 3σ 背景">底</button>
+                <label class="boll-swatch" title="3σ 背景颜色">
+                  <span class="boll-swatch-face">
+                    <input type="color" data-boll-color="fill" value="#6b7d7c" aria-label="3σ 背景颜色">
+                    <i data-boll-swatch="fill"></i>
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+            </div>
+          </div>
         </div>
-        <div class="toolbar sub-toolbar" id="rsiBar">
+        <div class="toolbar sub-toolbar" id="rsiBar" hidden>
           <span class="lab">RSI周期</span>
           <div class="seg" role="group" aria-label="RSI周期">
             <button type="button" data-rsi-n="6" aria-pressed="false">6</button>
@@ -1828,7 +2114,7 @@ try {
           </div>
           <span class="hint-wide">Wilder 平滑 · 70/30 超买超卖 · 50 中轴 · 副图可与 MACD 叠放</span>
         </div>
-        <div class="subbar" id="bollStatus"></div>
+        <div class="subbar" id="bollStatus" hidden></div>
         <div class="stack-line" id="stackBar" hidden></div>
         <div class="chart-wrap" id="chartWrap">
           <svg id="chart" viewBox="0 0 960 400" preserveAspectRatio="none" role="img" aria-label="分钟 K 线，滚轮缩放，拖动平移"></svg>
@@ -1851,12 +2137,12 @@ try {
     <details class="foot">
       <summary>数据说明与免责声明</summary>
       <p>
-        数据都来自 Gate.io 公共接口，不经过本仓库的 MCP。黄金走 CFD / TradFi：REST <code>/api/v4/tradfi</code>，推送 <code>wss://fx-ws.gateio.ws/v4/ws/tradfi</code>。ETH、BTC 走 USDT 永续：REST <code>/api/v4/futures/usdt</code>，推送 <code>wss://fx-ws.gateio.ws/v4/ws/usdt</code>。1 分、5 分、15 分、1 小时、4 小时、1 日 K 线与报价走实时推送（约 250 毫秒），历史根用 REST 补齐。黄金 10 秒线接口有历史，但推送通道不更新，所以用报价按 10 秒归桶合成正在走的那根；永续 10 秒线推送通道会更新。黄金 K 线没有成交量，永续 K 线有量，主图仍按价格结构画，没有另开量能副图。BOLL 默认 20 周期、2 倍标准差，可改周期和倍数，并可叠加 1σ / 3σ。带宽是（上轨−下轨）/中轨，%B 是收盘在主轨里的相对位置。MACD 为 12/26/9，柱状图为 2×(DIF−DEA)。布林配 MACD 的复合信号只描述近端结构是否对齐，不是下单指令。套轨用固定的 1 分、5 分、15 分、1 小时布林分层：1 小时定性、15 分钟许可、5 分与 1 分给扳机，只输出顺势回中、套轨开口、宽轨收回；正在走的 1 分钟只预备。四层对打、1 小时走轨时下层反手收回、或 1 分仍在轨外延伸时不加方向票。RSI 用 Wilder 平滑，默认 14，可改 6 或 9；副图固定 0–100，30/70 为超买超卖带，可与 MACD 叠放。主条仍只留 8 项，RSI 在主条，今日高低收到指标下拉。判断因子清单可单独勾选，RSI 因子的周期跟副图一致。SMC 只画近端结构突破、订单区块和未回补缺口。做多做空不在突破当根追价，要等转势或延续之后回踩订单区块或缺口，收盘守住才标信号；正在走的那根只观察。主图箭头由指标下拉的「SMC多空」单独开关，和结构图层分开；左侧 SMC 因子仍单独勾选。头肩用摆动高低点找左肩、头部、右肩，连接两个回落/反弹点作为颈线；右肩出现后仍只是形成中，收盘价穿过颈线才算完成，价格重新越过头部则视为失效。量度目标等于头部到颈线的高度，从破位处向外量一倍，只作结构参照。支撑压力用摆动高低点按约 0.4 倍 ATR 聚成水平位，触碰次数越多越有效；现价上方为压力、下方为支撑，收盘明显越过后角色互换。整数价位、昨收和今开（永续用 24 小时高低与参考开盘）若离现价不远也会并入。超跌反弹看急跌后收盘重新站上 EMA9，超涨回落相反；拉升回踩要先有一段冲动、再回踩均线并收盘确认，杀跌反抽相反。诱空是影线扫过前低（尤其是等低）后收盘回到该位上方，诱多是影线扫过前高（尤其是等高）后收盘回到该位下方；正在走的那根只标扫位，收盘收回才给方向票。判断因子由左侧栏标题旁的下拉单独勾选，和主图指标开关分开：可以只画不计入判断，也可以只判断不画。确认中的反弹/回踩/诱空诱多在对应因子启用时也算核心，避免和均线对打时硬判方向。近端 SMC 突破随后收回时，方向票交给诱空诱多，避免把假突破再计成真突破。RSI 超买超卖、轨外延伸、日内高低附近不加方向票。核心因子对打或只有外围凑票时，即使票数够也不报偏多偏空。这是结构对照，不预测涨跌，也不构成投资建议。开单信号用 1 分和 5 分定方向，10 秒回踩均线或触轨收回后给出开多/开空；正在走的那根只显示预备，收盘才开仓。纸面持仓大约 180 秒。止盈止损按 1 分钟波动放大；黄金仍用原先的美元距离上下限，永续按现价百分比夹紧。点差过大时暂停开单。模拟交易可同时记下多笔订单，按品种分开存在本机。开仓和平仓都按点击那一刻的最新价，盈亏按报价价差加减，不设止盈止损。快单触发后会把开仓价、平仓价和盈亏价差记入模拟订单。数据只留在本机，用来统计胜率，不会向交易所发单。盯盘时最新一根 K 线默认放在画面中间偏左，右侧留空。报价条下的时段只显示状态，不弹提醒：未开盘、开盘中、午盘中、夜盘中。未开盘给出下一盘北京时间区间，开盘中给出剩余时间。沪金按上期所黄金期货 09:00–10:15 / 10:30–11:30 / 13:30–15:00 与夜盘 21:00–02:30；上金所按 09:00–15:30 与夜盘 20:00–02:30；日本按 JPX 日盘 08:45–15:45、夜盘 17:00–06:00（东京时间）；欧亚盘为 COMEX Globex 美东 18:00 至次日 17:00；欧盘为伦敦 08:00–16:30；美盘为 COMEX 场内 08:20–13:30 美东；美股为纽交所、纳斯达克常规交易 09:30–16:00 美东。中国节假日按 2026 年上期所、上金所公告；美股节假日按纽交所、纳斯达克 2026 年日历，感恩节次日和圣诞前夕 13:00 美东提早收盘；COMEX、英、日节假日未计入。请先运行 <code>node serve.js</code>，再打开本页服务地址。
+        数据都来自 Gate.io 公共接口，不经过本仓库的 MCP。黄金走 CFD / TradFi：REST <code>/api/v4/tradfi</code>，推送 <code>wss://fx-ws.gateio.ws/v4/ws/tradfi</code>。ETH、BTC 走 USDT 永续：REST <code>/api/v4/futures/usdt</code>，推送 <code>wss://fx-ws.gateio.ws/v4/ws/usdt</code>。1 分、5 分、15 分、1 小时、4 小时、1 日 K 线与报价走实时推送（约 250 毫秒），历史根用 REST 补齐。黄金 10 秒线接口有历史，但推送通道不更新，所以用报价按 10 秒归桶合成正在走的那根；永续 10 秒线推送通道会更新。黄金 K 线没有成交量，永续 K 线有量，主图仍按价格结构画，没有另开量能副图。BOLL 默认 20 周期、2 倍标准差，可改周期和倍数，并可叠加 1σ / 3σ。每条轨道可改实线或虚线、线条颜色和背景颜色。带宽是（上轨−下轨）/中轨，%B 是收盘在主轨里的相对位置。MACD 为 12/26/9，柱状图为 2×(DIF−DEA)。布林配 MACD 的复合信号只描述近端结构是否对齐，不是下单指令。套轨用固定的 1 分、5 分、15 分、1 小时布林分层：1 小时定性、15 分钟许可、5 分与 1 分给扳机，只输出顺势回中、套轨开口、宽轨收回；正在走的 1 分钟只预备。四层对打、1 小时走轨时下层反手收回、或 1 分仍在轨外延伸时不加方向票。高空低多优先用 15 分钟定结构高低、5 分钟细化位置：低多带和高空带来自 15 分钟 21/34 区间与布林，不再用本图近端三四美元的波幅。5 分钟重心、%B 或 RSI 回头才给方向票；15 分钟还在中部时，本图近端高低不加票。收盘越过 15 分钟前高或跌破前低，且不是已经贴轨走单边，则按突破反转。15 分钟或 5 分钟样本不足时才退回本图 21/34。连续贴着外轨且没有收回时只标顺势，不给方向票。黄金没有 A 股筹码函数，没有套用 WINNER。RSI 用 Wilder 平滑，默认 14，可改 6 或 9；副图固定 0–100，30/70 为超买超卖带，可与 MACD 叠放。主条仍只留 8 项，RSI 在主条，今日高低收到指标下拉。判断因子清单可单独勾选，RSI 因子的周期跟副图一致。SMC 只画近端结构突破、订单区块和未回补缺口。做多做空不在突破当根追价，要等转势或延续之后回踩订单区块或缺口，收盘守住才标信号；正在走的那根只观察。主图箭头由指标下拉的「SMC多空」单独开关，和结构图层分开；左侧 SMC 因子仍单独勾选。头肩用摆动高低点找左肩、头部、右肩，连接两个回落/反弹点作为颈线；右肩出现后仍只是形成中，收盘价穿过颈线才算完成，价格重新越过头部则视为失效。量度目标等于头部到颈线的高度，从破位处向外量一倍，只作结构参照。支撑压力用摆动高低点按约 0.4 倍 ATR 聚成水平位，触碰次数越多越有效；现价上方为压力、下方为支撑，收盘明显越过后角色互换。整数价位、昨收和今开（永续用 24 小时高低与参考开盘）若离现价不远也会并入。斐波那契用近端足够大的摆动自动画回撤：0、0.236、0.382、0.5、0.618、0.786、1，靠近延伸目标时再加上 1.272 / 1.618。0% 在冲动终点，100% 在起点。涨势回踩 0.5 / 0.618 / 0.786 后收盘收回才给多头票，跌势反抽对称；收盘穿过 100% 算原段失效。正在走的那根只观察。主条仍保持 8 项，斐波那契放在指标下拉。超跌反弹看急跌后收盘重新站上 EMA9，超涨回落相反；拉升回踩要先有一段冲动、再回踩均线并收盘确认，杀跌反抽相反。诱空是影线扫过前低（尤其是等低）后收盘回到该位上方，诱多是影线扫过前高（尤其是等高）后收盘回到该位下方；正在走的那根只标扫位，收盘收回才给方向票。判断因子由左侧栏标题旁的下拉单独勾选，和主图指标开关分开：可以只画不计入判断，也可以只判断不画。确认中的反弹/回踩/诱空诱多在对应因子启用时也算核心，避免和均线对打时硬判方向。近端 SMC 突破随后收回时，方向票交给诱空诱多，避免把假突破再计成真突破。RSI 超买超卖、轨外延伸、日内高低附近不加方向票。核心因子对打或只有外围凑票时，即使票数够也不报偏多偏空。这是结构对照，不预测涨跌，也不构成投资建议。开单信号用 1 分和 5 分定方向，10 秒回踩均线或触轨收回后给出开多/开空；正在走的那根只显示预备，收盘才开仓。纸面持仓大约 180 秒。止盈止损按 1 分钟波动放大；黄金仍用原先的美元距离上下限，永续按现价百分比夹紧。点差过大时暂停开单。模拟交易可同时记下多笔订单，按品种分开存在本机。开仓和平仓都按点击那一刻的最新价，盈亏按报价价差加减，不设止盈止损。快单触发后会把开仓价、平仓价和盈亏价差记入模拟订单。数据只留在本机，用来统计胜率，不会向交易所发单。盯盘时最新一根 K 线默认放在画面中间偏左，右侧留空。报价条下的时段只显示状态，不弹提醒：未开盘、开盘中、午盘中、夜盘中。未开盘给出下一盘北京时间区间，开盘中给出剩余时间。沪金按上期所黄金期货 09:00–10:15 / 10:30–11:30 / 13:30–15:00 与夜盘 21:00–02:30；上金所按 09:00–15:30 与夜盘 20:00–02:30；日本按 JPX 日盘 08:45–15:45、夜盘 17:00–06:00（东京时间）；欧亚盘为 COMEX Globex 美东 18:00 至次日 17:00；欧盘为伦敦 08:00–16:30；美盘为 COMEX 场内 08:20–13:30 美东；美股为纽交所、纳斯达克常规交易 09:30–16:00 美东。中国节假日按 2026 年上期所、上金所公告；美股节假日按纽交所、纳斯达克 2026 年日历，感恩节次日和圣诞前夕 13:00 美东提早收盘；COMEX、英、日节假日未计入。请先运行 <code>node serve.js</code>，再打开本页服务地址。
       </p>
     </details>
   </div>
 
-  <aside class="fast" id="fastBox" aria-labelledby="fastTitle">
+  <aside class="fast" id="fastBox" aria-labelledby="fastTitle" hidden>
     <div class="fast-head" id="fastDrag" title="拖动标题栏可移动位置，双击恢复默认">
       <div class="fast-head-main">
         <span class="fast-grip" aria-hidden="true"></span>
@@ -1976,7 +2262,7 @@ try {
     reqId: 1,
     wsWanted: false,
     tf: '1m',
-    limit: 120,
+    limit: 180,
     paused: false,
     ticker: null,
     klines: [],
@@ -2000,16 +2286,25 @@ try {
     drag: null,
     pointer: null,
     ind: {
-      ema9: true, ema21: true, boll: true, smc: true, smcSig: true, stack: true, hs: true, sr: true, bounce: true, pull: true, trap: true, last: true, hl: true,
-      boll1: false, boll2: true, boll3: false, macd: true, rsi: true, fast: true,
+      ema9: false, ema21: false, boll: false, smc: false, smcSig: false, stack: false, hkld: false, fib: false, hs: false, sr: false, bounce: false, pull: false, trap: false, last: false, hl: false,
+      boll1: false, boll2: false, boll3: false, macd: false, rsi: false, fast: false,
     },
     bollN: 20,
     bollK: 2,
+    bollStyle: {
+      1: { dash: true, line: '#4a8f8d', fill: '#4a8f8d', fillOn: false },
+      2: { dash: true, line: '#176c6b', fill: '#176c6b', fillOn: true },
+      3: { dash: true, line: '#6b7d7c', fill: '#6b7d7c', fillOn: false },
+    },
     rsiN: 14,
     _bmKey: '',
     _bm: null,
     _stackKey: '',
     _stack: null,
+    _hkldKey: '',
+    _hkld: null,
+    _fibKey: '',
+    _fib: null,
     _hsKey: '',
     _hs: null,
     _srKey: '',
@@ -2049,6 +2344,8 @@ try {
     { k: 'macd', lab: 'MACD' },
     { k: 'sig', lab: '布林配 MACD' },
     { k: 'stack', lab: '套轨' },
+    { k: 'hkld', lab: '高空低多' },
+    { k: 'fib', lab: '斐波那契' },
     { k: 'smc', lab: 'SMC' },
     { k: 'hs', lab: '头肩形态' },
     { k: 'sr', lab: '支撑压力' },
@@ -2136,7 +2433,7 @@ try {
     return Math.max(loaded, Math.min(fitAll, MAX_VIEW_SLOTS, loaded * 3));
   }
   const IND_KEY = 'gold-minute-ind';
-  const IND_KEYS = ['ema9', 'ema21', 'boll', 'smc', 'smcSig', 'stack', 'hs', 'sr', 'bounce', 'pull', 'trap', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'fast'];
+  const IND_KEYS = ['ema9', 'ema21', 'boll', 'smc', 'smcSig', 'stack', 'hkld', 'fib', 'hs', 'sr', 'bounce', 'pull', 'trap', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'fast'];
   const IND_MORE = [
     { k: 'hl', lab: '高低' },
     { k: 'bounce', lab: '反弹' },
@@ -2144,6 +2441,8 @@ try {
     { k: 'trap', lab: '诱空诱多' },
     { k: 'smcSig', lab: 'SMC多空' },
     { k: 'stack', lab: '套轨' },
+    { k: 'hkld', lab: '高空低多' },
+    { k: 'fib', lab: '斐波那契' },
     { k: 'ema9', lab: 'EMA9' },
     { k: 'ema21', lab: 'EMA21' },
   ];
@@ -2152,6 +2451,88 @@ try {
     { key: 'rsi', height: 62, digits: 1, title: function () { return 'RSI ' + (state.rsiN || 14); }, lo: 0, hi: 100 },
   ];
 
+  function parseHexColor(v) {
+    if (typeof v !== 'string') return '';
+    const s = v.trim().toLowerCase();
+    if (/^#[0-9a-f]{6}$/.test(s)) return s;
+    if (/^#[0-9a-f]{3}$/.test(s)) return '#' + s[1] + s[1] + s[2] + s[2] + s[3] + s[3];
+    return '';
+  }
+  function defaultBollStyle() {
+    return {
+      1: { dash: true, line: '#4a8f8d', fill: '#4a8f8d', fillOn: false },
+      2: { dash: true, line: '#176c6b', fill: '#176c6b', fillOn: true },
+      3: { dash: true, line: '#6b7d7c', fill: '#6b7d7c', fillOn: false },
+    };
+  }
+  function readBollStyle(raw) {
+    const next = defaultBollStyle();
+    if (!raw || typeof raw !== 'object') return next;
+    [1, 2, 3].forEach((n) => {
+      const row = raw[n] || raw[String(n)];
+      if (!row || typeof row !== 'object') return;
+      if (typeof row.dash === 'boolean') next[n].dash = row.dash;
+      const line = parseHexColor(row.line);
+      const fill = parseHexColor(row.fill);
+      if (line) next[n].line = line;
+      if (fill) next[n].fill = fill;
+      if (typeof row.fillOn === 'boolean') next[n].fillOn = row.fillOn;
+    });
+    return next;
+  }
+  function bollSt(n) {
+    const d = defaultBollStyle()[n];
+    const cur = state.bollStyle && state.bollStyle[n];
+    if (!cur) return d;
+    return {
+      dash: !!cur.dash,
+      line: parseHexColor(cur.line) || d.line,
+      fill: parseHexColor(cur.fill) || d.fill,
+      fillOn: !!cur.fillOn,
+    };
+  }
+  function bollDash(n) {
+    if (!bollSt(n).dash) return '';
+    return n === 1 ? '2 2' : n === 3 ? '5 4' : '3 3';
+  }
+  function resetBollStyle() {
+    state.bollStyle = defaultBollStyle();
+    onBollStyleChange();
+  }
+  function applyBollCssVars() {
+    document.documentElement.style.setProperty('--boll', bollSt(2).line);
+  }
+  function syncBollStyleUi() {
+    applyBollCssVars();
+    document.querySelectorAll('[data-boll-track]').forEach((row) => {
+      const n = Number(row.dataset.bollTrack);
+      const st = bollSt(n);
+      const on = n === 1 ? !!state.ind.boll1 : n === 3 ? !!state.ind.boll3 : !!state.ind.boll2;
+      row.classList.toggle('is-off', !on);
+      row.style.setProperty('--track-line', st.line);
+      row.querySelectorAll('[data-boll-line]').forEach((b) => {
+        b.setAttribute('aria-pressed', String((b.dataset.bollLine === 'dash') === !!st.dash));
+      });
+      const lineInp = row.querySelector('input[data-boll-color="line"]');
+      const fillInp = row.querySelector('input[data-boll-color="fill"]');
+      if (lineInp) lineInp.value = st.line;
+      if (fillInp) fillInp.value = st.fill;
+      const lineSw = row.querySelector('[data-boll-swatch="line"]');
+      const fillSw = row.querySelector('[data-boll-swatch="fill"]');
+      if (lineSw) lineSw.style.background = st.line;
+      if (fillSw) {
+        fillSw.style.background = st.fillOn ? st.fill : 'transparent';
+        const face = fillSw.parentElement;
+        if (face) face.classList.toggle('is-off', !st.fillOn);
+      }
+      const tog = row.querySelector('[data-boll-fill-tog]');
+      if (tog) tog.setAttribute('aria-pressed', String(!!st.fillOn));
+    });
+    document.querySelectorAll('[data-boll-chip]').forEach((el) => {
+      const n = Number(el.dataset.bollChip);
+      el.style.background = bollSt(n).line;
+    });
+  }
   function loadInd() {
     try {
       const raw = JSON.parse(localStorage.getItem(IND_KEY) || 'null');
@@ -2163,12 +2544,14 @@ try {
       if (raw.bollK === 1.5 || raw.bollK === 2 || raw.bollK === 2.5) state.bollK = raw.bollK;
       if (raw.rsiN === 6 || raw.rsiN === 9 || raw.rsiN === 14) state.rsiN = raw.rsiN;
       if (typeof raw.fastBeep === 'boolean') state.fastBeep = raw.fastBeep;
+      state.bollStyle = readBollStyle(raw.bollStyle);
     } catch (e) { /* 沿用默认 */ }
   }
   function saveInd() {
     try {
       localStorage.setItem(IND_KEY, JSON.stringify(Object.assign({}, state.ind, {
         bollN: state.bollN, bollK: state.bollK, rsiN: state.rsiN, fastBeep: state.fastBeep,
+        bollStyle: state.bollStyle,
       })));
     } catch (e) {}
   }
@@ -2185,6 +2568,8 @@ try {
     const st = $('bollStatus');
     if (bar) bar.hidden = !state.ind.boll;
     if (st) st.hidden = !state.ind.boll;
+    if (!state.ind.boll) closeBollStyleMenu();
+    syncBollStyleUi();
     const stackEl = $('stackBar');
     if (stackEl) stackEl.hidden = !state.ind.stack;
     document.querySelectorAll('button[data-boll-n]').forEach((b) => {
@@ -2228,11 +2613,27 @@ try {
     const menu = $('indMoreMenu');
     setIndMenu(menu ? menu.hidden : true);
   }
+  function setBollStyleMenu(open) {
+    const panel = $('bollStylePanel');
+    const btn = $('btnBollStyle');
+    const wrap = $('bollStyleWrap');
+    if (!panel || !btn) return;
+    const next = !!open;
+    panel.hidden = !next;
+    btn.setAttribute('aria-expanded', String(next));
+    if (wrap) wrap.classList.toggle('is-open', next);
+  }
+  function closeBollStyleMenu() { setBollStyleMenu(false); }
+  function toggleBollStyleMenu() {
+    const panel = $('bollStylePanel');
+    setBollStyleMenu(panel ? panel.hidden : true);
+  }
   function indMenuItems() {
     const menu = $('indMoreMenu');
     return menu ? Array.prototype.slice.call(menu.querySelectorAll('button')) : [];
   }
   loadInd();
+  applyBollCssVars();
   const FAST_POS_KEY = 'gold-minute-fast-pos';
   function loadFastPos() {
     try {
@@ -2991,6 +3392,39 @@ try {
     return out;
   }
 
+  function emaSkipNull(values, period) {
+    const n = values.length;
+    const out = new Array(n).fill(null);
+    const k = 2 / (period + 1);
+    let e = null;
+    for (let i = 0; i < n; i++) {
+      const v = values[i];
+      if (v == null) {
+        out[i] = e;
+        continue;
+      }
+      e = e == null ? v : (v * k + e * (1 - k));
+      out[i] = e;
+    }
+    return out;
+  }
+
+  function rollingHL(klines, period) {
+    const n = klines.length;
+    const hi = new Array(n).fill(null);
+    const lo = new Array(n).fill(null);
+    for (let i = period - 1; i < n; i++) {
+      let h = -Infinity, l = Infinity;
+      for (let j = i - period + 1; j <= i; j++) {
+        if (klines[j].h > h) h = klines[j].h;
+        if (klines[j].l < l) l = klines[j].l;
+      }
+      hi[i] = h;
+      lo[i] = l;
+    }
+    return { hi: hi, lo: lo };
+  }
+
   function bollCore(closes, period) {
     period = period || 20;
     const n = closes.length;
@@ -3214,6 +3648,878 @@ try {
     };
     state._bmKey = key;
     state._bm = pack;
+    return pack;
+  }
+
+  function mixPx(a, b, wa) {
+    if (a == null) return b;
+    if (b == null) return a;
+    return wa * a + (1 - wa) * b;
+  }
+
+  function computeHkldChart(klines) {
+    const none = {
+      ok: false, vote: 0, dir: 0, status: 'none',
+      name: '高空低多', label: '样本不足', title: '高空低多',
+      why: '高空低多需要至少 34 根 K 线，用来量近期高低位置。',
+      core: false, longPx: null, shortPx: null, marks: [],
+    };
+    if (!klines || klines.length < 34) return none;
+    const n = klines.length;
+    const closes = klines.map((k) => k.c);
+    const typ = klines.map((k) => (2 * k.c + k.h + k.l) / 4);
+    const r21 = rollingHL(klines, 21);
+    const r34 = rollingHL(klines, 34);
+    const rsvOf = (r) => typ.map((v, i) => {
+      if (r.hi[i] == null || r.lo[i] == null) return null;
+      const span = r.hi[i] - r.lo[i];
+      if (span <= 1e-12) return 50;
+      return (v - r.lo[i]) / span * 100;
+    });
+    const grav = emaSkipNull(rsvOf(r21), 5);
+    const kin = emaSkipNull(rsvOf(r34), 8);
+    const period = state.bollN || 20;
+    const kMul = state.bollK || 2;
+    const core = bollCore(closes, period);
+    const bands = bandArr(core.mid, core.sd, kMul);
+    const md = macdOf(closes);
+    const rs = rsiSeries(closes, state.rsiN || 14);
+    const atrv = atr(klines, 14) || mkt().atrFloor || 0.4;
+    const end = pbClosedEnd(klines);
+    const last = n - 1;
+    const evalI = end >= 0 ? end : last;
+    const forming = last > evalI;
+
+    function recAt(idx) {
+      if (idx < 0 || r34.lo[idx] == null) return null;
+      const lo = r34.lo[idx], hi = r34.hi[idx];
+      const span = hi - lo;
+      const r20 = lo + 0.20 * span;
+      const r80 = lo + 0.80 * span;
+      const dn = bands.dn[idx], up = bands.up[idx], mid = core.mid[idx];
+      const pb = (up != null && dn != null && up !== dn) ? (closes[idx] - dn) / (up - dn) : null;
+      return {
+        lo: lo, hi: hi, r20: r20, r80: r80, dn: dn, up: up, mid: mid, pb: pb,
+        pbPrev: (idx > 0 && bands.up[idx - 1] != null && bands.dn[idx - 1] != null && bands.up[idx - 1] !== bands.dn[idx - 1])
+          ? (closes[idx - 1] - bands.dn[idx - 1]) / (bands.up[idx - 1] - bands.dn[idx - 1]) : null,
+        longPx: mixPx(dn, r20, 0.55),
+        shortPx: mixPx(up, r80, 0.55),
+        grav: grav[idx], kin: kin[idx], rsi: rs[idx],
+        hist: md.hist[idx], histPrev: idx > 0 ? md.hist[idx - 1] : null,
+        gravPrev: idx > 0 ? grav[idx - 1] : null,
+        rsiPrev: idx > 0 ? rs[idx - 1] : null,
+      };
+    }
+
+    function hugging(idx, dir) {
+      let nHit = 0, nOk = 0;
+      for (let j = idx - 5; j <= idx; j++) {
+        if (j < 0 || bands.up[j] == null || bands.dn[j] == null || bands.up[j] === bands.dn[j]) continue;
+        nOk++;
+        const pbj = (closes[j] - bands.dn[j]) / (bands.up[j] - bands.dn[j]);
+        if (dir < 0 && pbj >= 0.85) nHit++;
+        if (dir > 0 && pbj <= 0.15) nHit++;
+      }
+      return nOk >= 5 && nHit >= 5;
+    }
+
+    function openingAt(idx) {
+      const i8 = Math.max(period - 1, idx - 8);
+      if (bands.up[idx] == null || bands.up[i8] == null || bands.dn[idx] == null || bands.dn[i8] == null) return false;
+      return (bands.up[idx] - bands.up[i8] > 0) && (bands.dn[idx] - bands.dn[i8] < 0);
+    }
+
+    function wasInside(idx) {
+      let inside = 0, nOk = 0;
+      for (let j = idx - 8; j <= idx - 2; j++) {
+        if (j < 0 || bands.up[j] == null || bands.dn[j] == null || bands.up[j] === bands.dn[j]) continue;
+        nOk++;
+        const pbj = (closes[j] - bands.dn[j]) / (bands.up[j] - bands.dn[j]);
+        if (pbj > 0.18 && pbj < 0.82) inside++;
+      }
+      return nOk >= 4 && inside >= Math.max(3, nOk * 0.5);
+    }
+
+    function breakoutAt(idx) {
+      if (idx < 34 || r34.hi[idx - 1] == null || r34.lo[idx - 1] == null) return null;
+      const bar = klines[idx];
+      const recNow = recAt(idx);
+      if (!bar || !recNow) return null;
+      const prevHi = r34.hi[idx - 1];
+      const prevLo = r34.lo[idx - 1];
+      const buf = Math.max(atrv * 0.08, (prevHi - prevLo) * 0.003);
+      const closeUp = bar.c > prevHi + buf;
+      const closeDn = bar.c < prevLo - buf;
+      const bollUp = recNow.up != null && recNow.pb != null && recNow.pb > 1 && recNow.pbPrev != null && recNow.pbPrev <= 1;
+      const bollDn = recNow.dn != null && recNow.pb != null && recNow.pb < 0 && recNow.pbPrev != null && recNow.pbPrev >= 0;
+      const open = openingAt(idx);
+      const histGrowPos = recNow.hist > 0 && recNow.histPrev != null && recNow.hist > recNow.histPrev;
+      const histGrowNeg = recNow.hist < 0 && recNow.histPrev != null && recNow.hist < recNow.histPrev;
+      let dirBr = 0, level = null, how = [];
+      if (closeUp) {
+        dirBr = 1; level = prevHi; how.push('收盘越过前高 ' + px(prevHi));
+      } else if (closeDn) {
+        dirBr = -1; level = prevLo; how.push('收盘跌破前低 ' + px(prevLo));
+      } else if (bollUp && (open || histGrowPos)) {
+        dirBr = 1; level = recNow.up; how.push('收盘站上上轨');
+      } else if (bollDn && (open || histGrowNeg)) {
+        dirBr = -1; level = recNow.dn; how.push('收盘跌破下轨');
+      }
+      if (!dirBr) return null;
+      const hug = hugging(idx, dirBr > 0 ? -1 : 1);
+      const inside = wasInside(idx);
+      const continuation = hug && !inside;
+      const beyond = dirBr > 0 ? (bar.c - level) : (level - bar.c);
+      const confirmed = open || (dirBr > 0 ? histGrowPos : histGrowNeg) || beyond > atrv * 0.18;
+      return {
+        dir: dirBr, level: level, how: how,
+        continuation: continuation, confirmed: confirmed,
+      };
+    }
+
+    function gradeSide(dir, idx, rec, bar, form) {
+      const idle = { status: 'idle', loc: [], extra: [] };
+      if (!rec || rec.grav == null) return idle;
+      const loc = [];
+      const extra = [];
+      if (dir > 0) {
+        if (rec.grav <= 24) loc.push('重心 ' + rec.grav.toFixed(1));
+        if (rec.pb != null && rec.pb <= 0.22) loc.push('%B ' + rec.pb.toFixed(2));
+        if (rec.longPx != null && (bar.l <= rec.longPx + atrv * 0.12 || (rec.dn != null && bar.l <= rec.dn))) loc.push('贴近下沿');
+        if (rec.rsi != null && rec.rsi <= 40) loc.push('RSI ' + rec.rsi.toFixed(1));
+        if (rec.gravPrev != null && rec.gravPrev <= 20 && rec.grav > 20) extra.push('重心上穿 20');
+        if (rec.gravPrev != null && rec.gravPrev < rec.grav && rec.grav <= 26) extra.push('重心从低位抬头');
+        if (rec.dn != null && bar.c >= rec.dn && (
+          bar.l < rec.dn ||
+          (idx > 0 && klines[idx - 1].l < rec.dn) ||
+          (idx > 1 && klines[idx - 2].l < rec.dn)
+        )) extra.push('近端收回下轨');
+        if (rec.pbPrev != null && rec.pbPrev < 0 && rec.pb != null && rec.pb >= 0) extra.push('%B 收回带内');
+        if (rec.rsi != null && rec.rsiPrev != null && rec.rsiPrev <= 34 && rec.rsi > rec.rsiPrev) extra.push('RSI 从超卖抬头');
+      } else {
+        if (rec.grav >= 76) loc.push('重心 ' + rec.grav.toFixed(1));
+        if (rec.pb != null && rec.pb >= 0.78) loc.push('%B ' + rec.pb.toFixed(2));
+        if (rec.shortPx != null && (bar.h >= rec.shortPx - atrv * 0.12 || (rec.up != null && bar.h >= rec.up))) loc.push('贴近上沿');
+        if (rec.rsi != null && rec.rsi >= 60) loc.push('RSI ' + rec.rsi.toFixed(1));
+        if (rec.gravPrev != null && rec.gravPrev >= 80 && rec.grav < 80) extra.push('重心下穿 80');
+        if (rec.gravPrev != null && rec.gravPrev > rec.grav && rec.grav >= 74) extra.push('重心从高位回落');
+        if (rec.up != null && bar.c <= rec.up && (
+          bar.h > rec.up ||
+          (idx > 0 && klines[idx - 1].h > rec.up) ||
+          (idx > 1 && klines[idx - 2].h > rec.up)
+        )) extra.push('近端收回上轨');
+        if (rec.pbPrev != null && rec.pbPrev > 1 && rec.pb != null && rec.pb <= 1) extra.push('%B 收回带内');
+        if (rec.rsi != null && rec.rsiPrev != null && rec.rsiPrev >= 66 && rec.rsi < rec.rsiPrev) extra.push('RSI 从超买回落');
+      }
+      const primary = loc.some((s) => s.indexOf('重心') === 0 || s.indexOf('%B') === 0);
+      if (!primary || loc.length < 2) return idle;
+      if (!extra.length) {
+        if (hugging(idx, dir)) return { status: 'block', loc: loc, extra: extra };
+        return { status: 'watch', loc: loc, extra: extra };
+      }
+      return { status: form ? 'watch' : 'trigger', loc: loc, extra: extra };
+    }
+
+    function sidePack(dir, idx, rec, bar, form) {
+      const g = gradeSide(dir, idx, rec, bar, form);
+      return Object.assign({ dir: dir }, g);
+    }
+
+    const rec = recAt(evalI);
+    const bar = klines[evalI];
+    const longG = rec ? sidePack(1, evalI, rec, bar, forming) : { status: 'idle', loc: [], extra: [] };
+    const shortG = rec ? sidePack(-1, evalI, rec, bar, forming) : { status: 'idle', loc: [], extra: [] };
+
+    const marks = [];
+    let prevDir = 0;
+    const scan0 = Math.max(33, n - 48);
+    for (let i = scan0; i <= evalI; i++) {
+      const r = recAt(i);
+      const b = klines[i];
+      if (!r || !b) continue;
+      const brk = breakoutAt(i);
+      const lg = gradeSide(1, i, r, b, false);
+      const sg = gradeSide(-1, i, r, b, false);
+      let d = 0, lab = '', mkKind = 'fade', mkPx = null, mkY = null;
+      if (brk && brk.dir && !brk.continuation && brk.confirmed) {
+        d = brk.dir;
+        lab = d > 0 ? '上破' : '下破';
+        mkKind = 'break';
+        mkPx = brk.level;
+        mkY = d > 0 ? b.h : b.l;
+      } else if (lg.status === 'trigger') {
+        d = 1; lab = '低多'; mkPx = r.longPx; mkY = b.l;
+      } else if (sg.status === 'trigger') {
+        d = -1; lab = '高空'; mkPx = r.shortPx; mkY = b.h;
+      }
+      if (d && d !== prevDir) {
+        marks.push({
+          i: i, dir: d, status: 'trigger', kind: mkKind,
+          label: lab, px: mkPx, y: mkY,
+        });
+      }
+      prevDir = d;
+    }
+    if (marks.length > 6) marks.splice(0, marks.length - 6);
+
+    const longPx = rec && rec.longPx;
+    const shortPx = rec && rec.shortPx;
+    const thin = atrv * 0.2;
+    let longLo = rec ? rec.lo : null;
+    let longHi = rec ? Math.max(rec.r20, rec.longPx) : null;
+    let shortLo = rec ? Math.min(rec.r80, rec.shortPx) : null;
+    let shortHi = rec ? rec.hi : null;
+    if (longPx != null && longHi != null && longLo != null && longHi - longLo < thin) {
+      longLo = longPx - atrv * 0.28;
+      longHi = longPx + atrv * 0.12;
+    }
+    if (shortPx != null && shortHi != null && shortLo != null && shortHi - shortLo < thin) {
+      shortLo = shortPx - atrv * 0.12;
+      shortHi = shortPx + atrv * 0.28;
+    }
+
+    let dir = 0, status = 'idle';
+    if (longG.status === 'trigger' && shortG.status !== 'trigger') { dir = 1; status = longG.status; }
+    else if (shortG.status === 'trigger' && longG.status !== 'trigger') { dir = -1; status = shortG.status; }
+    else if (longG.status === 'watch' && shortG.status !== 'trigger' && shortG.status !== 'watch') { dir = 1; status = 'watch'; }
+    else if (shortG.status === 'watch' && longG.status !== 'trigger' && longG.status !== 'watch') { dir = -1; status = 'watch'; }
+    else if (longG.status === 'block' && shortG.status === 'idle') { dir = 1; status = 'block'; }
+    else if (shortG.status === 'block' && longG.status === 'idle') { dir = -1; status = 'block'; }
+
+    function recentTrig(dirNeed) {
+      for (let j = evalI; j >= Math.max(33, evalI - 3); j--) {
+        const r = recAt(j);
+        const b = klines[j];
+        if (!r || !b) continue;
+        if (gradeSide(dirNeed, j, r, b, false).status === 'trigger') return true;
+      }
+      return false;
+    }
+    if (status === 'watch' && dir > 0 && recentTrig(1)) {
+      status = forming ? 'watch' : 'trigger';
+      longG.status = status;
+    } else if (status === 'watch' && dir < 0 && recentTrig(-1)) {
+      status = forming ? 'watch' : 'trigger';
+      shortG.status = status;
+    }
+
+    let kind = 'fade';
+    let breakLevel = null;
+    let breakHow = [];
+    let br = breakoutAt(evalI);
+    if (!br || !br.dir) {
+      for (let j = evalI - 1; j >= Math.max(34, evalI - 3); j--) {
+        const cand = breakoutAt(j);
+        if (!cand || !cand.dir || cand.continuation) continue;
+        if (cand.dir > 0 && closes[evalI] >= cand.level) { br = cand; break; }
+        if (cand.dir < 0 && closes[evalI] <= cand.level) { br = cand; break; }
+      }
+    }
+    if (br && br.dir && !br.continuation) {
+      kind = 'break';
+      dir = br.dir;
+      breakLevel = br.level;
+      breakHow = br.how || [];
+      status = (forming || !br.confirmed) ? 'watch' : 'trigger';
+      if (dir > 0) {
+        shortG.status = status;
+        if (longG.status === 'trigger' || longG.status === 'watch') longG.status = 'idle';
+      } else {
+        longG.status = status;
+        if (shortG.status === 'trigger' || shortG.status === 'watch') shortG.status = 'idle';
+      }
+    }
+
+    const vote = status === 'trigger' ? dir : 0;
+    const name = kind === 'break'
+      ? (dir > 0
+        ? (status === 'trigger' ? '上破反转' : (status === 'watch' ? '上破预备' : '高空低多'))
+        : (status === 'trigger' ? '下破反转' : (status === 'watch' ? '下破预备' : '高空低多')))
+      : dir > 0
+        ? (status === 'trigger' ? '低多推荐' : (status === 'watch' ? '低多预备' : (status === 'block' ? '低多顺势' : '高空低多')))
+        : dir < 0
+          ? (status === 'trigger' ? '高空推荐' : (status === 'watch' ? '高空预备' : (status === 'block' ? '高空顺势' : '高空低多')))
+          : '高空低多';
+    const bits = [];
+    if (longPx != null) bits.push('低多位置 ' + px(longPx));
+    if (shortPx != null) bits.push('高空位置 ' + px(shortPx));
+    const gNow = rec && rec.grav != null ? rec.grav.toFixed(1) : '--';
+    const pbNow = rec && rec.pb != null ? rec.pb.toFixed(2) : '--';
+    const rsiNow = rec && rec.rsi != null ? rec.rsi.toFixed(1) : '--';
+    bits.push('重心 ' + gNow);
+    bits.push('%B ' + pbNow);
+    bits.push('RSI' + (state.rsiN || 14) + ' ' + rsiNow);
+    const g = dir > 0 ? longG : (dir < 0 ? shortG : null);
+    let why;
+    if (!rec) why = '高低区间还没算出来。';
+    else if (kind === 'break' && status === 'trigger') {
+      why = bits.join('。') + '。' + breakHow.join('，') +
+        '。区间被打开，按突破反转看待，不再做' + (dir > 0 ? '高空' : '低多') +
+        '。只描述结构，不是下单指令。';
+    } else if (kind === 'break' && status === 'watch') {
+      why = bits.join('。') + '。' + (breakHow.length ? breakHow.join('，') : '疑似突破') +
+        (forming ? '，正在走的那根只预备' : '，突破还差收盘确认') + '。不是下单指令。';
+    } else if (status === 'trigger') {
+      why = bits.join('。') + '。' +
+        (g.extra && g.extra.length ? g.extra.join('，') + '。' : '') +
+        '震荡里贴近' + (dir > 0 ? '下沿' : '上沿') + '后出现收回迹象，适合关注' +
+        (dir > 0 ? '低多' : '高空') + '。只描述位置，不是下单指令。';
+    } else if (status === 'watch') {
+      why = bits.join('。') + '。已经靠近' + (dir > 0 ? '低多' : '高空') + '带' +
+        (forming ? '，正在走的那根只预备' : '，还差收回或转向确认') + '。不是下单指令。';
+    } else if (status === 'block') {
+      why = bits.join('。') + '。价格连续贴着' + (dir > 0 ? '下轨' : '上轨') +
+        '，还没有收回，单边里不做' + (dir > 0 ? '低多' : '高空') + '。';
+    } else {
+      why = bits.join('。') + '。价格还在中部，没进推荐带。只描述位置，不是下单指令。';
+    }
+
+    return {
+      ok: true, vote: vote, dir: dir, status: status,
+      name: name, label: name, title: name, why: why, core: vote !== 0,
+      i: evalI, fromI: Math.max(0, evalI - 33), forming: forming,
+      grav: rec && rec.grav, kin: rec && rec.kin, pb: rec && rec.pb, rsi: rec && rec.rsi,
+      longPx: longPx, shortPx: shortPx,
+      longLo: longLo, longHi: longHi, shortLo: shortLo, shortHi: shortHi,
+      longStatus: longG.status, shortStatus: shortG.status,
+      kind: kind, breakLevel: breakLevel, breakHow: breakHow,
+      marks: marks, atrv: atrv,
+    };
+  }
+
+  function hkldNone() {
+    return {
+      ok: false, vote: 0, dir: 0, status: 'none',
+      name: '高空低多', label: '样本不足', title: '高空低多',
+      why: '高空低多需要至少 34 根 K 线，用来量近期高低位置。',
+      core: false, longPx: null, shortPx: null, marks: [],
+    };
+  }
+
+  function hkldClosedEnd(klines, tf) {
+    if (!klines || !klines.length) return -1;
+    const last = klines[klines.length - 1];
+    const span = tfSpanMs(tf || state.tf);
+    if (klines.length >= 2 && Date.now() < last.t * 1000 + span - 200) return klines.length - 2;
+    return klines.length - 1;
+  }
+
+  function hkldTfName(tf) {
+    if (tf === '15m') return '15分';
+    if (tf === '5m') return '5分';
+    if (tf === '1m') return '1分';
+    if (tf === '1h') return '1小时';
+    if (tf === '10s') return '10秒';
+    return '本图';
+  }
+
+  function hkldPrep(klines) {
+    if (!klines || klines.length < 34) return { ok: false };
+    const n = klines.length;
+    const closes = klines.map((k) => k.c);
+    const typ = klines.map((k) => (2 * k.c + k.h + k.l) / 4);
+    const r21 = rollingHL(klines, 21);
+    const r34 = rollingHL(klines, 34);
+    const rsvOf = (r) => typ.map((v, i) => {
+      if (r.hi[i] == null || r.lo[i] == null) return null;
+      const span = r.hi[i] - r.lo[i];
+      if (span <= 1e-12) return 50;
+      return (v - r.lo[i]) / span * 100;
+    });
+    const grav = emaSkipNull(rsvOf(r21), 5);
+    const kin = emaSkipNull(rsvOf(r34), 8);
+    const period = state.bollN || 20;
+    const kMul = state.bollK || 2;
+    const core = bollCore(closes, period);
+    const bands = bandArr(core.mid, core.sd, kMul);
+    const md = macdOf(closes);
+    const rs = rsiSeries(closes, state.rsiN || 14);
+    const atrv = atr(klines, 14) || mkt().atrFloor || 0.4;
+
+    function recAt(idx) {
+      if (idx < 0 || r34.lo[idx] == null) return null;
+      const lo = r34.lo[idx], hi = r34.hi[idx];
+      const span = hi - lo;
+      const r20 = lo + 0.20 * span;
+      const r80 = lo + 0.80 * span;
+      const dn = bands.dn[idx], up = bands.up[idx], mid = core.mid[idx];
+      const pb = (up != null && dn != null && up !== dn) ? (closes[idx] - dn) / (up - dn) : null;
+      return {
+        lo: lo, hi: hi, r20: r20, r80: r80, dn: dn, up: up, mid: mid, pb: pb,
+        pbPrev: (idx > 0 && bands.up[idx - 1] != null && bands.dn[idx - 1] != null && bands.up[idx - 1] !== bands.dn[idx - 1])
+          ? (closes[idx - 1] - bands.dn[idx - 1]) / (bands.up[idx - 1] - bands.dn[idx - 1]) : null,
+        longPx: mixPx(dn, r20, 0.55),
+        shortPx: mixPx(up, r80, 0.55),
+        grav: grav[idx], kin: kin[idx], rsi: rs[idx],
+        hist: md.hist[idx], histPrev: idx > 0 ? md.hist[idx - 1] : null,
+        gravPrev: idx > 0 ? grav[idx - 1] : null,
+        rsiPrev: idx > 0 ? rs[idx - 1] : null,
+      };
+    }
+
+    function hugging(idx, dir) {
+      let nHit = 0, nOk = 0;
+      for (let j = idx - 5; j <= idx; j++) {
+        if (j < 0 || bands.up[j] == null || bands.dn[j] == null || bands.up[j] === bands.dn[j]) continue;
+        nOk++;
+        const pbj = (closes[j] - bands.dn[j]) / (bands.up[j] - bands.dn[j]);
+        if (dir < 0 && pbj >= 0.85) nHit++;
+        if (dir > 0 && pbj <= 0.15) nHit++;
+      }
+      return nOk >= 5 && nHit >= 5;
+    }
+
+    function openingAt(idx) {
+      const i8 = Math.max(period - 1, idx - 8);
+      if (bands.up[idx] == null || bands.up[i8] == null || bands.dn[idx] == null || bands.dn[i8] == null) return false;
+      return (bands.up[idx] - bands.up[i8] > 0) && (bands.dn[idx] - bands.dn[i8] < 0);
+    }
+
+    function wasInside(idx) {
+      let inside = 0, nOk = 0;
+      for (let j = idx - 8; j <= idx - 2; j++) {
+        if (j < 0 || bands.up[j] == null || bands.dn[j] == null || bands.up[j] === bands.dn[j]) continue;
+        nOk++;
+        const pbj = (closes[j] - bands.dn[j]) / (bands.up[j] - bands.dn[j]);
+        if (pbj > 0.18 && pbj < 0.82) inside++;
+      }
+      return nOk >= 4 && inside >= Math.max(3, nOk * 0.5);
+    }
+
+    function breakoutAt(idx) {
+      if (idx < 34 || r34.hi[idx - 1] == null || r34.lo[idx - 1] == null) return null;
+      const bar = klines[idx];
+      const recNow = recAt(idx);
+      if (!bar || !recNow) return null;
+      const prevHi = r34.hi[idx - 1];
+      const prevLo = r34.lo[idx - 1];
+      const buf = Math.max(atrv * 0.08, (prevHi - prevLo) * 0.003);
+      const closeUp = bar.c > prevHi + buf;
+      const closeDn = bar.c < prevLo - buf;
+      const bollUp = recNow.up != null && recNow.pb != null && recNow.pb > 1 && recNow.pbPrev != null && recNow.pbPrev <= 1;
+      const bollDn = recNow.dn != null && recNow.pb != null && recNow.pb < 0 && recNow.pbPrev != null && recNow.pbPrev >= 0;
+      const open = openingAt(idx);
+      const histGrowPos = recNow.hist > 0 && recNow.histPrev != null && recNow.hist > recNow.histPrev;
+      const histGrowNeg = recNow.hist < 0 && recNow.histPrev != null && recNow.hist < recNow.histPrev;
+      let dirBr = 0, level = null, how = [];
+      if (closeUp) {
+        dirBr = 1; level = prevHi; how.push('收盘越过前高 ' + px(prevHi));
+      } else if (closeDn) {
+        dirBr = -1; level = prevLo; how.push('收盘跌破前低 ' + px(prevLo));
+      } else if (bollUp && (open || histGrowPos)) {
+        dirBr = 1; level = recNow.up; how.push('收盘站上上轨');
+      } else if (bollDn && (open || histGrowNeg)) {
+        dirBr = -1; level = recNow.dn; how.push('收盘跌破下轨');
+      }
+      if (!dirBr) return null;
+      const hug = hugging(idx, dirBr > 0 ? -1 : 1);
+      const inside = wasInside(idx);
+      const continuation = hug && !inside;
+      const beyond = dirBr > 0 ? (bar.c - level) : (level - bar.c);
+      const confirmed = open || (dirBr > 0 ? histGrowPos : histGrowNeg) || beyond > atrv * 0.18;
+      return {
+        dir: dirBr, level: level, how: how,
+        continuation: continuation, confirmed: confirmed,
+      };
+    }
+
+    return {
+      ok: true, klines: klines, n: n, atrv: atrv,
+      recAt: recAt, hugging: hugging, breakoutAt: breakoutAt,
+    };
+  }
+
+  function hkldPickIdx(prep, t) {
+    const src = prep.klines;
+    let i = src.length - 1;
+    while (i >= 0 && src[i].t > t) i--;
+    return i;
+  }
+
+  function hkldMixRec(locRec, trigRec, wa) {
+    if (!locRec) return null;
+    if (!trigRec || wa >= 1) return locRec;
+    return {
+      lo: locRec.lo, hi: locRec.hi, r20: locRec.r20, r80: locRec.r80,
+      dn: mixPx(locRec.dn, trigRec.dn, wa),
+      up: mixPx(locRec.up, trigRec.up, wa),
+      mid: mixPx(locRec.mid, trigRec.mid, wa),
+      pb: mixPx(locRec.pb, trigRec.pb, 0.55),
+      longPx: mixPx(locRec.longPx, trigRec.longPx, wa),
+      shortPx: mixPx(locRec.shortPx, trigRec.shortPx, wa),
+      grav: mixPx(locRec.grav, trigRec.grav, 0.62),
+      kin: mixPx(locRec.kin, trigRec.kin, 0.55),
+      rsi: trigRec.rsi != null ? trigRec.rsi : locRec.rsi,
+      gravPrev: trigRec.gravPrev != null ? trigRec.gravPrev : locRec.gravPrev,
+      rsiPrev: trigRec.rsiPrev != null ? trigRec.rsiPrev : locRec.rsiPrev,
+      pbPrev: trigRec.pbPrev != null ? trigRec.pbPrev : locRec.pbPrev,
+      hist: trigRec.hist, histPrev: trigRec.histPrev,
+    };
+  }
+
+  function gradeHkldHtf(dir, ctx, form) {
+    const idle = { status: 'idle', loc: [], extra: [] };
+    const locRec = ctx.locRec;
+    const trigRec = ctx.trigRec;
+    const extraRec = ctx.extraRec || trigRec;
+    const extraBar = ctx.extraBar;
+    const extraSrc = ctx.extraSrc;
+    const extraI = ctx.extraI;
+    const chartBar = ctx.chartBar;
+    const rec = ctx.rec;
+    const locPrep = ctx.locPrep;
+    const trigPrep = ctx.trigPrep;
+    const locI = ctx.locI;
+    const locName = ctx.locName;
+    const trigName = ctx.trigName;
+    const atrv = ctx.atrv;
+    if (!locRec || locRec.grav == null) return idle;
+    const loc = [];
+    const extra = [];
+    const same = locName === trigName;
+    const locG = locRec.grav;
+    const locPb = locRec.pb;
+    const tg = trigRec && trigRec.grav;
+    const tpb = trigRec && trigRec.pb;
+    const rsi = extraRec && extraRec.rsi != null ? extraRec.rsi : locRec.rsi;
+    const rsiPrev = extraRec && extraRec.rsiPrev != null ? extraRec.rsiPrev : locRec.rsiPrev;
+    const gravPrev = extraRec && extraRec.gravPrev != null ? extraRec.gravPrev : locRec.gravPrev;
+    const gravNow = extraRec && extraRec.grav != null ? extraRec.grav : locRec.grav;
+    const pb = extraRec && extraRec.pb != null ? extraRec.pb : locRec.pb;
+    const pbPrev = extraRec && extraRec.pbPrev != null ? extraRec.pbPrev : locRec.pbPrev;
+    const dn = extraRec && extraRec.dn != null ? extraRec.dn : locRec.dn;
+    const up = extraRec && extraRec.up != null ? extraRec.up : locRec.up;
+    const bar = extraBar;
+    if (dir > 0) {
+      if (locG != null && locG <= 28) loc.push(locName + '重心 ' + locG.toFixed(1));
+      if (locPb != null && locPb <= 0.26) loc.push(locName + '%B ' + locPb.toFixed(2));
+      if (!same && tg != null && tg <= 26) loc.push(trigName + '重心 ' + tg.toFixed(1));
+      if (!same && tpb != null && tpb <= 0.24) loc.push(trigName + '%B ' + tpb.toFixed(2));
+      if (rec.longPx != null && chartBar && (
+        (rec.longHi != null && chartBar.l <= rec.longHi + atrv * 0.12) ||
+        chartBar.l <= rec.longPx + atrv * 0.2 ||
+        (dn != null && chartBar.l <= dn)
+      )) loc.push('贴近低多带');
+      if (rsi != null && rsi <= 40) loc.push(trigName + 'RSI ' + rsi.toFixed(1));
+      if (gravPrev != null && gravPrev <= 20 && gravNow > 20) extra.push(trigName + '重心上穿 20');
+      if (gravPrev != null && gravPrev < gravNow && gravNow <= 26) extra.push(trigName + '重心从低位抬头');
+      if (dn != null && bar && bar.c >= dn && (
+        bar.l < dn ||
+        (extraI > 0 && extraSrc[extraI - 1].l < dn) ||
+        (extraI > 1 && extraSrc[extraI - 2].l < dn)
+      )) extra.push(trigName + '收回下轨');
+      if (pbPrev != null && pbPrev < 0 && pb != null && pb >= 0) extra.push(trigName + '%B 收回带内');
+      if (rsi != null && rsiPrev != null && rsiPrev <= 34 && rsi > rsiPrev) extra.push(trigName + 'RSI 从超卖抬头');
+    } else {
+      if (locG != null && locG >= 72) loc.push(locName + '重心 ' + locG.toFixed(1));
+      if (locPb != null && locPb >= 0.74) loc.push(locName + '%B ' + locPb.toFixed(2));
+      if (!same && tg != null && tg >= 74) loc.push(trigName + '重心 ' + tg.toFixed(1));
+      if (!same && tpb != null && tpb >= 0.76) loc.push(trigName + '%B ' + tpb.toFixed(2));
+      if (rec.shortPx != null && chartBar && (
+        (rec.shortLo != null && chartBar.h >= rec.shortLo - atrv * 0.12) ||
+        chartBar.h >= rec.shortPx - atrv * 0.2 ||
+        (up != null && chartBar.h >= up)
+      )) loc.push('贴近高空带');
+      if (rsi != null && rsi >= 60) loc.push(trigName + 'RSI ' + rsi.toFixed(1));
+      if (gravPrev != null && gravPrev >= 80 && gravNow < 80) extra.push(trigName + '重心下穿 80');
+      if (gravPrev != null && gravPrev > gravNow && gravNow >= 74) extra.push(trigName + '重心从高位回落');
+      if (up != null && bar && bar.c <= up && (
+        bar.h > up ||
+        (extraI > 0 && extraSrc[extraI - 1].h > up) ||
+        (extraI > 1 && extraSrc[extraI - 2].h > up)
+      )) extra.push(trigName + '收回上轨');
+      if (pbPrev != null && pbPrev > 1 && pb != null && pb <= 1) extra.push(trigName + '%B 收回带内');
+      if (rsi != null && rsiPrev != null && rsiPrev >= 66 && rsi < rsiPrev) extra.push(trigName + 'RSI 从超买回落');
+    }
+    const htfExtreme = dir > 0
+      ? ((locG != null && locG <= 28) || (locPb != null && locPb <= 0.26))
+      : ((locG != null && locG >= 72) || (locPb != null && locPb >= 0.74));
+    if (!htfExtreme) return idle;
+    const primary = loc.some((s) => s.indexOf('重心') >= 0 || s.indexOf('%B') >= 0);
+    if (!primary || loc.length < 2) return idle;
+    if (!extra.length) {
+      const hugLoc = locPrep.hugging(locI, dir);
+      const hugTrig = trigPrep.hugging(extraI, dir);
+      if (hugLoc || hugTrig) return { status: 'block', loc: loc, extra: extra };
+      return { status: 'watch', loc: loc, extra: extra };
+    }
+    return { status: form ? 'watch' : 'trigger', loc: loc, extra: extra };
+  }
+
+  function hkldFinishPack(rec, longG, shortG, kind, dir, status, forming, evalI, fromI, marks, atrv, locName, trigName, src, breakLevel, breakHow) {
+    const longPx = rec && rec.longPx;
+    const shortPx = rec && rec.shortPx;
+    const vote = status === 'trigger' ? dir : 0;
+    const name = kind === 'break'
+      ? (dir > 0
+        ? (status === 'trigger' ? '上破反转' : (status === 'watch' ? '上破预备' : '高空低多'))
+        : (status === 'trigger' ? '下破反转' : (status === 'watch' ? '下破预备' : '高空低多')))
+      : dir > 0
+        ? (status === 'trigger' ? '低多推荐' : (status === 'watch' ? '低多预备' : (status === 'block' ? '低多顺势' : '高空低多')))
+        : dir < 0
+          ? (status === 'trigger' ? '高空推荐' : (status === 'watch' ? '高空预备' : (status === 'block' ? '高空顺势' : '高空低多')))
+          : '高空低多';
+    const bits = [];
+    if (longPx != null) bits.push('低多位置 ' + px(longPx));
+    if (shortPx != null) bits.push('高空位置 ' + px(shortPx));
+    if (rec && rec.lo != null && rec.hi != null) bits.push(locName + '区间 ' + px(rec.lo) + '–' + px(rec.hi));
+    const gNow = rec && rec.grav != null ? rec.grav.toFixed(1) : '--';
+    const pbNow = rec && rec.pb != null ? rec.pb.toFixed(2) : '--';
+    const rsiNow = rec && rec.rsi != null ? rec.rsi.toFixed(1) : '--';
+    bits.push(locName + '重心 ' + gNow);
+    if (trigName && trigName !== locName) bits.push(trigName + '参与细化位置');
+    bits.push('%B ' + pbNow);
+    bits.push((trigName || locName) + 'RSI' + (state.rsiN || 14) + ' ' + rsiNow);
+    const g = dir > 0 ? longG : (dir < 0 ? shortG : null);
+    let why;
+    if (!rec) why = '高低区间还没算出来。';
+    else if (kind === 'break' && status === 'trigger') {
+      why = bits.join('。') + '。' + (breakHow || []).join('，') +
+        '。' + locName + '区间被打开，按突破反转看待，不再做' + (dir > 0 ? '高空' : '低多') +
+        '。只描述结构，不是下单指令。';
+    } else if (kind === 'break' && status === 'watch') {
+      why = bits.join('。') + '。' + ((breakHow && breakHow.length) ? breakHow.join('，') : '疑似突破') +
+        (forming ? '，正在走的那根只预备' : '，突破还差收盘确认') + '。不是下单指令。';
+    } else if (status === 'trigger') {
+      why = bits.join('。') + '。' +
+        (g && g.extra && g.extra.length ? g.extra.join('，') + '。' : '') +
+        locName + '已在' + (dir > 0 ? '下沿' : '上沿') + '，' + (trigName || locName) + '出现收回迹象，适合关注' +
+        (dir > 0 ? '低多' : '高空') + '。只描述位置，不是下单指令。';
+    } else if (status === 'watch') {
+      why = bits.join('。') + '。已经靠近' + (dir > 0 ? '低多' : '高空') + '带' +
+        (forming ? '，正在走的那根只预备' : '，还差收回或转向确认') + '。不是下单指令。';
+    } else if (status === 'block') {
+      why = bits.join('。') + '。价格连续贴着' + (dir > 0 ? '下轨' : '上轨') +
+        '，还没有收回，单边里不做' + (dir > 0 ? '低多' : '高空') + '。';
+    } else {
+      why = bits.join('。') + '。' + locName + '还在中部，不用本图近端三四美元的波幅当高低。只描述位置，不是下单指令。';
+    }
+    return {
+      ok: true, vote: vote, dir: dir, status: status,
+      name: name, label: name, title: name, why: why, core: vote !== 0,
+      i: evalI, fromI: fromI, forming: forming,
+      grav: rec && rec.grav, kin: rec && rec.kin, pb: rec && rec.pb, rsi: rec && rec.rsi,
+      longPx: longPx, shortPx: shortPx,
+      longLo: rec && rec.longLo, longHi: rec && rec.longHi,
+      shortLo: rec && rec.shortLo, shortHi: rec && rec.shortHi,
+      longStatus: longG.status, shortStatus: shortG.status,
+      kind: kind, breakLevel: breakLevel, breakHow: breakHow,
+      marks: marks, atrv: atrv, src: src, locName: locName, trigName: trigName,
+    };
+  }
+
+  function computeHkldHtf(chart, src5, src15) {
+    const none = hkldNone();
+    const locSrc = src15 || src5;
+    const locTf = src15 ? '15m' : '5m';
+    const trigSrc = src5 || locSrc;
+    const trigTf = src5 ? '5m' : locTf;
+    const locPrep = hkldPrep(locSrc);
+    if (!locPrep.ok) return none;
+    const trigPrep = (trigSrc === locSrc) ? locPrep : hkldPrep(trigSrc);
+    if (!trigPrep.ok) return none;
+    const locName = hkldTfName(locTf);
+    const trigName = hkldTfName(trigTf);
+    const locLast = locSrc.length - 1;
+    const locClosed = hkldClosedEnd(locSrc, locTf);
+    const locI = locClosed >= 33 ? locClosed : locLast;
+    const trigLast = trigSrc.length - 1;
+    const trigClosed = hkldClosedEnd(trigSrc, trigTf);
+    const trigI = trigClosed >= 33 ? trigClosed : trigLast;
+    const chartLast = chart.length - 1;
+    const chartClosed = hkldClosedEnd(chart, state.tf);
+    const forming = (chartClosed >= 0 && chartLast > chartClosed) || (trigClosed >= 33 && trigLast > trigClosed);
+    const recLoc = locPrep.recAt(locLast);
+    const recTrig = trigPrep.recAt(trigLast);
+    const extraRec = trigPrep.recAt(trigI);
+    if (!recLoc) return none;
+    const wa = (src15 && src5) ? 0.62 : 1;
+    const rec = hkldMixRec(recLoc, recTrig, wa);
+    const span = (rec.hi != null && rec.lo != null) ? rec.hi - rec.lo : 0;
+    const minGap = Math.max(locPrep.atrv * 2.2, span * 0.22);
+    if (rec.longPx != null && rec.shortPx != null && rec.shortPx - rec.longPx < minGap && rec.r20 != null && rec.r80 != null) {
+      rec.longPx = rec.r20;
+      rec.shortPx = rec.r80;
+    }
+    rec.longLo = rec.lo;
+    rec.longHi = rec.r20 != null && rec.longPx != null ? Math.max(rec.r20, rec.longPx) : rec.r20;
+    rec.shortLo = rec.r80 != null && rec.shortPx != null ? Math.min(rec.r80, rec.shortPx) : rec.r80;
+    rec.shortHi = rec.hi;
+    if (recTrig && recTrig.r20 != null && rec.longHi != null) rec.longHi = Math.max(rec.longHi, recTrig.r20);
+    if (recTrig && recTrig.r80 != null && rec.shortLo != null) rec.shortLo = Math.min(rec.shortLo, recTrig.r80);
+    if (rec.longLo != null && rec.shortHi != null && rec.longHi != null && rec.shortLo != null && rec.longHi > rec.shortLo) {
+      const mid = (rec.longLo + rec.shortHi) / 2;
+      rec.longHi = Math.min(rec.longHi, mixPx(rec.longPx, mid, 0.72));
+      rec.shortLo = Math.max(rec.shortLo, mixPx(rec.shortPx, mid, 0.72));
+    }
+    const atrv = locPrep.atrv;
+    const thin = atrv * 0.2;
+    if (rec.longPx != null && rec.longHi != null && rec.longLo != null && rec.longHi - rec.longLo < thin) {
+      rec.longLo = rec.longPx - atrv * 0.28;
+      rec.longHi = rec.longPx + atrv * 0.12;
+    }
+    if (rec.shortPx != null && rec.shortHi != null && rec.shortLo != null && rec.shortHi - rec.shortLo < thin) {
+      rec.shortLo = rec.shortPx - atrv * 0.12;
+      rec.shortHi = rec.shortPx + atrv * 0.28;
+    }
+    const chartBar = chart[chartLast];
+    const extraBar = trigSrc[trigI];
+    const ctx = {
+      locRec: recLoc, trigRec: recTrig, extraRec: extraRec,
+      extraBar: extraBar, extraSrc: trigSrc, extraI: trigI,
+      chartBar: chartBar, rec: rec, locPrep: locPrep, trigPrep: trigPrep, locI: locI,
+      locName: locName, trigName: trigName, atrv: atrv,
+    };
+    const longG = gradeHkldHtf(1, ctx, forming);
+    const shortG = gradeHkldHtf(-1, ctx, forming);
+
+    const marks = [];
+    let prevDir = 0;
+    const markEnd = chartClosed >= 0 ? chartClosed : chartLast;
+    const scan0 = Math.max(0, markEnd - 48);
+    for (let i = scan0; i <= markEnd; i++) {
+      const b = chart[i];
+      if (!b) continue;
+      const li = hkldPickIdx(locPrep, b.t);
+      const ti = hkldPickIdx(trigPrep, b.t);
+      if (li < 33 || ti < 33) continue;
+      const rL = locPrep.recAt(li);
+      const rT = trigPrep.recAt(ti);
+      if (!rL) continue;
+      const recI = hkldMixRec(rL, rT, wa) || rL;
+      recI.longHi = recI.r20;
+      recI.shortLo = recI.r80;
+      const brk = locPrep.breakoutAt(li);
+      const sub = {
+        locRec: rL, trigRec: rT, extraRec: rT,
+        extraBar: trigSrc[ti], extraSrc: trigSrc, extraI: ti,
+        chartBar: b, rec: recI, locPrep: locPrep, trigPrep: trigPrep, locI: li,
+        locName: locName, trigName: trigName, atrv: atrv,
+      };
+      const lg = gradeHkldHtf(1, sub, false);
+      const sg = gradeHkldHtf(-1, sub, false);
+      let d = 0, lab = '', mkKind = 'fade', mkPx = null, mkY = null;
+      if (brk && brk.dir && !brk.continuation && brk.confirmed) {
+        d = brk.dir;
+        lab = d > 0 ? '上破' : '下破';
+        mkKind = 'break';
+        mkPx = brk.level;
+        mkY = d > 0 ? b.h : b.l;
+      } else if (lg.status === 'trigger') {
+        d = 1; lab = '低多'; mkPx = recI.longPx; mkY = b.l;
+      } else if (sg.status === 'trigger') {
+        d = -1; lab = '高空'; mkPx = recI.shortPx; mkY = b.h;
+      }
+      if (d && d !== prevDir) {
+        marks.push({
+          i: i, dir: d, status: 'trigger', kind: mkKind,
+          label: lab, px: mkPx, y: mkY,
+        });
+      }
+      prevDir = d;
+    }
+    if (marks.length > 6) marks.splice(0, marks.length - 6);
+
+    let dir = 0, status = 'idle';
+    if (longG.status === 'trigger' && shortG.status !== 'trigger') { dir = 1; status = longG.status; }
+    else if (shortG.status === 'trigger' && longG.status !== 'trigger') { dir = -1; status = shortG.status; }
+    else if (longG.status === 'watch' && shortG.status !== 'trigger' && shortG.status !== 'watch') { dir = 1; status = 'watch'; }
+    else if (shortG.status === 'watch' && longG.status !== 'trigger' && longG.status !== 'watch') { dir = -1; status = 'watch'; }
+    else if (longG.status === 'block' && shortG.status === 'idle') { dir = 1; status = 'block'; }
+    else if (shortG.status === 'block' && longG.status === 'idle') { dir = -1; status = 'block'; }
+
+    function recentTrig(dirNeed) {
+      for (let j = trigI; j >= Math.max(33, trigI - 3); j--) {
+        const rT = trigPrep.recAt(j);
+        const li = hkldPickIdx(locPrep, trigSrc[j].t);
+        if (li < 33) continue;
+        const rL = locPrep.recAt(li);
+        if (!rL || !rT) continue;
+        const recJ = hkldMixRec(rL, rT, wa) || rL;
+        recJ.longHi = recJ.r20;
+        recJ.shortLo = recJ.r80;
+        const sub = {
+          locRec: rL, trigRec: rT, extraRec: rT,
+          extraBar: trigSrc[j], extraSrc: trigSrc, extraI: j,
+          chartBar: chartBar, rec: recJ, locPrep: locPrep, trigPrep: trigPrep, locI: li,
+          locName: locName, trigName: trigName, atrv: atrv,
+        };
+        if (gradeHkldHtf(dirNeed, sub, false).status === 'trigger') return true;
+      }
+      return false;
+    }
+    if (status === 'watch' && dir > 0 && recentTrig(1)) {
+      status = forming ? 'watch' : 'trigger';
+      longG.status = status;
+    } else if (status === 'watch' && dir < 0 && recentTrig(-1)) {
+      status = forming ? 'watch' : 'trigger';
+      shortG.status = status;
+    }
+
+    let kind = 'fade';
+    let breakLevel = null;
+    let breakHow = [];
+    let br = locPrep.breakoutAt(locI);
+    if (!br || !br.dir) {
+      for (let j = locI - 1; j >= Math.max(34, locI - 3); j--) {
+        const cand = locPrep.breakoutAt(j);
+        if (!cand || !cand.dir || cand.continuation) continue;
+        if (cand.dir > 0 && locSrc[locI].c >= cand.level) { br = cand; break; }
+        if (cand.dir < 0 && locSrc[locI].c <= cand.level) { br = cand; break; }
+      }
+    }
+    const locForming = locLast > locClosed && locClosed >= 0;
+    if (br && br.dir && !br.continuation) {
+      kind = 'break';
+      dir = br.dir;
+      breakLevel = br.level;
+      breakHow = br.how || [];
+      status = (forming || locForming || !br.confirmed) ? 'watch' : 'trigger';
+      if (dir > 0) {
+        shortG.status = status;
+        if (longG.status === 'trigger' || longG.status === 'watch') longG.status = 'idle';
+      } else {
+        longG.status = status;
+        if (shortG.status === 'trigger' || shortG.status === 'watch') shortG.status = 'idle';
+      }
+    }
+
+    const fromT = locSrc[Math.max(0, locLast - 33)].t;
+    const fromI = stackMarkIndex(chart, fromT);
+    const src = src15 && src5 ? '15m+5m' : (src15 ? '15m' : '5m');
+    return hkldFinishPack(
+      rec, longG, shortG, kind, dir, status, forming, chartClosed >= 0 ? chartClosed : chartLast,
+      fromI, marks, atrv, locName, trigName, src, breakLevel, breakHow
+    );
+  }
+
+  function computeHkld(klines) {
+    const m5 = stackSrc('5m');
+    const m15 = stackSrc('15m');
+    const has5 = !!(m5 && m5.length >= 34);
+    const has15 = !!(m15 && m15.length >= 34);
+    if ((has5 || has15) && klines && klines.length >= 2) {
+      return computeHkldHtf(klines, has5 ? m5 : null, has15 ? m15 : null);
+    }
+    return computeHkldChart(klines);
+  }
+
+  function getHkld(klines) {
+    const last = klines && klines[klines.length - 1];
+    const m5 = stackSrc('5m');
+    const m15 = stackSrc('15m');
+    const a = m5 && m5.length ? m5[m5.length - 1] : null;
+    const b = m15 && m15.length ? m15[m15.length - 1] : null;
+    const key = [
+      klines && klines.length, last && last.t, last && last.c, last && last.h, last && last.l,
+      state.tf, state.bollN, state.bollK, state.rsiN,
+      m5 && m5.length, a && a.t, a && a.c, a && a.h, a && a.l,
+      m15 && m15.length, b && b.t, b && b.c, b && b.h, b && b.l,
+    ].join(':');
+    if (state._hkldKey === key && state._hkld) return state._hkld;
+    const pack = computeHkld(klines);
+    state._hkldKey = key;
+    state._hkld = pack;
     return pack;
   }
 
@@ -4490,6 +5796,311 @@ try {
     const pack = computeSr(klines);
     state._srKey = key;
     state._sr = pack;
+    return pack;
+  }
+
+  const FIB_RATIOS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
+  const FIB_EXT = [1.272, 1.618];
+  const FIB_KEYS = [0.382, 0.5, 0.618, 0.786];
+
+  function fibLook(tf) {
+    if (tf === '10s') return { k: 6, minAtr: 1.7, minBars: 8, look: 90, pxFloor: 0.00012 };
+    if (tf === '1m') return { k: 4, minAtr: 1.5, minBars: 6, look: 80, pxFloor: 0.00018 };
+    if (tf === '5m' || tf === '15m') return { k: 3, minAtr: 1.4, minBars: 5, look: 64, pxFloor: 0.00025 };
+    return { k: 2, minAtr: 1.3, minBars: 4, look: 48, pxFloor: 0.00035 };
+  }
+
+  function fibNear(a, b) {
+    return Math.abs(a - b) < 1e-9;
+  }
+
+  function fibIsKey(r) {
+    return FIB_KEYS.some((x) => fibNear(x, r));
+  }
+
+  function fibRatioText(r) {
+    if (fibNear(r, 0)) return '0';
+    if (fibNear(r, 1)) return '1';
+    if (fibNear(r, 0.236)) return '0.236';
+    if (fibNear(r, 0.382)) return '0.382';
+    if (fibNear(r, 0.5)) return '0.5';
+    if (fibNear(r, 0.618)) return '0.618';
+    if (fibNear(r, 0.786)) return '0.786';
+    if (fibNear(r, 1.272)) return '1.272';
+    if (fibNear(r, 1.618)) return '1.618';
+    return String(r);
+  }
+
+  function fibEmpty() {
+    return {
+      ok: false, dir: 0, start: null, end: null, span: 0,
+      atrv: 0, radius: 0, levels: [], retrace: null, hit: null, hitR: null,
+      kind: 'none', status: 'none', vote: 0,
+      label: '斐波那契未现', title: '斐波那契未现', name: '斐波那契',
+      why: '近端没有足够大的摆动，画不出斐波那契回撤。',
+      forming: false, points: [],
+    };
+  }
+
+  function fibPivots(klines, k, from, to) {
+    const raw = [];
+    const start = Math.max(k, from);
+    const last = to - k;
+    for (let i = start; i <= last; i++) {
+      let isH = true, isL = true;
+      for (let j = 1; j <= k; j++) {
+        if (!(klines[i].h > klines[i - j].h && klines[i].h >= klines[i + j].h)) isH = false;
+        if (!(klines[i].l < klines[i - j].l && klines[i].l <= klines[i + j].l)) isL = false;
+      }
+      if (isH && isL) continue;
+      if (isH) raw.push({ i: i, kind: 'h', price: klines[i].h });
+      else if (isL) raw.push({ i: i, kind: 'l', price: klines[i].l });
+    }
+    const alt = [];
+    for (let r = 0; r < raw.length; r++) {
+      const p = raw[r];
+      if (!alt.length) { alt.push(p); continue; }
+      const lastP = alt[alt.length - 1];
+      if (p.kind === lastP.kind) {
+        if (p.kind === 'h' && p.price >= lastP.price) alt[alt.length - 1] = p;
+        if (p.kind === 'l' && p.price <= lastP.price) alt[alt.length - 1] = p;
+      } else {
+        alt.push(p);
+      }
+    }
+    return alt;
+  }
+
+  function fibZigZag(pivots, minMove, minBars) {
+    const zz = [];
+    for (let i = 0; i < pivots.length; i++) {
+      const p = pivots[i];
+      if (!zz.length) { zz.push(p); continue; }
+      const last = zz[zz.length - 1];
+      if (p.kind === last.kind) {
+        if (p.kind === 'h' && p.price >= last.price) zz[zz.length - 1] = p;
+        if (p.kind === 'l' && p.price <= last.price) zz[zz.length - 1] = p;
+        continue;
+      }
+      if (Math.abs(p.price - last.price) < minMove) continue;
+      if (p.i - last.i < minBars) continue;
+      zz.push(p);
+    }
+    return zz;
+  }
+
+  function fibLevelPx(endPx, startPx, r) {
+    return endPx + (startPx - endPx) * r;
+  }
+
+  function fibHoldBar(bar, level, dir, radius, thresh) {
+    if (!bar) return false;
+    const rng = bar.h - bar.l;
+    if (rng < radius * 0.35) return false;
+    if (dir > 0) {
+      const wick = bar.l <= level + radius && bar.l >= level - radius * 1.8;
+      const held = bar.c >= level - thresh * 0.25 && bar.c > bar.l + radius * 0.25;
+      const notCut = bar.c > level - thresh;
+      const notThrough = Math.min(bar.o, bar.c) >= level - thresh * 1.2;
+      return wick && held && notCut && notThrough;
+    }
+    const wick = bar.h >= level - radius && bar.h <= level + radius * 1.8;
+    const held = bar.c <= level + thresh * 0.25 && bar.h > bar.c + radius * 0.25;
+    const notCut = bar.c < level + thresh;
+    const notThrough = Math.max(bar.o, bar.c) <= level + thresh * 1.2;
+    return wick && held && notCut && notThrough;
+  }
+
+  function computeFib(klines) {
+    const empty = fibEmpty();
+    if (!klines || klines.length < 18) return empty;
+    const cfg = fibLook(state.tf);
+    const closedEnd = pbClosedEnd(klines);
+    const lastI = klines.length - 1;
+    const forming = closedEnd < lastI;
+    const last = klines[lastI];
+    const voteBar = klines[Math.max(0, closedEnd)];
+    const lastPx = last.c;
+    const atrv = atr(klines, 14) || atrFallback(lastPx);
+    const minMove = Math.max(atrv * cfg.minAtr, lastPx * (cfg.pxFloor || 0.00018));
+    const radius = Math.max(atrv * 0.22, lastPx * 0.00012);
+    const thresh = Math.max(atrv * 0.18, lastPx * 0.0001);
+    const from = Math.max(0, closedEnd + 1 - cfg.look);
+    const pivots = fibPivots(klines, cfg.k, from, closedEnd);
+    let zz = fibZigZag(pivots, minMove, cfg.minBars);
+    if (zz.length) {
+      const tail = zz[zz.length - 1];
+      if (tail.kind === 'h') {
+        let extI = tail.i, extP = tail.price;
+        for (let i = tail.i + 1; i <= lastI; i++) {
+          if (klines[i].h >= extP) { extP = klines[i].h; extI = i; }
+        }
+        if (extI !== tail.i) zz[zz.length - 1] = { i: extI, kind: 'h', price: extP, running: true };
+      } else {
+        let extI = tail.i, extP = tail.price;
+        for (let i = tail.i + 1; i <= lastI; i++) {
+          if (klines[i].l <= extP) { extP = klines[i].l; extI = i; }
+        }
+        if (extI !== tail.i) zz[zz.length - 1] = { i: extI, kind: 'l', price: extP, running: true };
+      }
+    }
+    if (zz.length < 2) {
+      let hiI = from, loI = from, hi = -Infinity, lo = Infinity;
+      for (let i = from; i <= lastI; i++) {
+        if (klines[i].h >= hi) { hi = klines[i].h; hiI = i; }
+        if (klines[i].l <= lo) { lo = klines[i].l; loI = i; }
+      }
+      if (!(hi - lo >= minMove) || hiI === loI) return empty;
+      zz = hiI > loI
+        ? [{ i: loI, kind: 'l', price: lo }, { i: hiI, kind: 'h', price: hi }]
+        : [{ i: hiI, kind: 'h', price: hi }, { i: loI, kind: 'l', price: lo }];
+    }
+
+    const legs = [];
+    for (let i = 1; i < zz.length; i++) {
+      const A = zz[i - 1], B = zz[i];
+      const span = Math.abs(B.price - A.price);
+      if (span < minMove) continue;
+      if (B.i - A.i < cfg.minBars) continue;
+      const dir = B.kind === 'h' ? 1 : -1;
+      const retrace = dir * (B.price - lastPx) / span;
+      legs.push({ A: A, B: B, span: span, dir: dir, retrace: retrace });
+    }
+    if (!legs.length) return empty;
+
+    function fibScore(leg) {
+      const r = leg.retrace;
+      let s = 0;
+      if (r >= 0.28 && r <= 0.9) s += 6;
+      else if (r >= -0.06 && r <= 1.12) s += 2;
+      else return -1;
+      s += Math.min(3, leg.span / minMove);
+      s += leg.B.i / Math.max(1, lastI) * 1.2;
+      if (FIB_KEYS.some((x) => Math.abs(r - x) <= 0.07)) s += 1.5;
+      return s;
+    }
+    legs.forEach((leg) => { leg.score = fibScore(leg); });
+    const ranked = legs.filter((x) => x.score >= 0).sort((a, b) => b.score - a.score);
+    const wave = ranked[0];
+    if (!wave) return empty;
+
+    const start = wave.A, end = wave.B, dir = wave.dir, span = wave.span;
+    const retrace = wave.retrace;
+    const levels = FIB_RATIOS.map((r) => ({
+      r: r,
+      price: fibLevelPx(end.price, start.price, r),
+      key: fibIsKey(r),
+      ext: false,
+    }));
+    FIB_EXT.forEach((r) => {
+      const price = fibLevelPx(end.price, start.price, r);
+      const near = Math.abs(lastPx - price) <= Math.max(atrv * 2.4, span * 0.35);
+      if (near || retrace <= 0.12) {
+        levels.push({ r: r, price: price, key: fibNear(r, 1.618), ext: true });
+      }
+    });
+
+    const keyLv = levels.filter((lv) => lv.key && !lv.ext);
+    function testLevel(bar) {
+      let best = null, bestDist = Infinity;
+      keyLv.forEach((lv) => {
+        const wick = dir > 0 ? bar.l : bar.h;
+        const dist = Math.abs(wick - lv.price);
+        if (dist < bestDist && fibHoldBar(bar, lv.price, dir, radius, thresh)) {
+          best = lv;
+          bestDist = dist;
+        }
+      });
+      return best;
+    }
+
+    let hit = null;
+    let kind = 'idle';
+    let status = 'idle';
+    let vote = 0;
+    let why = '';
+    let label = '斐波那契 ' + (dir > 0 ? '涨势回撤' : '跌势反抽');
+    let name = '斐波那契';
+    const failClosed = dir > 0
+      ? voteBar.c < start.price - thresh
+      : voteBar.c > start.price + thresh;
+    const failForm = forming && (dir > 0 ? last.c < start.price - thresh : last.c > start.price + thresh);
+    const sliced = (voteBar.h - voteBar.l) > span * 0.28;
+
+    if (failClosed && retrace >= 0.86) {
+      kind = 'fail';
+      status = 'trigger';
+      vote = -dir;
+      name = '斐波那契失效';
+      label = dir > 0 ? '跌破 100%' : '升破 100%';
+      why = (dir > 0 ? '收盘跌破涨势 100% 起点 ' : '收盘升破跌势 100% 起点 ') +
+        px(start.price) + '，原段斐波那契失效。只描述结构，不是下单指令。';
+    } else if (failForm && retrace >= 0.86) {
+      kind = 'fail';
+      status = 'watch';
+      vote = 0;
+      name = '斐波那契';
+      label = '100% 预备';
+      why = '正在走的那根穿过 100% 起点，收盘后才确认原段是否失效。';
+    } else if (!sliced) {
+      const closedHit = testLevel(voteBar);
+      const formHit = forming ? testLevel(last) : null;
+      if (closedHit) {
+        hit = closedHit;
+        kind = 'hold';
+        status = 'trigger';
+        vote = dir;
+        name = dir > 0 ? '斐波那契回踩' : '斐波那契反抽';
+        label = (dir > 0 ? '回踩 ' : '反抽 ') + fibRatioText(closedHit.r);
+        why = (dir > 0 ? '涨势回撤到 ' : '跌势反抽到 ') + fibRatioText(closedHit.r) +
+          '（' + px(closedHit.price) + '）后收回。只描述位置，不是下单指令。';
+      } else if (formHit) {
+        hit = formHit;
+        kind = 'hold';
+        status = 'watch';
+        vote = 0;
+        name = '斐波那契';
+        label = fibRatioText(formHit.r) + ' 预备';
+        why = '正在走的那根碰到 ' + fibRatioText(formHit.r) +
+          '（' + px(formHit.price) + '），收盘后才确认。';
+      }
+    }
+
+    if (!why) {
+      if (retrace < 0.22) {
+        why = dir > 0 ? '涨势回撤还浅，还没到 0.382。' : '跌势反抽还浅，还没到 0.382。';
+      } else if (retrace > 1.02) {
+        why = '现价已经越过 100% 起点，原段斐波那契参考意义下降。';
+      } else {
+        const nearLv = keyLv.slice().sort((a, b) => Math.abs(lastPx - a.price) - Math.abs(lastPx - b.price))[0];
+        why = '现价回撤约 ' + Math.round(Math.max(0, Math.min(1, retrace)) * 100) +
+          '%，贴近 ' + (nearLv ? fibRatioText(nearLv.r) + '（' + px(nearLv.price) + '）' : '分割位') +
+          '，观察是否守住。';
+        if (nearLv) hit = nearLv;
+        label = '贴近 ' + (nearLv ? fibRatioText(nearLv.r) : '分割位');
+      }
+    }
+
+    return {
+      ok: true, dir: dir, start: start, end: end, span: span,
+      atrv: atrv, radius: radius, levels: levels, retrace: retrace, hit: hit,
+      hitR: hit ? hit.r : null,
+      kind: kind, status: status, vote: vote, why: why, label: label,
+      title: label, name: name, forming: forming,
+      points: [
+        { i: start.i, price: start.price, lab: '100%' },
+        { i: end.i, price: end.price, lab: '0%' },
+      ],
+    };
+  }
+
+  function getFib(klines) {
+    const last = klines[klines.length - 1];
+    const key = [klines.length, last && last.t, last && last.c, last && last.h, last && last.l, state.tf].join(':');
+    if (state._fibKey === key && state._fib) return state._fib;
+    const pack = computeFib(klines);
+    state._fibKey = key;
+    state._fib = pack;
     return pack;
   }
 
@@ -6666,6 +8277,31 @@ try {
     if (macdPack) factors.push({ name: 'MACD', vote: macdPack.vote, why: macdPack.why });
     if (sigPack) factors.push({ name: '布林配 MACD', vote: sigPack.vote, why: sigPack.why });
     if (stackPack) factors.push({ name: '套轨', vote: stackPack.vote, why: stackPack.why, core: true });
+    let hkldPack = factorOn('hkld') ? getHkld(klines) : null;
+    if (hkldPack) {
+      let hv = hkldPack.vote;
+      let hw = hkldPack.why;
+      if (hv && hkldPack.kind === 'break' && stackPack && stackPack.kind === 'open' && stackPack.vote === hv) {
+        hv = 0;
+        hw = hw + '。同一段已记入套轨开口，突破反转方向票不计。';
+      } else if (hv && hkldPack.kind === 'break') {
+        const smcNow = getSmc(klines);
+        const lastEv = smcNow.events && smcNow.events.length ? smcNow.events[smcNow.events.length - 1] : null;
+        const nearEv = lastEv && lastEv.dir === hv && (klines.length - 1 - lastEv.i) <= 6
+          && (lastEv.kind === 'BOS' || lastEv.kind === 'CHoCH');
+        if (nearEv) {
+          hv = 0;
+          hw = hw + '。同一段已记入 SMC ' + lastEv.kind + '，突破反转方向票不计。';
+        }
+      } else if (hv && stackPack && stackPack.kind === 'fade' && stackPack.vote === hv) {
+        hv = 0;
+        hw = hw + '。同一段已记入套轨宽轨收回，高空低多方向票不计。';
+      } else if (hv && sigPack && sigPack.vote === hv && /收回/.test(sigPack.label || sigPack.why || '')) {
+        hv = 0;
+        hw = hw + '。同一段已记入布林配 MACD 收回，高空低多方向票不计。';
+      }
+      factors.push({ name: hkldPack.name || '高空低多', vote: hv, why: hw, core: hv !== 0 });
+    }
     let trapPack = factorOn('trap') ? getTrap(klines) : null;
     if (factorOn('smc')) {
       let s = smcVote(klines);
@@ -6697,21 +8333,25 @@ try {
       const h = getHs(klines);
       factors.push({ name: '头肩形态', vote: h.vote, why: h.why, core: h.vote !== 0 });
     }
+    let srPack = null;
     if (factorOn('sr')) {
-      const sr = getSr(klines);
-      let srVote = sr.vote;
-      let srWhy = sr.why;
+      srPack = getSr(klines);
+      let srVote = srPack.vote;
+      let srWhy = srPack.why;
       const srCore = srVote !== 0 && /收盘/.test(srWhy || '');
       if (trapPack && trapPack.vote && srVote === trapPack.vote && /影线/.test(srWhy || '')) {
         srVote = 0;
         srWhy = srWhy + '。同一段更接近诱空/诱多扫位，支压方向票不计。';
       }
+      srPack = Object.assign({}, srPack, { vote: srVote, why: srWhy });
       factors.push({ name: '支撑压力', vote: srVote, why: srWhy, core: srCore && srVote !== 0 });
     }
     if (trapPack) {
       const tName = trapPack.dir < 0 ? '诱多' : (trapPack.dir > 0 ? '诱空' : '诱空诱多');
       factors.push({ name: tName, vote: trapPack.vote, why: trapPack.why, core: trapPack.vote !== 0 });
     }
+    let bouncePack = null;
+    let pullPack = null;
     if (factorOn('bounce') || factorOn('pull')) {
       const pb = getPb(klines);
       const smcLive = factorOn('smc') ? ((getSmc(klines) || {}).live) : null;
@@ -6735,15 +8375,35 @@ try {
         });
       };
       if (factorOn('bounce')) {
-        const b = stealStack(stealPb(pb.bounce), 'fade');
-        const bName = b.dir < 0 ? '超涨回落' : '超跌反弹';
-        factors.push({ name: bName, vote: b.vote, why: b.why, core: b.vote !== 0 });
+        bouncePack = stealStack(stealPb(pb.bounce), 'fade');
+        const bName = bouncePack.dir < 0 ? '超涨回落' : '超跌反弹';
+        factors.push({ name: bName, vote: bouncePack.vote, why: bouncePack.why, core: bouncePack.vote !== 0 });
       }
       if (factorOn('pull')) {
-        const p = stealStack(stealPb(pb.pull), 'pull');
-        const pName = p.dir < 0 ? '杀跌反抽' : '拉升回踩';
-        factors.push({ name: pName, vote: p.vote, why: p.why, core: p.vote !== 0 });
+        pullPack = stealStack(stealPb(pb.pull), 'pull');
+        const pName = pullPack.dir < 0 ? '杀跌反抽' : '拉升回踩';
+        factors.push({ name: pName, vote: pullPack.vote, why: pullPack.why, core: pullPack.vote !== 0 });
       }
+    }
+    if (factorOn('fib')) {
+      const fib = getFib(klines);
+      let fv = fib.vote;
+      let fw = fib.why;
+      if (fv && pullPack && pullPack.vote === fv) {
+        fv = 0;
+        fw = fw + '。同一段已记入回踩，斐波那契方向票不计。';
+      } else if (fv && bouncePack && bouncePack.vote === fv) {
+        fv = 0;
+        fw = fw + '。同一段已记入反弹，斐波那契方向票不计。';
+      } else if (fv && trapPack && trapPack.vote === fv) {
+        fv = 0;
+        fw = fw + '。同一段已记入诱空诱多，斐波那契方向票不计。';
+      } else if (fv && srPack && srPack.vote === fv && fib.kind === 'fail') {
+        fv = 0;
+        fw = fw + '。同一段已记入支撑压力破位，斐波那契方向票不计。';
+      }
+      const fibCore = fv !== 0 && (fib.kind === 'fail' || (fib.kind === 'hold' && fib.hitR != null && fib.hitR >= 0.5));
+      factors.push({ name: fib.name || '斐波那契', vote: fv, why: fw, core: fibCore });
     }
 
     const day = dayVote(ticker, last);
@@ -6942,6 +8602,182 @@ try {
       'stroke-dasharray': dash, opacity: op,
     }));
     drawPbSetup(svg, pack, vx, y);
+  }
+
+  function drawHkld(svg, pack, vx, y, xRight) {
+    if (!pack || !pack.ok) return;
+    const x1 = vx(pack.fromI != null ? pack.fromI : 0);
+    const x2 = xRight;
+    function zone(loPx, hiPx, pxLine, color, lab, status) {
+      if (loPx == null || hiPx == null || pxLine == null) return;
+      const top = y(Math.max(loPx, hiPx));
+      const bot = y(Math.min(loPx, hiPx));
+      const fillOp = status === 'trigger' ? '.16' : (status === 'watch' ? '.11' : (status === 'block' ? '.05' : '.08'));
+      svg.appendChild(svgEl('rect', {
+        x: Math.min(x1, x2).toFixed(1),
+        y: Math.min(top, bot).toFixed(1),
+        width: Math.max(2, Math.abs(x2 - x1)).toFixed(1),
+        height: Math.max(1.5, Math.abs(bot - top)).toFixed(1),
+        fill: color,
+        opacity: fillOp,
+      }));
+      const op = status === 'trigger' ? '.95' : (status === 'watch' ? '.82' : (status === 'block' ? '.42' : '.64'));
+      const dash = status === 'trigger' ? '' : (status === 'watch' ? '5 4' : '4 5');
+      const yy = y(pxLine);
+      svg.appendChild(svgEl('line', {
+        x1: x1.toFixed(1), x2: x2.toFixed(1),
+        y1: yy.toFixed(1), y2: yy.toFixed(1),
+        stroke: color, 'stroke-width': status === 'trigger' ? '1.6' : '1.2',
+        'stroke-dasharray': dash, opacity: op,
+      }));
+      const t = svgEl('text', {
+        x: (x2 - 4).toFixed(1),
+        y: (yy - 4).toFixed(1),
+        fill: color,
+        'font-size': '10.5',
+        'font-weight': status === 'trigger' ? '750' : '650',
+        'font-family': 'var(--font)',
+        'text-anchor': 'end',
+        stroke: 'var(--bg)',
+        'stroke-width': '3',
+        'paint-order': 'stroke',
+        opacity: op,
+      });
+      t.textContent = lab;
+      svg.appendChild(t);
+    }
+    const longLab = (pack.kind === 'break' && pack.dir < 0)
+      ? ((pack.status === 'trigger' ? '下破反转 ' : pack.status === 'watch' ? '下破预备 ' : '下破 ') + px(pack.breakLevel || pack.longPx))
+      : pack.longStatus === 'trigger' ? ('低多推荐 ' + px(pack.longPx))
+      : pack.longStatus === 'watch' ? ('低多预备 ' + px(pack.longPx))
+      : pack.longStatus === 'block' ? ('低多顺势 ' + px(pack.longPx))
+      : ('低多 ' + px(pack.longPx));
+    const shortLab = (pack.kind === 'break' && pack.dir > 0)
+      ? ((pack.status === 'trigger' ? '上破反转 ' : pack.status === 'watch' ? '上破预备 ' : '上破 ') + px(pack.breakLevel || pack.shortPx))
+      : pack.shortStatus === 'trigger' ? ('高空推荐 ' + px(pack.shortPx))
+      : pack.shortStatus === 'watch' ? ('高空预备 ' + px(pack.shortPx))
+      : pack.shortStatus === 'block' ? ('高空顺势 ' + px(pack.shortPx))
+      : ('高空 ' + px(pack.shortPx));
+    const longLine = (pack.kind === 'break' && pack.dir < 0 && pack.breakLevel != null) ? pack.breakLevel : pack.longPx;
+    const shortLine = (pack.kind === 'break' && pack.dir > 0 && pack.breakLevel != null) ? pack.breakLevel : pack.shortPx;
+    zone(pack.longLo, pack.longHi, longLine, 'var(--up)', longLab, pack.longStatus);
+    zone(pack.shortLo, pack.shortHi, shortLine, 'var(--down)', shortLab, pack.shortStatus);
+    (pack.marks || []).forEach((mk) => {
+      if (mk.i == null || mk.y == null) return;
+      const xc = vx(mk.i);
+      const yy = y(mk.y);
+      const color = mk.dir > 0 ? 'var(--up)' : 'var(--down)';
+      const gMk = svgEl('g', {});
+      const tip = svgEl('title', {});
+      tip.textContent = (mk.label || '') + (mk.px != null ? ' ' + px(mk.px) : '');
+      gMk.appendChild(tip);
+      if (mk.kind === 'break') {
+        gMk.appendChild(svgEl('polygon', {
+          points: mk.dir > 0
+            ? xc.toFixed(1) + ',' + (yy - 7.5).toFixed(1) + ' ' + (xc - 6).toFixed(1) + ',' + (yy + 4).toFixed(1) + ' ' + (xc + 6).toFixed(1) + ',' + (yy + 4).toFixed(1)
+            : xc.toFixed(1) + ',' + (yy + 7.5).toFixed(1) + ' ' + (xc - 6).toFixed(1) + ',' + (yy - 4).toFixed(1) + ' ' + (xc + 6).toFixed(1) + ',' + (yy - 4).toFixed(1),
+          fill: color,
+          opacity: '.92',
+        }));
+      } else {
+        gMk.appendChild(svgEl('rect', {
+          x: (xc - 3.4).toFixed(1),
+          y: (yy - 3.4).toFixed(1),
+          width: '6.8', height: '6.8',
+          fill: color, opacity: '.9',
+          rx: '1.1',
+        }));
+      }
+      svg.appendChild(gMk);
+    });
+  }
+
+  function drawFib(svg, pack, vx, y, xRight, plotTop, plotBottom) {
+    if (!pack || !pack.ok || !pack.levels || !pack.levels.length) return;
+    const color = pack.dir > 0 ? 'var(--up)' : 'var(--down)';
+    const gold = 'var(--warn)';
+    const x1 = vx(Math.min(pack.start.i, pack.end.i));
+    const x2 = xRight;
+    const top = plotTop == null ? -20 : plotTop;
+    const bot = plotBottom == null ? 1e9 : plotBottom;
+    const opBase = pack.status === 'trigger' ? .95 : (pack.status === 'watch' ? .84 : .7);
+    svg.appendChild(svgEl('line', {
+      x1: vx(pack.start.i).toFixed(1), x2: vx(pack.end.i).toFixed(1),
+      y1: y(pack.start.price).toFixed(1), y2: y(pack.end.price).toFixed(1),
+      stroke: 'var(--accent)', 'stroke-width': '1.15',
+      'stroke-dasharray': '4 4', opacity: '.55',
+    }));
+    pack.points.forEach((pt) => {
+      svg.appendChild(svgEl('circle', {
+        cx: vx(pt.i).toFixed(1), cy: y(pt.price).toFixed(1),
+        r: '2.8', fill: 'var(--accent)', opacity: '.85',
+      }));
+      const t = svgEl('text', {
+        x: vx(pt.i).toFixed(1),
+        y: (y(pt.price) + (pt.lab === '100%' ? 12 : -6)).toFixed(1),
+        fill: 'var(--accent)',
+        'font-size': '10',
+        'font-weight': '700',
+        'font-family': 'var(--font)',
+        'text-anchor': 'middle',
+        stroke: 'var(--bg)',
+        'stroke-width': '3',
+        'paint-order': 'stroke',
+        opacity: '.88',
+      });
+      t.textContent = pt.lab;
+      svg.appendChild(t);
+    });
+    const usedY = [];
+    pack.levels.forEach((lv) => {
+      const isGold = fibNear(lv.r, 0.618);
+      const isHit = pack.hit && fibNear(pack.hit.r, lv.r);
+      const stroke = isGold ? gold : color;
+      const width = isGold || isHit ? '1.55' : ((fibNear(lv.r, 0) || fibNear(lv.r, 1)) ? '1.25' : '1');
+      const op = String((lv.ext ? 0.42 : (isGold || isHit ? opBase : (lv.key ? opBase * 0.78 : opBase * 0.5))).toFixed(2));
+      const dash = lv.ext ? '2 4' : ((fibNear(lv.r, 0) || fibNear(lv.r, 1) || isGold) ? '' : '5 4');
+      const yy = y(lv.price);
+      if (yy < top - 8 || yy > bot + 8) return;
+      if (isHit && pack.radius) {
+        const top = y(lv.price + pack.radius);
+        const bot = y(lv.price - pack.radius);
+        svg.appendChild(svgEl('rect', {
+          x: Math.min(x1, x2).toFixed(1),
+          y: Math.min(top, bot).toFixed(1),
+          width: Math.max(2, Math.abs(x2 - x1)).toFixed(1),
+          height: Math.max(1.5, Math.abs(bot - top)).toFixed(1),
+          fill: stroke,
+          opacity: pack.status === 'trigger' ? '.12' : '.08',
+        }));
+      }
+      svg.appendChild(svgEl('line', {
+        x1: x1.toFixed(1), x2: x2.toFixed(1),
+        y1: yy.toFixed(1), y2: yy.toFixed(1),
+        stroke: stroke, 'stroke-width': width,
+        'stroke-dasharray': dash, opacity: op,
+      }));
+      if (!(lv.key || fibNear(lv.r, 0) || fibNear(lv.r, 1) || isGold || lv.ext)) return;
+      let labY = yy - 4;
+      usedY.forEach((uy) => {
+        if (Math.abs(uy - labY) < 11) labY = uy - 11;
+      });
+      usedY.push(labY);
+      const lab = svgEl('text', {
+        x: (x2 - 4).toFixed(1),
+        y: labY.toFixed(1),
+        fill: stroke,
+        'font-size': isGold || isHit ? '10.5' : '10',
+        'font-weight': isGold || isHit ? '750' : '650',
+        'font-family': 'var(--font)',
+        'text-anchor': 'end',
+        stroke: 'var(--bg)',
+        'stroke-width': '3',
+        'paint-order': 'stroke',
+        opacity: op,
+      });
+      lab.textContent = (isGold ? '斐波那契 ' : '') + fibRatioText(lv.r) + ' ' + px(lv.price);
+      svg.appendChild(lab);
+    });
   }
 
   function lineD(arr, x, y) {
@@ -7162,6 +8998,8 @@ try {
     const bounce = (state.ind.bounce && pbPack) ? pbPack.bounce : null;
     const pull = (state.ind.pull && pbPack) ? pbPack.pull : null;
     const trap = state.ind.trap ? getTrap(klines) : null;
+    const hkld = state.ind.hkld ? getHkld(klines) : null;
+    const fib = state.ind.fib ? getFib(klines) : null;
     let lo = Infinity, hi = -Infinity;
     vis.forEach((k) => { lo = Math.min(lo, k.l); hi = Math.max(hi, k.h); });
     if (state.ind.ema9) {
@@ -7236,6 +9074,31 @@ try {
       }
       pbExpand(trap);
     }
+    if (hkld && hkld.ok) {
+      if (hkld.longPx != null) {
+        lo = Math.min(lo, hkld.longLo != null ? hkld.longLo : hkld.longPx, hkld.longPx);
+        hi = Math.max(hi, hkld.longHi != null ? hkld.longHi : hkld.longPx, hkld.longPx);
+      }
+      if (hkld.shortPx != null) {
+        lo = Math.min(lo, hkld.shortLo != null ? hkld.shortLo : hkld.shortPx, hkld.shortPx);
+        hi = Math.max(hi, hkld.shortHi != null ? hkld.shortHi : hkld.shortPx, hkld.shortPx);
+      }
+      if (hkld.breakLevel != null) {
+        lo = Math.min(lo, hkld.breakLevel);
+        hi = Math.max(hi, hkld.breakLevel);
+      }
+    }
+    if (fib && fib.ok) {
+      const lastVis = vis[vis.length - 1] && vis[vis.length - 1].c;
+      const span = (hi - lo) || 1;
+      const cap = Math.max((fib.atrv || 0) * 2.2, span * 0.22);
+      (fib.levels || []).forEach((lv) => {
+        if (lv.ext) return;
+        if (lastVis == null || Math.abs(lv.price - lastVis) > cap) return;
+        lo = Math.min(lo, lv.price);
+        hi = Math.max(hi, lv.price);
+      });
+    }
     const padY = (hi - lo) * 0.08 || 1;
     lo -= padY; hi += padY;
     const plotW = W - PAD.l - PAD.r;
@@ -7288,32 +9151,44 @@ try {
       function polyB(arr, stroke, dash, id, width, op) {
         const d = lineD(arr, x, y);
         if (!d) return;
-        const path = svgEl('path', {
+        const attrs = {
           d: d, fill: 'none', stroke: stroke, 'stroke-width': width || '1.2',
-          'stroke-dasharray': dash || '', 'stroke-linejoin': 'round',
-          opacity: op || '1',
-        });
+          'stroke-linejoin': 'round', 'stroke-linecap': 'round',
+        };
+        if (dash) attrs['stroke-dasharray'] = dash;
+        if (op) attrs.opacity = op;
+        const path = svgEl('path', attrs);
         path.setAttribute('id', id);
         svg.appendChild(path);
       }
-      if (state.ind.boll2) {
-        const area = bollAreaD(view.bollUp, view.bollDn, x, y);
-        if (area) {
-          const p = svgEl('path', { d: area, fill: 'var(--accent-soft)', stroke: 'none', opacity: '.9' });
-          p.setAttribute('id', 'ck-boll-fill');
-          svg.appendChild(p);
-        }
-        polyB(view.bollUp, 'var(--boll)', '3 3', 'ck-boll-up', '1.2');
-        polyB(view.bollDn, 'var(--boll)', '3 3', 'ck-boll-dn', '1.2');
+      function fillB(up, dn, color, id) {
+        if (!color) return;
+        const area = bollAreaD(up, dn, x, y);
+        if (!area) return;
+        const p = svgEl('path', {
+          d: area, fill: color, stroke: 'none', 'fill-opacity': '.16',
+        });
+        p.setAttribute('id', id);
+        svg.appendChild(p);
       }
-      polyB(view.bollMid, 'var(--boll)', '', 'ck-boll-mid', '1.4');
-      if (state.ind.boll1) {
-        polyB(view.boll1Up, 'var(--boll)', '2 2', 'ck-boll1-up', '1', '.7');
-        polyB(view.boll1Dn, 'var(--boll)', '2 2', 'ck-boll1-dn', '1', '.7');
-      }
+      const s1 = bollSt(1);
+      const s2 = bollSt(2);
+      const s3 = bollSt(3);
+      if (state.ind.boll3 && s3.fillOn) fillB(view.boll3Up, view.boll3Dn, s3.fill, 'ck-boll3-fill');
+      if (state.ind.boll2 && s2.fillOn) fillB(view.bollUp, view.bollDn, s2.fill, 'ck-boll-fill');
+      if (state.ind.boll1 && s1.fillOn) fillB(view.boll1Up, view.boll1Dn, s1.fill, 'ck-boll1-fill');
       if (state.ind.boll3) {
-        polyB(view.boll3Up, 'var(--ink-2)', '5 4', 'ck-boll3-up', '1', '.55');
-        polyB(view.boll3Dn, 'var(--ink-2)', '5 4', 'ck-boll3-dn', '1', '.55');
+        polyB(view.boll3Up, s3.line, bollDash(3), 'ck-boll3-up', '1');
+        polyB(view.boll3Dn, s3.line, bollDash(3), 'ck-boll3-dn', '1');
+      }
+      if (state.ind.boll2) {
+        polyB(view.bollUp, s2.line, bollDash(2), 'ck-boll-up', '1.2');
+        polyB(view.bollDn, s2.line, bollDash(2), 'ck-boll-dn', '1.2');
+      }
+      polyB(view.bollMid, s2.line, '', 'ck-boll-mid', '1.4');
+      if (state.ind.boll1) {
+        polyB(view.boll1Up, s1.line, bollDash(1), 'ck-boll1-up', '1');
+        polyB(view.boll1Dn, s1.line, bollDash(1), 'ck-boll1-dn', '1');
       }
     }
 
@@ -7716,6 +9591,12 @@ try {
     } else if (trapLab) {
       trapLab.textContent = state.ind.trap ? '诱空诱多未现' : '';
     }
+    if (hkld && hkld.ok) {
+      drawHkld(svg, hkld, vx, y, W - PAD.r);
+    }
+    if (fib && fib.ok) {
+      drawFib(svg, fib, vx, y, W - PAD.r, PAD.t, plotBottom);
+    }
 
     if (state.ind.macd) {
       const pack = getBollMacd(klines);
@@ -7805,6 +9686,12 @@ try {
       const lastD = view.bollDn[view.bollDn.length - 1];
       if (state.ind.boll2 && lastB != null && lastB > s.hi) return false;
       if (state.ind.boll2 && lastD != null && lastD < s.lo) return false;
+      if (state.ind.boll1) {
+        const u1 = view.boll1Up[view.boll1Up.length - 1];
+        const d1 = view.boll1Dn[view.boll1Dn.length - 1];
+        if (u1 != null && u1 > s.hi) return false;
+        if (d1 != null && d1 < s.lo) return false;
+      }
       if (state.ind.boll3) {
         const u3 = view.boll3Up[view.boll3Up.length - 1];
         const d3 = view.boll3Dn[view.boll3Dn.length - 1];
@@ -7850,16 +9737,20 @@ try {
       const pf = document.getElementById('ck-boll-fill');
       const p1u = document.getElementById('ck-boll1-up');
       const p1d = document.getElementById('ck-boll1-dn');
+      const pf1 = document.getElementById('ck-boll1-fill');
       const p3u = document.getElementById('ck-boll3-up');
       const p3d = document.getElementById('ck-boll3-dn');
+      const pf3 = document.getElementById('ck-boll3-fill');
       if (pu) pu.setAttribute('d', lineD(view.bollUp, x, y));
       if (pm) pm.setAttribute('d', lineD(view.bollMid, x, y));
       if (pd) pd.setAttribute('d', lineD(view.bollDn, x, y));
       if (pf) pf.setAttribute('d', bollAreaD(view.bollUp, view.bollDn, x, y));
       if (p1u) p1u.setAttribute('d', lineD(view.boll1Up, x, y));
       if (p1d) p1d.setAttribute('d', lineD(view.boll1Dn, x, y));
+      if (pf1) pf1.setAttribute('d', bollAreaD(view.boll1Up, view.boll1Dn, x, y));
       if (p3u) p3u.setAttribute('d', lineD(view.boll3Up, x, y));
       if (p3d) p3d.setAttribute('d', lineD(view.boll3Dn, x, y));
+      if (pf3) pf3.setAttribute('d', bollAreaD(view.boll3Up, view.boll3Dn, x, y));
     }
     if (state.ind.macd && macdPane) {
       const yM = (v) => paneY(macdPane, v);
@@ -8041,6 +9932,16 @@ try {
     if (state.ind.rsi && view.rsi && view.rsi[i] != null) {
       extra += '<br>RSI' + (state.rsiN || 14) + ' ' + view.rsi[i].toFixed(1);
     }
+    if (state.ind.hkld) {
+      const pack = getHkld(klines);
+      extra += '<br>' + (pack && pack.ok
+        ? ((pack.label || '高空低多') +
+          (pack.kind === 'break' && pack.breakLevel != null ? '  破位 ' + px(pack.breakLevel) : '') +
+          (pack.longPx != null ? '  低多 ' + px(pack.longPx) : '') +
+          (pack.shortPx != null ? '  高空 ' + px(pack.shortPx) : '') +
+          (pack.grav != null ? '  重心 ' + pack.grav.toFixed(1) : ''))
+        : (pack && pack.why ? pack.why : '高空低多样本不足'));
+    }
     if (state.ind.hs) {
       const pack = getHs(klines);
       const gi = i + i0;
@@ -8052,6 +9953,18 @@ try {
       const rad = pack.radius || 0;
       const hit = (pack.levels || []).find((lv) => k.h >= lv.price - rad && k.l <= lv.price + rad);
       extra += '<br>' + (hit ? srTitle(hit, k.c) : (pack.label || '支压未现'));
+    }
+    if (state.ind.fib) {
+      const pack = getFib(klines);
+      if (pack && pack.ok) {
+        const rad = pack.radius || 0;
+        const hit = (pack.levels || []).find((lv) => k.h >= lv.price - rad && k.l <= lv.price + rad);
+        extra += '<br>' + (hit
+          ? ('斐波那契 ' + fibRatioText(hit.r) + ' ' + px(hit.price))
+          : (pack.label || '斐波那契未现'));
+      } else {
+        extra += '<br>' + ((pack && pack.why) || '斐波那契未现');
+      }
     }
     if (state.ind.bounce || state.ind.pull) {
       const pack = getPb(klines);
@@ -8119,7 +10032,7 @@ try {
       const y = h - 2 - (v - lo) / (hi - lo) * (h - 4);
       return (i ? 'L' : 'M') + x.toFixed(1) + ',' + y.toFixed(1);
     }).join(' ');
-    return '<svg class="bw-spark" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none"><path d="' + d + '" fill="none" stroke="var(--boll)" stroke-width="1.4"/></svg>';
+    return '<svg class="bw-spark" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none"><path d="' + d + '" fill="none" stroke="' + bollSt(2).line + '" stroke-width="1.4"/></svg>';
   }
 
   function renderBollStatus(klines) {
@@ -8723,6 +10636,8 @@ try {
     state._pbKey = '';
     state._trapKey = '';
     state._stackKey = '';
+    state._hkldKey = '';
+    state._fibKey = '';
     const klines = barsForChart();
     drawChart(klines, state.ticker, state.hover);
     renderBollStatus(klines);
@@ -8734,6 +10649,9 @@ try {
     b.addEventListener('click', () => {
       const key = b.dataset.ind;
       state.ind[key] = !state.ind[key];
+      if (key === 'boll' && state.ind.boll && !state.ind.boll1 && !state.ind.boll2 && !state.ind.boll3) {
+        state.ind.boll2 = true;
+      }
       refreshAfterInd(key);
     });
   });
@@ -8742,6 +10660,7 @@ try {
     btnIndMore.addEventListener('click', (e) => {
       e.stopPropagation();
       closeFacMenu();
+      closeBollStyleMenu();
       toggleIndMenu();
     });
     btnIndMore.addEventListener('keydown', (e) => {
@@ -8790,11 +10709,14 @@ try {
     const t = e.target;
     if (!t || !t.closest || !t.closest('#indMore')) closeIndMenu();
     if (!t || !t.closest || !t.closest('#facMore')) closeFacMenu();
+    if (state._bollColorOpen) return;
+    if (!t || !t.closest || !t.closest('#bollStyleWrap')) closeBollStyleMenu();
   });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     closeIndMenu();
     closeFacMenu();
+    closeBollStyleMenu();
   });
   document.querySelectorAll('button[data-boll-n]').forEach((b) => {
     b.addEventListener('click', () => {
@@ -8803,6 +10725,7 @@ try {
       syncIndButtons();
       state.chartScale = null;
       state._bmKey = '';
+      state._hkldKey = '';
       const klines = barsForChart();
       drawChart(klines, state.ticker, state.hover);
       renderHeavy(klines);
@@ -8815,11 +10738,86 @@ try {
       syncIndButtons();
       state.chartScale = null;
       state._bmKey = '';
+      state._hkldKey = '';
       const klines = barsForChart();
       drawChart(klines, state.ticker, state.hover);
       renderHeavy(klines);
     });
   });
+  function onBollStyleChange() {
+    if (!state.bollStyle) state.bollStyle = defaultBollStyle();
+    saveInd();
+    syncBollStyleUi();
+    state.chartScale = null;
+    const klines = barsForChart();
+    drawChart(klines, state.ticker, state.hover);
+    renderBollStatus(klines);
+  }
+  document.querySelectorAll('[data-boll-track]').forEach((row) => {
+    const n = Number(row.dataset.bollTrack);
+    row.querySelectorAll('[data-boll-line]').forEach((b) => {
+      b.addEventListener('click', () => {
+        if (!state.bollStyle[n]) state.bollStyle[n] = defaultBollStyle()[n];
+        state.bollStyle[n].dash = b.dataset.bollLine === 'dash';
+        onBollStyleChange();
+      });
+    });
+    const lineInp = row.querySelector('input[data-boll-color="line"]');
+    const fillInp = row.querySelector('input[data-boll-color="fill"]');
+    if (lineInp) {
+      lineInp.addEventListener('input', () => {
+        const hex = parseHexColor(lineInp.value);
+        if (!hex) return;
+        if (!state.bollStyle[n]) state.bollStyle[n] = defaultBollStyle()[n];
+        state.bollStyle[n].line = hex;
+        onBollStyleChange();
+      });
+    }
+    if (fillInp) {
+      fillInp.addEventListener('input', () => {
+        const hex = parseHexColor(fillInp.value);
+        if (!hex) return;
+        if (!state.bollStyle[n]) state.bollStyle[n] = defaultBollStyle()[n];
+        state.bollStyle[n].fill = hex;
+        state.bollStyle[n].fillOn = true;
+        onBollStyleChange();
+      });
+    }
+    const tog = row.querySelector('[data-boll-fill-tog]');
+    if (tog) {
+      tog.addEventListener('click', () => {
+        if (!state.bollStyle[n]) state.bollStyle[n] = defaultBollStyle()[n];
+        state.bollStyle[n].fillOn = !state.bollStyle[n].fillOn;
+        onBollStyleChange();
+      });
+    }
+  });
+  const btnBollStyle = $('btnBollStyle');
+  if (btnBollStyle) {
+    btnBollStyle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeIndMenu();
+      closeFacMenu();
+      toggleBollStyleMenu();
+    });
+  }
+  const bollStylePanel = $('bollStylePanel');
+  if (bollStylePanel) {
+    bollStylePanel.addEventListener('click', (e) => e.stopPropagation());
+    bollStylePanel.querySelectorAll('input[type="color"]').forEach((inp) => {
+      inp.addEventListener('focus', () => { state._bollColorOpen = true; });
+      inp.addEventListener('blur', () => {
+        setTimeout(() => { state._bollColorOpen = false; }, 280);
+      });
+    });
+  }
+  const btnBollStyleReset = $('btnBollStyleReset');
+  if (btnBollStyleReset) {
+    btnBollStyleReset.addEventListener('click', (e) => {
+      e.stopPropagation();
+      resetBollStyle();
+    });
+  }
   document.querySelectorAll('button[data-rsi-n]').forEach((b) => {
     b.addEventListener('click', () => {
       state.rsiN = Number(b.dataset.rsiN);
@@ -8828,6 +10826,7 @@ try {
       buildFacMenu();
       syncFacButtons();
       state.chartScale = null;
+      state._hkldKey = '';
       const klines = barsForChart();
       drawChart(klines, state.ticker, state.hover);
       renderHeavy(klines);
@@ -9290,6 +11289,7 @@ try {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         closeIndMenu();
+        closeBollStyleMenu();
         toggleFacMenu();
       });
       btn.addEventListener('keydown', (e) => {
@@ -9361,12 +11361,15 @@ try {
     getTrap: (kl) => getTrap(kl || state.klines),
     getSmc: (kl) => getSmc(kl || state.klines),
     getStack: () => getStack(),
+    getHkld: (kl) => getHkld(kl || state.klines),
+    getFib: (kl) => getFib(kl || state.klines),
     judge: (kl) => judge(kl || state.klines, state.ticker, state.mtf),
     evalFastSetup: (bars, ticker, preview) => evalFastSetup(bars, ticker, preview),
     mtfLean: (kl) => mtfLean(kl),
     spreadTooWide: (spread, tpDist) => spreadTooWide(spread, tpDist),
     openSignalView: () => openSignalView(),
     applyKlines: (klines, tf) => {
+      state.reqId += 1;
       state.paused = true;
       if (state.ws) {
         try { state.ws.onclose = null; state.ws.close(); } catch (e) {}
@@ -9374,6 +11377,7 @@ try {
       }
       state.wsOk = true;
       if (tf) state.tf = tf;
+      state.mtf = {};
       state.klines = klines;
       const last = klines && klines[klines.length - 1];
       if (last) {
@@ -9393,6 +11397,8 @@ try {
       state._smcKey = '';
       state._bmKey = '';
       state._stackKey = '';
+      state._hkldKey = '';
+      state._fibKey = '';
       state.viewCount = null;
       state.viewEnd = null;
       state.followLive = true;
@@ -9403,6 +11409,27 @@ try {
         trap: getTrap(used),
         smc: getSmc(used),
         stack: getStack(),
+        hkld: getHkld(used),
+        fib: getFib(used),
+        judge: judge(used, state.ticker, state.mtf),
+      };
+    },
+    applyHkld: (pack) => {
+      pack = pack || {};
+      const tf = pack.tf || '1m';
+      const klines = pack.klines || pack['1m'] || [];
+      window.__goldTest.applyKlines(klines, tf);
+      state.mtf = Object.assign({}, state.mtf, {
+        '1m': pack['1m'] || klines,
+        '5m': pack['5m'] || [],
+        '15m': pack['15m'] || [],
+        '1h': pack['1h'] || [],
+      });
+      state._hkldKey = '';
+      render();
+      const used = barsForChart();
+      return {
+        hkld: getHkld(used),
         judge: judge(used, state.ticker, state.mtf),
       };
     },
@@ -9428,6 +11455,26 @@ try {
     factorOn: (k) => factorOn(k),
     rsiSeries: (closes, period) => rsiSeries(closes, period),
     oscLayout: () => oscLayout(),
+    setInd: (k, on) => {
+      if (k === '*') {
+        IND_KEYS.forEach((key) => { state.ind[key] = !!on; });
+        if (on) {
+          state.ind.boll1 = false;
+          state.ind.boll2 = true;
+          state.ind.boll3 = false;
+        }
+        refreshAfterInd('rsi');
+        if (on) renderFastPanel();
+        return true;
+      }
+      if (!k || !(k in state.ind)) return false;
+      state.ind[k] = !!on;
+      if (k === 'boll' && state.ind.boll && !state.ind.boll1 && !state.ind.boll2 && !state.ind.boll3) {
+        state.ind.boll2 = true;
+      }
+      refreshAfterInd(k);
+      return !!state.ind[k];
+    },
     setFac: (k, on) => {
       if (!k || !(k in state.fac)) return false;
       state.fac[k] = !!on;
