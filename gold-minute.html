@@ -1489,6 +1489,11 @@ try {
     background: var(--accent);
     box-shadow: inset 0 2px 0 0 var(--down-soft), inset 0 -2px 0 0 var(--up-soft);
   }
+  .sw .hold-c {
+    width: 12px; height: 8px; border-radius: 0 0 2px 2px; background: none;
+    border: 1.6px solid var(--up);
+    border-top: 0;
+  }
   .sw .hl-c {
     height: 10px; width: 14px; border-radius: 0; background: none;
     border-top: 1.5px dashed var(--up);
@@ -1984,7 +1989,7 @@ try {
             <button type="button" data-ind="macd" aria-pressed="false" title="MACD 副图与布林复合信号">MACD</button>
             <button type="button" data-ind="fast" aria-pressed="false" title="开单信号：1分/5分定方向，10秒回踩或触轨收回后给出开多/开空">开单</button>
             <div class="ind-more" id="indMore">
-              <button type="button" class="ind-caret" id="btnIndMore" aria-expanded="false" aria-haspopup="menu" aria-controls="indMoreMenu" aria-pressed="false" title="更多指标：高低、反弹、回踩、诱空诱多、SMC多空、套轨、高空低多、斐波那契、EMA9、EMA21" aria-label="更多指标">
+              <button type="button" class="ind-caret" id="btnIndMore" aria-expanded="false" aria-haspopup="menu" aria-controls="indMoreMenu" aria-pressed="false" title="更多指标：高低、反弹、回踩、诱空诱多、企稳、SMC多空、套轨、高空低多、斐波那契、EMA9、EMA21" aria-label="更多指标">
                 <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
                   <path d="M2.4 4.2L6 8l3.6-3.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
@@ -1994,6 +1999,7 @@ try {
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="bounce" aria-pressed="false" aria-checked="false" title="超跌反弹 / 超涨回落：急跌或急涨后，收盘重新越过 EMA9 才算收回"><i class="bounce-c"></i>反弹</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="pull" aria-pressed="false" aria-checked="false" title="拉升回踩 / 杀跌反抽：先有一段冲动，再回踩均线，收盘确认才算踩住"><i class="pull-c"></i>回踩</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="trap" aria-pressed="false" aria-checked="false" title="诱空 / 诱多：影线扫过前低或前高后收回。等低/等高更有效，收盘确认才计票"><i class="trap-c"></i>诱空诱多</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="hold" aria-pressed="false" aria-checked="false" title="企稳 / 受阻：影线探到支撑、均线或前低后收盘守在这一侧才标企稳；碰到压力或前高后收盘仍在下方标受阻。正在走的那根只标预备。左侧因子仍单独勾选"><i class="hold-c"></i>企稳</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="smcSig" aria-pressed="false" aria-checked="false" title="SMC 做多/做空：转势或延续后回踩订单区块或缺口，收盘守住才标。正在走的那根不确认。只控制主图箭头，左侧 SMC 因子仍单独勾选"><i class="smcsig-c"></i>SMC多空</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="stack" aria-pressed="false" aria-checked="false" title="套轨：1小时定性、15分许可、5分与1分扳机。只输出顺势回中、套轨开口、宽轨收回。正在走的1分只预备。只控制主图菱形和套轨条，左侧套轨因子仍单独勾选"><i class="stack-c"></i>套轨</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="hkld" aria-pressed="false" aria-checked="false" title="高空低多：15 分钟定高低结构，5 分钟细化位置。震荡里在相对高位标空、相对低位标多。15 分钟还在中部时，本图近端高低不加票。收盘越过 15 分钟前高或跌破前低，按突破反转。影线收回仍按高空低多。只画位置，不是下单指令。左侧因子仍单独勾选"><i class="hkld-c"></i>高空低多</button>
@@ -2137,7 +2143,7 @@ try {
     <details class="foot">
       <summary>数据说明与免责声明</summary>
       <p>
-        数据都来自 Gate.io 公共接口，不经过本仓库的 MCP。黄金走 CFD / TradFi：REST <code>/api/v4/tradfi</code>，推送 <code>wss://fx-ws.gateio.ws/v4/ws/tradfi</code>。ETH、BTC 走 USDT 永续：REST <code>/api/v4/futures/usdt</code>，推送 <code>wss://fx-ws.gateio.ws/v4/ws/usdt</code>。1 分、5 分、15 分、1 小时、4 小时、1 日 K 线与报价走实时推送（约 250 毫秒），历史根用 REST 补齐。黄金 10 秒线接口有历史，但推送通道不更新，所以用报价按 10 秒归桶合成正在走的那根；永续 10 秒线推送通道会更新。黄金 K 线没有成交量，永续 K 线有量，主图仍按价格结构画，没有另开量能副图。BOLL 默认 20 周期、2 倍标准差，可改周期和倍数，并可叠加 1σ / 3σ。每条轨道可改实线或虚线、线条颜色和背景颜色。带宽是（上轨−下轨）/中轨，%B 是收盘在主轨里的相对位置。MACD 为 12/26/9，柱状图为 2×(DIF−DEA)。布林配 MACD 的复合信号只描述近端结构是否对齐，不是下单指令。套轨用固定的 1 分、5 分、15 分、1 小时布林分层：1 小时定性、15 分钟许可、5 分与 1 分给扳机，只输出顺势回中、套轨开口、宽轨收回；正在走的 1 分钟只预备。四层对打、1 小时走轨时下层反手收回、或 1 分仍在轨外延伸时不加方向票。高空低多优先用 15 分钟定结构高低、5 分钟细化位置：低多带和高空带来自 15 分钟 21/34 区间与布林，不再用本图近端三四美元的波幅。5 分钟重心、%B 或 RSI 回头才给方向票；15 分钟还在中部时，本图近端高低不加票。收盘越过 15 分钟前高或跌破前低，且不是已经贴轨走单边，则按突破反转。15 分钟或 5 分钟样本不足时才退回本图 21/34。连续贴着外轨且没有收回时只标顺势，不给方向票。黄金没有 A 股筹码函数，没有套用 WINNER。RSI 用 Wilder 平滑，默认 14，可改 6 或 9；副图固定 0–100，30/70 为超买超卖带，可与 MACD 叠放。主条仍只留 8 项，RSI 在主条，今日高低收到指标下拉。判断因子清单可单独勾选，RSI 因子的周期跟副图一致。SMC 只画近端结构突破、订单区块和未回补缺口。做多做空不在突破当根追价，要等转势或延续之后回踩订单区块或缺口，收盘守住才标信号；正在走的那根只观察。主图箭头由指标下拉的「SMC多空」单独开关，和结构图层分开；左侧 SMC 因子仍单独勾选。头肩用摆动高低点找左肩、头部、右肩，连接两个回落/反弹点作为颈线；右肩出现后仍只是形成中，收盘价穿过颈线才算完成，价格重新越过头部则视为失效。量度目标等于头部到颈线的高度，从破位处向外量一倍，只作结构参照。支撑压力用摆动高低点按约 0.4 倍 ATR 聚成水平位，触碰次数越多越有效；现价上方为压力、下方为支撑，收盘明显越过后角色互换。整数价位、昨收和今开（永续用 24 小时高低与参考开盘）若离现价不远也会并入。斐波那契用近端足够大的摆动自动画回撤：0、0.236、0.382、0.5、0.618、0.786、1，靠近延伸目标时再加上 1.272 / 1.618。0% 在冲动终点，100% 在起点。涨势回踩 0.5 / 0.618 / 0.786 后收盘收回才给多头票，跌势反抽对称；收盘穿过 100% 算原段失效。正在走的那根只观察。主条仍保持 8 项，斐波那契放在指标下拉。超跌反弹看急跌后收盘重新站上 EMA9，超涨回落相反；拉升回踩要先有一段冲动、再回踩均线并收盘确认，杀跌反抽相反。诱空是影线扫过前低（尤其是等低）后收盘回到该位上方，诱多是影线扫过前高（尤其是等高）后收盘回到该位下方；正在走的那根只标扫位，收盘收回才给方向票。判断因子由左侧栏标题旁的下拉单独勾选，和主图指标开关分开：可以只画不计入判断，也可以只判断不画。确认中的反弹/回踩/诱空诱多在对应因子启用时也算核心，避免和均线对打时硬判方向。近端 SMC 突破随后收回时，方向票交给诱空诱多，避免把假突破再计成真突破。RSI 超买超卖、轨外延伸、日内高低附近不加方向票。核心因子对打或只有外围凑票时，即使票数够也不报偏多偏空。这是结构对照，不预测涨跌，也不构成投资建议。开单信号用 1 分和 5 分定方向，10 秒回踩均线或触轨收回后给出开多/开空；正在走的那根只显示预备，收盘才开仓。纸面持仓大约 180 秒。止盈止损按 1 分钟波动放大；黄金仍用原先的美元距离上下限，永续按现价百分比夹紧。点差过大时暂停开单。模拟交易可同时记下多笔订单，按品种分开存在本机。开仓和平仓都按点击那一刻的最新价，盈亏按报价价差加减，不设止盈止损。快单触发后会把开仓价、平仓价和盈亏价差记入模拟订单。数据只留在本机，用来统计胜率，不会向交易所发单。盯盘时最新一根 K 线默认放在画面中间偏左，右侧留空。报价条下的时段只显示状态，不弹提醒：未开盘、开盘中、午盘中、夜盘中。未开盘给出下一盘北京时间区间，开盘中给出剩余时间。沪金按上期所黄金期货 09:00–10:15 / 10:30–11:30 / 13:30–15:00 与夜盘 21:00–02:30；上金所按 09:00–15:30 与夜盘 20:00–02:30；日本按 JPX 日盘 08:45–15:45、夜盘 17:00–06:00（东京时间）；欧亚盘为 COMEX Globex 美东 18:00 至次日 17:00；欧盘为伦敦 08:00–16:30；美盘为 COMEX 场内 08:20–13:30 美东；美股为纽交所、纳斯达克常规交易 09:30–16:00 美东。中国节假日按 2026 年上期所、上金所公告；美股节假日按纽交所、纳斯达克 2026 年日历，感恩节次日和圣诞前夕 13:00 美东提早收盘；COMEX、英、日节假日未计入。请先运行 <code>node serve.js</code>，再打开本页服务地址。
+        数据都来自 Gate.io 公共接口，不经过本仓库的 MCP。黄金走 CFD / TradFi：REST <code>/api/v4/tradfi</code>，推送 <code>wss://fx-ws.gateio.ws/v4/ws/tradfi</code>。ETH、BTC 走 USDT 永续：REST <code>/api/v4/futures/usdt</code>，推送 <code>wss://fx-ws.gateio.ws/v4/ws/usdt</code>。1 分、5 分、15 分、1 小时、4 小时、1 日 K 线与报价走实时推送（约 250 毫秒），历史根用 REST 补齐。黄金 10 秒线接口有历史，但推送通道不更新，所以用报价按 10 秒归桶合成正在走的那根；永续 10 秒线推送通道会更新。黄金 K 线没有成交量，永续 K 线有量，主图仍按价格结构画，没有另开量能副图。BOLL 默认 20 周期、2 倍标准差，可改周期和倍数，并可叠加 1σ / 3σ。每条轨道可改实线或虚线、线条颜色和背景颜色。带宽是（上轨−下轨）/中轨，%B 是收盘在主轨里的相对位置。MACD 为 12/26/9，柱状图为 2×(DIF−DEA)。布林配 MACD 的复合信号只描述近端结构是否对齐，不是下单指令。套轨用固定的 1 分、5 分、15 分、1 小时布林分层：1 小时定性、15 分钟许可、5 分与 1 分给扳机，只输出顺势回中、套轨开口、宽轨收回；正在走的 1 分钟只预备。四层对打、1 小时走轨时下层反手收回、或 1 分仍在轨外延伸时不加方向票。高空低多优先用 15 分钟定结构高低、5 分钟细化位置：低多带和高空带来自 15 分钟 21/34 区间与布林，不再用本图近端三四美元的波幅。5 分钟重心、%B 或 RSI 回头才给方向票；15 分钟还在中部时，本图近端高低不加票。收盘越过 15 分钟前高或跌破前低，且不是已经贴轨走单边，则按突破反转。15 分钟或 5 分钟样本不足时才退回本图 21/34。连续贴着外轨且没有收回时只标顺势，不给方向票。黄金没有 A 股筹码函数，没有套用 WINNER。RSI 用 Wilder 平滑，默认 14，可改 6 或 9；副图固定 0–100，30/70 为超买超卖带，可与 MACD 叠放。主条仍只留 8 项，RSI 在主条，今日高低收到指标下拉。判断因子清单可单独勾选，RSI 因子的周期跟副图一致。SMC 只画近端结构突破、订单区块和未回补缺口。做多做空不在突破当根追价，要等转势或延续之后回踩订单区块或缺口，收盘守住才标信号；正在走的那根只观察。主图箭头由指标下拉的「SMC多空」单独开关，和结构图层分开；左侧 SMC 因子仍单独勾选。头肩用摆动高低点找左肩、头部、右肩，连接两个回落/反弹点作为颈线；右肩出现后仍只是形成中，收盘价穿过颈线才算完成，价格重新越过头部则视为失效。量度目标等于头部到颈线的高度，从破位处向外量一倍，只作结构参照。支撑压力用摆动高低点按约 0.4 倍 ATR 聚成水平位，触碰次数越多越有效；现价上方为压力、下方为支撑，收盘明显越过后角色互换。整数价位、昨收和今开（永续用 24 小时高低与参考开盘）若离现价不远也会并入。斐波那契用近端足够大的摆动自动画回撤：0、0.236、0.382、0.5、0.618、0.786、1，靠近延伸目标时再加上 1.272 / 1.618。0% 在冲动终点，100% 在起点。涨势回踩 0.5 / 0.618 / 0.786 后收盘收回才给多头票，跌势反抽对称；收盘穿过 100% 算原段失效。正在走的那根只观察。主条仍保持 8 项，斐波那契放在指标下拉。超跌反弹看急跌后收盘重新站上 EMA9，超涨回落相反；拉升回踩要先有一段冲动、再回踩均线并收盘确认，杀跌反抽相反。诱空是影线扫过前低（尤其是等低）后收盘回到该位上方，诱多是影线扫过前高（尤其是等高）后收盘回到该位下方；正在走的那根只标扫位，收盘收回才给方向票。企稳看影线探到支撑、均线或前低后收盘守在这一侧，受阻对称；正在走的那根只标预备。开关在指标下拉，主条仍保持 8 项。和反弹、回踩、诱空诱多、支压或斐波那契同向时不重复计票。判断因子由左侧栏标题旁的下拉单独勾选，和主图指标开关分开：可以只画不计入判断，也可以只判断不画。确认中的反弹/回踩/诱空诱多/企稳在对应因子启用时也算核心，避免和均线对打时硬判方向。近端 SMC 突破随后收回时，方向票交给诱空诱多，避免把假突破再计成真突破。RSI 超买超卖、轨外延伸、日内高低附近不加方向票。核心因子对打或只有外围凑票时，即使票数够也不报偏多偏空。这是结构对照，不预测涨跌，也不构成投资建议。开单信号用 1 分和 5 分定方向，10 秒回踩均线或触轨收回后给出开多/开空；正在走的那根只显示预备，收盘才开仓。纸面持仓大约 180 秒。止盈止损按 1 分钟波动放大；黄金仍用原先的美元距离上下限，永续按现价百分比夹紧。点差过大时暂停开单。模拟交易可同时记下多笔订单，按品种分开存在本机。开仓和平仓都按点击那一刻的最新价，盈亏按报价价差加减，不设止盈止损。快单触发后会把开仓价、平仓价和盈亏价差记入模拟订单。数据只留在本机，用来统计胜率，不会向交易所发单。盯盘时最新一根 K 线默认放在画面中间偏左，右侧留空。报价条下的时段只显示状态，不弹提醒：未开盘、开盘中、午盘中、夜盘中。未开盘给出下一盘北京时间区间，开盘中给出剩余时间。沪金按上期所黄金期货 09:00–10:15 / 10:30–11:30 / 13:30–15:00 与夜盘 21:00–02:30；上金所按 09:00–15:30 与夜盘 20:00–02:30；日本按 JPX 日盘 08:45–15:45、夜盘 17:00–06:00（东京时间）；欧亚盘为 COMEX Globex 美东 18:00 至次日 17:00；欧盘为伦敦 08:00–16:30；美盘为 COMEX 场内 08:20–13:30 美东；美股为纽交所、纳斯达克常规交易 09:30–16:00 美东。中国节假日按 2026 年上期所、上金所公告；美股节假日按纽交所、纳斯达克 2026 年日历，感恩节次日和圣诞前夕 13:00 美东提早收盘；COMEX、英、日节假日未计入。请先运行 <code>node serve.js</code>，再打开本页服务地址。
       </p>
     </details>
   </div>
@@ -2286,7 +2292,7 @@ try {
     drag: null,
     pointer: null,
     ind: {
-      ema9: false, ema21: false, boll: false, smc: false, smcSig: false, stack: false, hkld: false, fib: false, hs: false, sr: false, bounce: false, pull: false, trap: false, last: false, hl: false,
+      ema9: false, ema21: false, boll: false, smc: false, smcSig: false, stack: false, hkld: false, fib: false, hs: false, sr: false, bounce: false, pull: false, trap: false, hold: false, last: false, hl: false,
       boll1: false, boll2: false, boll3: false, macd: false, rsi: false, fast: false,
     },
     bollN: 20,
@@ -2315,6 +2321,8 @@ try {
     _pb: null,
     _trapKey: '',
     _trap: null,
+    _holdKey: '',
+    _hold: null,
     fast: [],
     fastTrade: null,
     fastLast: null,
@@ -2350,6 +2358,7 @@ try {
     { k: 'hs', lab: '头肩形态' },
     { k: 'sr', lab: '支撑压力' },
     { k: 'trap', lab: '诱空诱多' },
+    { k: 'hold', lab: '企稳' },
     { k: 'bounce', lab: '反弹' },
     { k: 'pull', lab: '回踩' },
     { k: 'day', lab: '日内位置' },
@@ -2433,12 +2442,13 @@ try {
     return Math.max(loaded, Math.min(fitAll, MAX_VIEW_SLOTS, loaded * 3));
   }
   const IND_KEY = 'gold-minute-ind';
-  const IND_KEYS = ['ema9', 'ema21', 'boll', 'smc', 'smcSig', 'stack', 'hkld', 'fib', 'hs', 'sr', 'bounce', 'pull', 'trap', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'fast'];
+  const IND_KEYS = ['ema9', 'ema21', 'boll', 'smc', 'smcSig', 'stack', 'hkld', 'fib', 'hs', 'sr', 'bounce', 'pull', 'trap', 'hold', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'fast'];
   const IND_MORE = [
     { k: 'hl', lab: '高低' },
     { k: 'bounce', lab: '反弹' },
     { k: 'pull', lab: '回踩' },
     { k: 'trap', lab: '诱空诱多' },
+    { k: 'hold', lab: '企稳' },
     { k: 'smcSig', lab: 'SMC多空' },
     { k: 'stack', lab: '套轨' },
     { k: 'hkld', lab: '高空低多' },
@@ -6744,6 +6754,147 @@ try {
     return pack;
   }
 
+  function holdEmpty() {
+    return {
+      ok: false, vote: 0, dir: 0, status: 'none',
+      label: '企稳未现', title: '企稳未现',
+      why: '近端没有影线探到支撑、均线或前低后收盘守住的结构。',
+      marks: [], live: null, radius: 0, atrv: 0,
+    };
+  }
+
+  function holdPush(found, mark, radius) {
+    if (!mark) return;
+    for (let i = 0; i < found.length; i++) {
+      const cur = found[i];
+      if (cur.i === mark.i && cur.dir === mark.dir) {
+        if (mark.score > cur.score) found[i] = mark;
+        return;
+      }
+      if (cur.dir === mark.dir && Math.abs(cur.price - mark.price) <= radius && Math.abs(cur.i - mark.i) <= 2) {
+        if (mark.score > cur.score) found[i] = mark;
+        return;
+      }
+    }
+    found.push(mark);
+  }
+
+  function computeHold(klines) {
+    const empty = holdEmpty();
+    if (!klines || klines.length < 16) return empty;
+    const n = klines.length;
+    const end = pbClosedEnd(klines);
+    if (end < 12) return empty;
+    const last = klines[n - 1];
+    const atrv = atr(klines, 14) || atrFallback(last.c);
+    const radius = Math.max(atrv * 0.38, last.c * 0.00022);
+    const thresh = Math.max(atrv * 0.22, last.c * 0.00015);
+    const closes = klines.map((x) => x.c);
+    const e9 = ema(closes, 9);
+    const sr = getSr(klines);
+    const levels = (sr && sr.levels) ? sr.levels.slice() : [];
+    const recency = Math.max(10, Math.min(24, Math.round(n * 0.18)));
+    const found = [];
+
+    function tryLevel(i, level, dir, src, srcScore, closed) {
+      if (level == null || !Number.isFinite(level)) return;
+      const bar = klines[i];
+      if (!fibHoldBar(bar, level, dir, radius, thresh)) return;
+      const depth = dir > 0 ? (level - bar.l) : (bar.h - level);
+      if (src === 'ema' && depth < thresh * 0.45) return;
+      if (src === 'ema' && i > 0) {
+        const prevC = klines[i - 1].c;
+        if (dir > 0 && prevC > level + thresh) return;
+        if (dir < 0 && prevC < level - thresh) return;
+      }
+      const age = end - Math.min(i, end);
+      const score = srcScore + (closed ? 2.2 : 0.6) + (1 - Math.min(1, age / recency)) + Math.min(1.2, depth / Math.max(atrv, 1e-6));
+      const status = closed ? 'trigger' : 'watch';
+      const lab = dir > 0
+        ? (status === 'trigger' ? '企稳' : '企稳?')
+        : (status === 'trigger' ? '受阻' : '受阻?');
+      const srcName = src === 'ema' ? 'EMA9' : (src === 'sr' ? '支压' : '前低前高');
+      const why = (dir > 0 ? '下影线探到' : '上影线探到') + srcName + ' ' + px(level) +
+        (status === 'trigger'
+          ? (' 后收盘守在这一侧。只描述结构，不是下单指令。')
+          : ('，还要等这根收盘确认。'));
+      holdPush(found, {
+        i: i, dir: dir, price: level, src: src, status: status, lab: lab, why: why,
+        score: score, tap: dir > 0 ? bar.l : bar.h, close: bar.c,
+      }, radius);
+    }
+
+    function scanBar(i, closed) {
+      levels.forEach((lv) => {
+        if (!lv || lv.price == null) return;
+        if (lv.breakI != null && lv.breakI < i) return;
+        const dir = klines[i].c >= lv.price ? 1 : -1;
+        const srcScore = 2.4 + Math.min(1.2, (lv.touches || 0) * 0.25);
+        tryLevel(i, lv.price, dir, 'sr', srcScore, closed);
+      });
+      const ma = e9[i];
+      if (ma != null) {
+        const dir = klines[i].c >= ma ? 1 : -1;
+        tryLevel(i, ma, dir, 'ema', 1.35, closed);
+      }
+    }
+    const scanFrom = Math.max(8, end - recency);
+    for (let i = scanFrom; i <= end; i++) scanBar(i, true);
+    if (n - 1 > end) scanBar(n - 1, false);
+
+    if (!found.length) return empty;
+    found.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return b.i - a.i;
+    });
+    const marks = [];
+    found.forEach((mk) => {
+      if (marks.length >= 3) return;
+      const clash = marks.some((x) => x.i === mk.i || (x.dir === mk.dir && Math.abs(x.price - mk.price) <= radius));
+      if (clash) return;
+      marks.push(mk);
+    });
+    marks.sort((a, b) => a.i - b.i);
+    const live = marks.filter((m) => m.status === 'watch').slice(-1)[0] || null;
+    const confirmed = marks.filter((m) => m.status === 'trigger');
+    const top = confirmed.length ? confirmed[confirmed.length - 1] : live;
+    let vote = 0;
+    let why = empty.why;
+    let status = 'none';
+    let dir = 0;
+    if (top && top.status === 'trigger' && end - top.i <= 8) {
+      vote = top.dir;
+      why = top.why;
+      status = 'trigger';
+      dir = top.dir;
+    } else if (live) {
+      why = live.why;
+      status = 'watch';
+      dir = live.dir;
+    } else if (top) {
+      why = top.why + '这段已经过去，不再作为新的方向票。';
+      status = 'done';
+      dir = top.dir;
+    }
+    const title = top ? top.lab : empty.title;
+    return {
+      ok: true, vote: vote, dir: dir, status: status,
+      label: title, title: title, why: why,
+      marks: marks, live: live, radius: radius, atrv: atrv,
+    };
+  }
+
+  function getHold(klines) {
+    const last = klines && klines[klines.length - 1];
+    const t = state.ticker;
+    const key = [klines && klines.length, last && last.t, last && last.c, last && last.h, last && last.l, state.tf, t && t.prev, t && t.open].join(':');
+    if (state._holdKey === key && state._hold) return state._hold;
+    const pack = computeHold(klines);
+    state._holdKey = key;
+    state._hold = pack;
+    return pack;
+  }
+
   function applyPriceToFast(price, nowMs) {
     if (price == null) return false;
     nowMs = nowMs || Date.now();
@@ -8405,6 +8556,32 @@ try {
       const fibCore = fv !== 0 && (fib.kind === 'fail' || (fib.kind === 'hold' && fib.hitR != null && fib.hitR >= 0.5));
       factors.push({ name: fib.name || '斐波那契', vote: fv, why: fw, core: fibCore });
     }
+    if (factorOn('hold')) {
+      const hd = getHold(klines);
+      let hv = hd.vote;
+      let hw = hd.why;
+      if (hv && srPack && srPack.vote === hv && /影线/.test(srPack.why || '')) {
+        hv = 0;
+        hw = hw + '。同一段已记入支撑压力收回，企稳方向票不计。';
+      } else if (hv && trapPack && trapPack.vote === hv) {
+        hv = 0;
+        hw = hw + '。同一段已记入诱空诱多，企稳方向票不计。';
+      } else if (hv && bouncePack && bouncePack.vote === hv) {
+        hv = 0;
+        hw = hw + '。同一段已记入反弹，企稳方向票不计。';
+      } else if (hv && pullPack && pullPack.vote === hv) {
+        hv = 0;
+        hw = hw + '。同一段已记入回踩，企稳方向票不计。';
+      } else if (hv && factorOn('fib')) {
+        const fibHold = getFib(klines);
+        if (fibHold && fibHold.vote === hv && fibHold.kind === 'hold') {
+          hv = 0;
+          hw = hw + '。同一段已记入斐波那契收回，企稳方向票不计。';
+        }
+      }
+      const holdName = hd.dir < 0 ? '受阻' : '企稳';
+      factors.push({ name: holdName, vote: hv, why: hw, core: hv !== 0 });
+    }
 
     const day = dayVote(ticker, last);
     if (factorOn('day') && day) factors.push({ name: mkt().hasSession ? '日内位置' : '24小时位置', vote: day.vote, why: day.why });
@@ -8602,6 +8779,75 @@ try {
       'stroke-dasharray': dash, opacity: op,
     }));
     drawPbSetup(svg, pack, vx, y);
+  }
+
+  function drawHold(svg, pack, vx, y, xRight, bodyW) {
+    if (!pack || !pack.ok || !pack.marks || !pack.marks.length) return;
+    const half = Math.max(3.2, (bodyW || 6) * 0.55);
+    pack.marks.forEach((mk) => {
+      const color = mk.dir > 0 ? 'var(--up)' : 'var(--down)';
+      const op = mk.status === 'trigger' ? '.95' : (mk.status === 'watch' ? '.78' : '.42');
+      const dash = mk.status === 'trigger' ? '' : '5 4';
+      const xc = vx(mk.i);
+      const yy = y(mk.price);
+      const tapY = y(mk.tap);
+      const x1 = vx(Math.max(0, mk.i - 4));
+      const x2 = xRight != null ? xRight : vx(mk.i + 2);
+      const bandTop = Math.min(yy, tapY);
+      const bandBot = Math.max(yy, tapY);
+      svg.appendChild(svgEl('rect', {
+        x: (xc - half).toFixed(1),
+        y: bandTop.toFixed(1),
+        width: (half * 2).toFixed(1),
+        height: Math.max(2, bandBot - bandTop).toFixed(1),
+        fill: color,
+        opacity: mk.status === 'trigger' ? '.18' : '.10',
+      }));
+      svg.appendChild(svgEl('line', {
+        x1: x1.toFixed(1), x2: x2.toFixed(1),
+        y1: yy.toFixed(1), y2: yy.toFixed(1),
+        stroke: color, 'stroke-width': mk.status === 'trigger' ? '1.55' : '1.2',
+        'stroke-dasharray': dash, opacity: op,
+      }));
+      const cupW = Math.max(5.5, half + 1.2);
+      const cupH = 7;
+      const cupY = mk.dir > 0 ? (Math.max(yy, tapY) + 1.5) : (Math.min(yy, tapY) - 1.5);
+      const d = mk.dir > 0
+        ? ('M' + (xc - cupW).toFixed(1) + ',' + cupY.toFixed(1) +
+          ' L' + (xc - cupW).toFixed(1) + ',' + (cupY + cupH).toFixed(1) +
+          ' L' + (xc + cupW).toFixed(1) + ',' + (cupY + cupH).toFixed(1) +
+          ' L' + (xc + cupW).toFixed(1) + ',' + cupY.toFixed(1))
+        : ('M' + (xc - cupW).toFixed(1) + ',' + cupY.toFixed(1) +
+          ' L' + (xc - cupW).toFixed(1) + ',' + (cupY - cupH).toFixed(1) +
+          ' L' + (xc + cupW).toFixed(1) + ',' + (cupY - cupH).toFixed(1) +
+          ' L' + (xc + cupW).toFixed(1) + ',' + cupY.toFixed(1));
+      const gMk = svgEl('g', {});
+      const tip = svgEl('title', {});
+      tip.textContent = mk.why || mk.lab;
+      gMk.appendChild(tip);
+      gMk.appendChild(svgEl('path', {
+        d: d, fill: 'none', stroke: color,
+        'stroke-width': mk.status === 'trigger' ? '1.7' : '1.35',
+        'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+        'stroke-dasharray': dash, opacity: op,
+      }));
+      const lab = svgEl('text', {
+        x: xc.toFixed(1),
+        y: (mk.dir > 0 ? cupY + cupH + 11 : cupY - cupH - 4).toFixed(1),
+        fill: color,
+        'font-size': '10.5',
+        'font-weight': '750',
+        'font-family': 'var(--font)',
+        'text-anchor': 'middle',
+        stroke: 'var(--bg)',
+        'stroke-width': '3',
+        'paint-order': 'stroke',
+        opacity: op,
+      });
+      lab.textContent = mk.lab;
+      gMk.appendChild(lab);
+      svg.appendChild(gMk);
+    });
   }
 
   function drawHkld(svg, pack, vx, y, xRight) {
@@ -8998,6 +9244,7 @@ try {
     const bounce = (state.ind.bounce && pbPack) ? pbPack.bounce : null;
     const pull = (state.ind.pull && pbPack) ? pbPack.pull : null;
     const trap = state.ind.trap ? getTrap(klines) : null;
+    const hold = state.ind.hold ? getHold(klines) : null;
     const hkld = state.ind.hkld ? getHkld(klines) : null;
     const fib = state.ind.fib ? getFib(klines) : null;
     let lo = Infinity, hi = -Infinity;
@@ -9073,6 +9320,14 @@ try {
         hi = Math.max(hi, trap.sweepPx);
       }
       pbExpand(trap);
+    }
+    if (hold && hold.ok) {
+      (hold.marks || []).forEach((mk) => {
+        if (mk.price != null) {
+          lo = Math.min(lo, mk.price, mk.tap != null ? mk.tap : mk.price);
+          hi = Math.max(hi, mk.price, mk.tap != null ? mk.tap : mk.price);
+        }
+      });
     }
     if (hkld && hkld.ok) {
       if (hkld.longPx != null) {
@@ -9591,6 +9846,9 @@ try {
     } else if (trapLab) {
       trapLab.textContent = state.ind.trap ? '诱空诱多未现' : '';
     }
+    if (hold && hold.ok) {
+      drawHold(svg, hold, vx, y, W - PAD.r, bodyW);
+    }
     if (hkld && hkld.ok) {
       drawHkld(svg, hkld, vx, y, W - PAD.r);
     }
@@ -9977,6 +10235,12 @@ try {
       }
       if (state.ind.bounce && pbHit(pack.bounce)) extra += '<br>' + pack.bounce.title;
       if (state.ind.pull && pbHit(pack.pull)) extra += '<br>' + pack.pull.title;
+    }
+    if (state.ind.hold) {
+      const pack = getHold(klines);
+      const gi = i + i0;
+      const hit = (pack.marks || []).find((mk) => mk.i === gi);
+      extra += '<br>' + (hit ? (hit.lab + ' ' + px(hit.price)) : (pack.label || '企稳未现'));
     }
     const html =
       fmtBarTime(k.t) + '<br>开 ' + px(k.o) + '  高 ' + px(k.h) +
@@ -10574,6 +10838,7 @@ try {
     state._smcKey = '';
     state._pbKey = '';
     state._trapKey = '';
+    state._holdKey = '';
     state.simOrders = [];
     state.simLastClose = null;
     state.hover = -1;
@@ -10635,6 +10900,7 @@ try {
     state._smcKey = '';
     state._pbKey = '';
     state._trapKey = '';
+    state._holdKey = '';
     state._stackKey = '';
     state._hkldKey = '';
     state._fibKey = '';
@@ -11359,6 +11625,8 @@ try {
     parseKlines: (raw) => parseKlines(raw),
     parseStreamName: (name) => parseStreamName(name),
     getTrap: (kl) => getTrap(kl || state.klines),
+    getHold: (kl) => getHold(kl || state.klines),
+    getSr: (kl) => getSr(kl || state.klines),
     getSmc: (kl) => getSmc(kl || state.klines),
     getStack: () => getStack(),
     getHkld: (kl) => getHkld(kl || state.klines),
@@ -11391,6 +11659,7 @@ try {
         });
       }
       state._trapKey = '';
+      state._holdKey = '';
       state._pbKey = '';
       state._srKey = '';
       state._hsKey = '';
@@ -11407,6 +11676,7 @@ try {
       const used = barsForChart();
       return {
         trap: getTrap(used),
+        hold: getHold(used),
         smc: getSmc(used),
         stack: getStack(),
         hkld: getHkld(used),
