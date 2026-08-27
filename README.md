@@ -10,7 +10,7 @@
 
 ### 2026-08-27
 
-模拟交易弹窗支持自动开单开关、止盈止损和持仓冷却参数，并可根据当前页面已加载的全部K线判断多空方向。详见[发布说明](docs/releases/release-notes.md)。
+按优化清单落地纸面成交口径、高空低多前视修复、分族加权判断、头肩/SMC 噪声门槛、BOLL 支压拆分，并新增 `tests/` 验证套件（`node tests/run-all.mjs`）。模拟交易弹窗仍支持自动开单开关、止盈止损和持仓冷却参数。详见[发布说明](docs/releases/release-notes.md)与[优化清单](docs/optimization-backlog.md)。
 
 ![黄金分钟台桌面，1 分钟 180 根](memory/_bars-180.png)
 
@@ -39,12 +39,42 @@ node serve.js
 
 | 路径 | 作用 |
 | --- | --- |
-| `gold-minute.html` | 分钟台页面：K 线、指标、左侧判断、纸面模拟 |
+| `gold-minute.html` | 页面骨架：DOM 结构，引用 `src/style.css` 与 `src/main.js` |
+| `src/` | 页面源码，按层拆开的原生 ES 模块，无构建步骤 |
 | `serve.js` | 本地静态服务，并转发 TradFi / 永续 REST 与 WebSocket |
 | `server.js` | Gate.io CFD 公共行情 MCP，走标准输入输出，给其它工具查询用 |
-| `memory/*.png` | README 引用的界面截图。日记 Markdown 与校验脚本不入库 |
+| `tests/` | 指标数学、随机漫步基准、样本外种子对照与基线回归；根目录执行 `node tests/run-all.mjs` |
+| `docs/optimization-backlog.md` | 2026-08-27 审查清单与落地状态 |
+| `memory/*.png` | README 引用的界面截图。日记 Markdown 与临时校验脚本不入库 |
 
 页面行情不经过 `server.js`。MCP 是另一条查询通道。
+
+### 源码结构
+
+`src/` 分层组织，依赖自上而下：
+
+| 目录 | 职责 | 能否脱离浏览器运行 |
+| --- | --- | --- |
+| `src/state.js` | 全局状态、品种定义、尺寸常量 | 能 |
+| `src/core/` | 数学指标、格式化、K 线时间、交易时段 | 能 |
+| `src/indicators/` | BOLL、SMC、头肩、支压、斐波那契、企稳、回踩、诱空诱多、高空低多、套轨 | 能 |
+| `src/judge/` | 因子分族、各因子投票、`judge` 聚合 | 能 |
+| `src/trade/` | 快单信号、纸面成交、模拟订单 | 否（牵连渲染） |
+| `src/net/` `src/view/` `src/ui/` | REST/WS、绘图、交互绑定 | 否 |
+| `src/main.js` | 事件绑定与启动序列，挂 `window.__goldTest` | 否 |
+
+前四层可以直接 `import` 进 Node 做单元测试，`tests/` 就是这么用的。`trade/` 及以下会间接引入 DOM，只能经浏览器测。
+
+`src/view/` 与 `src/trade/` 之间存在循环引用——业务逻辑直接调渲染函数是原有设计，拆分时按原样保留。ES 模块对函数声明的循环引用是安全的。
+
+### 改动源码后怎么验证
+
+```bash
+node tests/run-all.mjs                  # 数学口径 + 噪声基准 + 样本外对照
+WITH_BROWSER=1 node tests/run-all.mjs   # 追加基线回归（需要本机 Chrome）
+```
+
+`tests/_baseline/snapshot.json` 锁定了 33 个场景下全部 `compute*` 与 `judge` 的输出。确实要改变行为时，用 `node tests/_baseline/record.mjs` 重录并 review 差异。基线走 `window.__goldTest`，与内部结构无关，重构时不必改动。Chrome 路径可用 `CHROME_PATH` 覆盖。
 
 ## 分钟台能做什么
 
@@ -72,7 +102,7 @@ node serve.js
 | BOLL | 默认 20 周期、2 倍标准差。可叠加 1σ / 主轨 / 3σ，可改周期、倍数、实线或虚线、线条颜色和背景 |
 | SMC | 近端结构突破、订单区块、未回补缺口。做多做空箭头由「SMC多空」单独开关 |
 | 头肩 | 摆动点找左肩、头、右肩和颈线。收盘穿过颈线才算完成 |
-| 支压 | 摆动点按约 0.4 倍 ATR 聚成水平位。收盘越过后支撑压力角色互换 |
+| 支压 | 摆动点、整数位、今开和昨收按 ATR 容差聚类；BOLL20 上下轨与中轨作动态区域参照，不并入静态位触碰打分；最多显示 5 条支撑和 5 条压力，收盘有效越过后角色互换 |
 | RSI | Wilder 平滑，默认 14，可改 6 或 9。70 / 30 是超买超卖带，超买超卖不加方向票 |
 | MACD | 12 / 26 / 9。可与布林组成复合信号，只描述近端结构是否对齐 |
 | 开单 | 1 分和 5 分定方向，10 秒回踩或触轨收回后给出开多或开空。正在走的那根只预备，收盘才记纸面仓 |
