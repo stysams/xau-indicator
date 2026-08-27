@@ -20,7 +20,7 @@ import { evalFastSetup, loadFast, refresh10sTail, spreadTooWide, stepFastTrade }
 import { bindSimUi, loadSim, renderSimLiveBtn, simLastPrice, tickSimTrade } from './trade/sim.js';
 import { bindBiasPane } from './ui/bias-pane.js';
 import { applyColor, endDrag, switchMarket, syncMarketChrome, zoomAt } from './ui/chrome.js';
-import { bindFacMenu, buildFacMenu, closeFacMenu, loadFac, refreshAfterFac, syncFacButtons } from './ui/factor-menu.js';
+import { bindFacDrag, bindFacMenu, buildFacMenu, closeFacMenu, loadFac, refreshAfterFac, syncFacButtons } from './ui/factor-menu.js';
 import { bindFastFloat, loadFastPos } from './ui/fast-float.js';
 import { IND_KEYS, applyBollCssVars, closeBollStyleMenu, closeIndMenu, defaultBollStyle, indMenuItems, loadInd, onBollStyleChange, parseHexColor, refreshAfterInd, resetBollStyle, saveInd, setIndMenu, syncIndButtons, toggleBollStyleMenu, toggleIndMenu } from './ui/indicator-menu.js';
 import { bindSessRail, tickSess } from './ui/session-rail.js';
@@ -374,6 +374,7 @@ bindSimUi();
 
 bindBiasPane();
 bindFacMenu();
+bindFacDrag();
 bindSessRail();
 bindFastFloat();
 

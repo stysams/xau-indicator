@@ -6,6 +6,8 @@ import { closeBollStyleMenu, closeIndMenu } from './indicator-menu.js';
 import { wrap } from '../view/chart.js';
 import { renderHeavy } from '../view/panels.js';
 
+export const FAC_ORDER_KEY = 'gold-minute-fac-order';
+
 export function loadFac() {
   try {
     const raw = JSON.parse(localStorage.getItem(FAC_KEY) || 'null');
@@ -14,6 +16,79 @@ export function loadFac() {
       if (typeof raw[x.k] === 'boolean') state.fac[x.k] = raw[x.k];
     });
   } catch (e) { /* 沿用默认 */ }
+  loadFacOrder();
+}
+
+export function loadFacOrder() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(FAC_ORDER_KEY) || 'null');
+    if (Array.isArray(raw)) {
+      const valid = raw.filter((id) => FAC_ITEMS.some((x) => x.k === id));
+      if (valid.length) state.facOrder = valid;
+    }
+  } catch (e) { /* 用默认顺序 */ }
+}
+
+export function saveFacOrder() {
+  try {
+    if (state.facOrder && state.facOrder.length) localStorage.setItem(FAC_ORDER_KEY, JSON.stringify(state.facOrder));
+    else localStorage.removeItem(FAC_ORDER_KEY);
+  } catch (e) {}
+}
+
+export function readFacOrderFromDom() {
+  const list = $('factors');
+  if (!list) return;
+  const ids = [];
+  list.querySelectorAll('.factor').forEach((el) => {
+    const id = el && el.getAttribute('data-fac-id');
+    if (id) ids.push(id);
+  });
+  if (!ids.length) return;
+  state.facOrder = ids;
+  saveFacOrder();
+}
+
+export function bindFacDrag() {
+  const list = $('factors');
+  if (!list) return;
+  let src = null;
+  list.addEventListener('dragstart', (e) => {
+    const row = e.target && e.target.closest ? e.target.closest('.factor') : null;
+    if (!row || !list.contains(row)) return;
+    src = row;
+    state._facDrag = true;
+    list.classList.add('is-dragging');
+    row.classList.add('is-dragging');
+    try {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', row.getAttribute('data-fac-id') || '');
+    } catch (err) {}
+  });
+  list.addEventListener('dragover', (e) => {
+    if (!src) return;
+    e.preventDefault();
+    const row = e.target && e.target.closest ? e.target.closest('.factor') : null;
+    list.querySelectorAll('.factor.is-drag-over').forEach((el) => el.classList.remove('is-drag-over'));
+    if (!row || row === src) return;
+    const r = row.getBoundingClientRect();
+    if (e.clientY < r.top + r.height / 2) {
+      if (row.previousElementSibling !== src) list.insertBefore(src, row);
+    } else {
+      if (row.nextElementSibling !== src) list.insertBefore(src, row.nextElementSibling);
+    }
+    row.classList.add('is-drag-over');
+  });
+  const end = () => {
+    if (!src) return;
+    state._facDrag = false;
+    list.classList.remove('is-dragging');
+    list.querySelectorAll('.factor.is-dragging, .factor.is-drag-over').forEach((el) => el.classList.remove('is-dragging', 'is-drag-over'));
+    readFacOrderFromDom();
+    src = null;
+  };
+  list.addEventListener('dragend', end);
+  list.addEventListener('drop', (e) => e.preventDefault());
 }
 
 export function saveFac() {

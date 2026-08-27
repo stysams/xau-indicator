@@ -143,6 +143,8 @@ export const state = {
   biasCollapsed: false,
   biasDrag: null,
   fac: {},
+  facOrder: null,
+  _facDrag: false,
 };
 
 export const MIN_BARS = 12;

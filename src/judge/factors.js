@@ -11,6 +11,7 @@ export const FAC_ITEMS = [
   { k: 'sig', lab: '布林配 MACD' },
   { k: 'stack', lab: '套轨' },
   { k: 'hkld', lab: '高空低多' },
+  { k: 'range', lab: '震荡位置' },
   { k: 'fib', lab: '斐波那契' },
   { k: 'smc', lab: 'SMC' },
   { k: 'hs', lab: '头肩形态' },
@@ -28,7 +29,7 @@ export const FAC_FAMILY = {
   mtf: 'mom', stack: 'mom', hkld: 'mom',
   swing: 'struct', smc: 'struct', hs: 'struct',
   sr: 'touch', trap: 'touch', bounce: 'touch', pull: 'touch', fib: 'touch', hold: 'touch',
-  day: 'pos',
+  day: 'pos', range: 'pos',
 };
 
 export const FAC_FAMILY_W = { mom: 1.0, struct: 1.2, touch: 1.0, pos: 0.6 };
@@ -55,6 +56,15 @@ export function factorFamilyId(f) {
   if (/支撑|压力|诱|企稳|受阻|反弹|回踩|斐波那契|超涨|超跌|杀跌|拉升/.test(n)) return 'touch';
   if (/日内|24小时/.test(n)) return 'pos';
   return 'mom';
+}
+
+export function sortFactorsByOrder(factors, order) {
+  const list = factors.slice();
+  if (order && order.length) {
+    const ord = new Map(order.map((id, i) => [id, i]));
+    list.sort((a, b) => (ord.has(a.id) ? ord.get(a.id) : 1e9) - (ord.has(b.id) ? ord.get(b.id) : 1e9));
+  }
+  return list;
 }
 
 export function pickFamilyVote(members) {

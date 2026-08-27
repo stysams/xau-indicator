@@ -689,7 +689,13 @@ body.is-float-drag, body.is-float-drag * {
   align-items: start;
   padding: 6px 0;
   border-top: 1px solid var(--border);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
 }
+.factor.is-dragging { opacity: .45; }
+.factor.is-drag-over { background: var(--accent-soft); }
+#factors.is-dragging .factor .vote, #factors.is-dragging .factor .why { pointer-events: none; }
 .factor .name { font-size: 11px; font-weight: 700; color: var(--ink-1); }
 .factor .name .core {
   display: block; font-size: 9px; font-weight: 650;

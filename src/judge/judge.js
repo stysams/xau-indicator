@@ -1,4 +1,5 @@
 import { klinesClosed } from '../core/bars.js';
+import { px } from '../core/format.js';
 import { rsi, swings } from '../core/math.js';
 import { bollMacdSignal, getBollMacd } from '../indicators/boll.js';
 import { getFib } from '../indicators/fib.js';
@@ -105,6 +106,53 @@ export function judge(klines, ticker, mtf) {
     }
     if (!voteSrc.length) { hv = 0; hw = '正在走的 K 只观察，收盘才确认。'; }
     factors.push({ id: 'hkld', name: hkldPack.name || '高空低多', vote: hv, why: hw, core: false });
+  }
+  if (factorOn('range')) {
+    const rk = hkldPack || getHkld(voteSrc.length ? voteSrc : klines);
+    let rv = 0;
+    let rw = '震荡位置：箱体高低还没算出来，暂时没有位置提示。';
+    if (rk && rk.ok) {
+      const boxW = rk.shortPx != null && rk.longPx != null ? rk.shortPx - rk.longPx : 0;
+      const mid = boxW > 0 ? rk.longPx + boxW / 2 : null;
+      const longWarm = rk.longStatus === 'trigger' || rk.longStatus === 'watch';
+      const shortWarm = rk.shortStatus === 'trigger' || rk.shortStatus === 'watch';
+      const nearLong = mid != null && last <= mid;
+      const nearShort = mid != null && last >= mid;
+      // 去重只看高空低多因子实际计的票（已经过 SMC/套轨等 steal 后），避免和它重复计
+      const hkldFactor = factors.find((f) => f.id === 'hkld');
+      const hkldVote = hkldFactor ? hkldFactor.vote : 0;
+      if (rk.kind === 'break') {
+        rw = '箱体已' + (rk.dir > 0 ? '上破' : '下破') + (rk.breakLevel != null ? ' ' + px(rk.breakLevel) : '') + '，停止回归，按突破方向切换。';
+      } else if (longWarm && shortWarm) {
+        rw = '低多带与高空带同时挂起，结构对打，点位不定，先观望。';
+      } else if (longWarm && nearLong) {
+        if (hkldVote > 0) rw = '现价在低多带（低多位置 ' + px(rk.longPx) + '），方向票已计入高空低多，位置不重复计。';
+        else if (hkldVote < 0) rw = '现价在低多带（低多位置 ' + px(rk.longPx) + '），但高空低多当前给做空，位置与结构对打，先不站多。';
+        else {
+          rv = rk.longStatus === 'trigger' ? 1 : 0;
+          rw = '现价贴近箱体下沿（低多位置 ' + px(rk.longPx) + '），进入低多带，' + (rk.longStatus === 'trigger' ? '只在此处等 1 分钟收回信号做多回归，止损放下沿外侧 1 ATR，目标中轴。' : '还差收回迹象，等 1 分钟收盘站上均线再动手。');
+        }
+      } else if (shortWarm && nearShort) {
+        if (hkldVote < 0) rw = '现价在高空带（高空位置 ' + px(rk.shortPx) + '），方向票已计入高空低多，位置不重复计。';
+        else if (hkldVote > 0) rw = '现价在高空带（高空位置 ' + px(rk.shortPx) + '），但高空低多当前给做多，位置与结构对打，先不站空。';
+        else {
+          rv = rk.shortStatus === 'trigger' ? -1 : 0;
+          rw = '现价贴近箱体上沿（高空位置 ' + px(rk.shortPx) + '），进入高空带，' + (rk.shortStatus === 'trigger' ? '只在此处等 1 分钟收回信号做空回归，止损放上沿外侧 1 ATR，目标中轴。' : '还差收回迹象，等 1 分钟收盘跌破均线再动手。');
+        }
+      } else if (longWarm) {
+        rw = '现价已离开低多带（低多位置 ' + px(rk.longPx) + '），点位不合格，等回落到边缘再按信号开枪。';
+      } else if (shortWarm) {
+        rw = '现价已离开高空带（高空位置 ' + px(rk.shortPx) + '），点位不合格，等回升到边缘再按信号开枪。';
+      } else if (boxW > 0) {
+        const pos = (last - rk.longPx) / boxW;
+        if (pos <= 0.15 || pos >= 0.85) {
+          rw = '现价贴近箱体' + (pos <= 0.15 ? '下沿' : '上沿') + '附近（箱体 ' + px(rk.longPx) + '–' + px(rk.shortPx) + '），但还差收回迹象，等 1 分钟收盘确认再动手。';
+        } else {
+          rw = '现价在箱体中轴附近（箱体 ' + px(rk.longPx) + '–' + px(rk.shortPx) + '），点位不合格，不开单，等回到边缘带再按信号开枪。';
+        }
+      }
+    }
+    factors.push({ id: 'range', name: '震荡位置', vote: rv, why: rw, core: false });
   }
   let trapPack = factorOn('trap') ? getTrap(voteSrc.length ? voteSrc : klines) : null;
   if (factorOn('smc')) {

@@ -3,6 +3,7 @@ import { bwRankWindow } from '../core/math.js';
 import { analyzeBoll, bollMacdSignal } from '../indicators/boll.js';
 import { STACK_GLOSS, STACK_TFS, getStack, stackKindText, stackSame, stackTrend } from '../indicators/stack.js';
 import { judge } from '../judge/judge.js';
+import { sortFactorsByOrder } from '../judge/factors.js';
 import { mtfBias } from '../judge/votes.js';
 import { barsForChart } from '../net/rest.js';
 import { $, isMarketOpen, mkt, state } from '../state.js';
@@ -208,12 +209,19 @@ export function renderHeavy(klines) {
     auditEl.hidden = !j.audit;
     auditEl.className = 'audit' + (j.auditWarn ? ' warn' : '');
   }
-  $('factors').innerHTML = j.factors.map((f) => {
-    const cls = f.vote > 0 ? 'bull' : f.vote < 0 ? 'bear' : 'mid';
-    const lab = f.vote > 0 ? '多' : f.vote < 0 ? '空' : '中';
-    const core = f.core ? '<span class="core">核心</span>' : '';
-    return '<div class="factor"><div class="name">' + f.name + core + '</div><div class="vote ' + cls + '">' + lab + '</div><div class="why">' + f.why + '</div></div>';
-  }).join('');
+  const facList = sortFactorsByOrder(j.factors, state.facOrder);
+  // 拖拽重排期间跳过重建，避免报价推送打断用户正在拖的行
+  if (!state._facDrag) {
+    $('factors').innerHTML = facList.map((f) => {
+      const cls = f.vote > 0 ? 'bull' : f.vote < 0 ? 'bear' : 'mid';
+      const lab = f.vote > 0 ? '多' : f.vote < 0 ? '空' : '中';
+      const core = f.core ? '<span class="core">核心</span>' : '';
+      return '<div class="factor" draggable="true" data-fac-id="' + f.id + '" title="按住拖动可调整因子顺序">' +
+        '<div class="name">' + f.name + core + '</div>' +
+        '<div class="vote ' + cls + '">' + lab + '</div>' +
+        '<div class="why">' + f.why + '</div></div>';
+    }).join('');
+  }
 
   const tfs = [
     { id: '1m', name: '1分' },
