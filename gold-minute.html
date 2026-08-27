@@ -221,6 +221,7 @@ try {
   }
   @media (hover: hover) {
     .btn:hover { background: var(--panel-2); }
+    .sim-switch:hover { border-color: color-mix(in srgb, var(--accent) 38%, var(--border)); }
     .btn.primary:hover { background: color-mix(in srgb, var(--accent) 88%, var(--ink-1)); }
     .bias-toggle:hover { background: var(--panel-2); color: var(--ink-1); }
     .fac-caret[aria-expanded="true"]:hover,
@@ -1549,7 +1550,8 @@ try {
     background: var(--bg);
     color: var(--ink-1);
     padding: 0;
-    width: min(392px, 100vw);
+    width: min(460px, 100vw);
+    max-width: none;
     height: 100dvh;
     max-height: 100dvh;
     margin: 0;
@@ -1626,6 +1628,117 @@ try {
     gap: 8px;
     margin-bottom: 10px;
   }
+  .sim-block {
+    padding: 10px 0;
+    border-top: 1px solid var(--border);
+  }
+  .sim-block:first-of-type { border-top: 0; padding-top: 0; }
+  .sim-block-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .sim-block-title {
+    font-size: 12px;
+    font-weight: 750;
+    color: var(--ink-2);
+  }
+  .sim-switch {
+    width: 42px;
+    min-width: 42px;
+    height: 24px;
+    min-height: 24px;
+    padding: 2px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--panel-2);
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    transition: background-color .15s ease, border-color .15s ease;
+  }
+  .sim-switch::before {
+    content: "";
+    display: block;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--bg);
+    box-shadow: 0 1px 3px rgba(19, 61, 74, .2);
+    transition: transform .15s ease;
+  }
+  .sim-switch[aria-checked="true"] {
+    background: var(--accent);
+    border-color: transparent;
+  }
+  .sim-switch[aria-checked="true"]::before { transform: translateX(18px); }
+  .sim-switch:focus-visible { outline: 3px solid var(--accent-soft); }
+  .sim-switch:active::before { transform: scale(.92); }
+  .sim-switch[aria-checked="true"]:active::before { transform: translateX(18px) scale(.92); }
+  .sim-switch[disabled] { opacity: .5; cursor: not-allowed; }
+  .sim-auto-state {
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+  .sim-auto-state.is-on { color: var(--accent); font-weight: 700; }
+  .sim-params {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .sim-field {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 72px;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 7px 8px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .sim-field label {
+    min-width: 0;
+    font-size: 11px;
+    color: var(--ink-2);
+  }
+  .sim-field input {
+    width: 100%;
+    min-width: 0;
+    height: 30px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--bg);
+    color: var(--ink-1);
+    padding: 0 7px;
+    font: 700 11px/1 var(--font-mono);
+    text-align: right;
+    outline: 2px solid transparent;
+    outline-offset: 1px;
+  }
+  .sim-field input:focus-visible { outline: 3px solid var(--accent-soft); }
+  .sim-field input:invalid { border-color: var(--red); }
+  .sim-judge {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px;
+    align-items: stretch;
+  }
+  .sim-judge-result {
+    min-height: 44px;
+    padding: 7px 9px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel-2);
+    color: var(--ink-3);
+    font-size: 11px;
+    line-height: 1.35;
+  }
+  .sim-judge-result b { color: var(--ink-1); font-size: 13px; }
+  .sim-judge-result.bull b { color: var(--up); }
+  .sim-judge-result.bear b { color: var(--down); }
+  .sim-judge-result.err { color: var(--red); }
   .sim-now {
     display: flex;
     align-items: baseline;
@@ -1748,6 +1861,9 @@ try {
     .fast-head .btn { min-height: 44px; }
     .boll-style-track { min-height: 44px; padding: 4px 10px; }
     .boll-swatch-face { width: 32px; height: 32px; }
+    .sim-switch { width: 50px; min-width: 50px; height: 44px; min-height: 44px; padding: 12px 4px; }
+    .sim-switch[aria-checked="true"]::before { transform: translateX(24px); }
+    .sim-switch[aria-checked="true"]:active::before { transform: translateX(24px) scale(.92); }
   }
   @media (max-width: 1280px) {
     .quote-bar { grid-template-columns: minmax(0, 1fr) minmax(200px, 28%) minmax(0, 1fr); }
@@ -1824,7 +1940,7 @@ try {
     .qb-price .val { font-size: 16px; }
     .factor { grid-template-columns: 72px 28px minmax(0, 1fr); }
     .sim-dlg {
-      width: 100vw;
+      width: 100%;
       border-radius: 0;
       border-left: 0;
     }
@@ -1839,6 +1955,8 @@ try {
   }
   @media (max-width: 414px) {
     .qb-price { flex-basis: 58%; }
+    .sim-params { grid-template-columns: minmax(0, 1fr); }
+    .sim-judge { grid-template-columns: minmax(0, 1fr); }
   }
   @media (max-height: 720px) and (min-width: 769px) {
     .brand p { display: none; }
@@ -2185,19 +2303,53 @@ try {
             <span class="lab">现价</span>
             <b class="num px" id="simNowPx">--</b>
           </div>
-          <div class="sim-row">
-            <div class="seg" role="group" aria-label="开仓方向">
-              <button type="button" data-sim-dir="1" aria-pressed="true">做多</button>
-              <button type="button" data-sim-dir="-1" aria-pressed="false">做空</button>
+          <section class="sim-block" aria-labelledby="simAutoTitle">
+            <div class="sim-block-head">
+              <div>
+                <h3 class="sim-block-title" id="simAutoTitle">自动开单</h3>
+                <p class="sim-auto-state" id="simAutoState">已关闭，只显示开单信号</p>
+              </div>
+              <button type="button" class="sim-switch" id="simAutoSwitch" role="switch" aria-checked="false" aria-label="自动开单"></button>
             </div>
-          </div>
+            <div class="sim-params">
+              <div class="sim-field">
+                <label for="simTpAtr">止盈 ATR 倍数</label>
+                <input id="simTpAtr" data-sim-param="tpAtr" type="number" min="0.5" max="3" step="0.1" inputmode="decimal">
+              </div>
+              <div class="sim-field">
+                <label for="simSlAtr">止损 ATR 倍数</label>
+                <input id="simSlAtr" data-sim-param="slAtr" type="number" min="0.5" max="3" step="0.1" inputmode="decimal">
+              </div>
+              <div class="sim-field">
+                <label for="simHoldSec">最长持仓（秒）</label>
+                <input id="simHoldSec" data-sim-param="holdSec" type="number" min="30" max="900" step="30" inputmode="numeric">
+              </div>
+              <div class="sim-field">
+                <label for="simCoolSec">开单冷却（秒）</label>
+                <input id="simCoolSec" data-sim-param="coolSec" type="number" min="0" max="300" step="5" inputmode="numeric">
+              </div>
+            </div>
+          </section>
+          <section class="sim-block" aria-labelledby="simDirTitle">
+            <div class="sim-block-head">
+              <h3 class="sim-block-title" id="simDirTitle">开仓方向</h3>
+              <div class="seg" role="group" aria-label="开仓方向">
+                <button type="button" data-sim-dir="1" aria-pressed="true">做多</button>
+                <button type="button" data-sim-dir="-1" aria-pressed="false">做空</button>
+              </div>
+            </div>
+            <div class="sim-judge">
+              <button type="button" class="btn" id="btnSimJudge">判断多空</button>
+              <div class="sim-judge-result" id="simJudgeResult" role="status">读取当前页面全部已加载K线后给出方向</div>
+            </div>
+          </section>
           <div class="sim-actions">
             <button type="button" class="btn primary" id="btnSimOpen">开仓</button>
             <button type="button" class="btn" id="btnSimCloseAll">全部平仓</button>
             <button type="button" class="btn" id="btnSimClear">清空已平</button>
           </div>
           <p class="sim-msg" id="simMsg" role="status"></p>
-          <p class="sim-note">手动开平仓按点击那一刻的最新价。开单信号触发后也会记进来，记下开仓价、平仓价和盈亏价差。盈亏是美元价差：多单用平仓价减开仓价，空单用开仓价减平仓价。</p>
+          <p class="sim-note">自动开单使用现有的1分、5分方向与10秒收盘信号，参数只影响后续新单。判断多空读取当前页面全部已加载K线。手动开平仓按点击那一刻的最新价，数据只保存在本机。</p>
         </div>
         <div class="sim-hist">
           <div class="hist-head">
@@ -2216,8 +2368,7 @@ try {
   const W = 960, H = 400;
   const PAD = { l: 10, r: 68, t: 14, b: 26 };
   const FAST_LIMIT = 180;
-  const FAST_HOLD_MS = 180000;
-  const FAST_COOL_MS = 20000;
+  const SIM_AUTO_DEFAULTS = { tpAtr: 1.2, slAtr: 0.95, holdSec: 180, coolSec: 20 };
   const LIVE_ANCHOR = 0.38;
   const SIM_HIST_MAX = 200;
   const MKT_KEY = 'gold-minute-mkt';
@@ -2338,6 +2489,9 @@ try {
     simDir: 1,
     simOrders: [],
     simLastClose: null,
+    simAuto: false,
+    simAutoParams: Object.assign({}, SIM_AUTO_DEFAULTS),
+    simJudge: null,
     biasW: null,
     biasCollapsed: false,
     biasDrag: null,
@@ -2723,6 +2877,31 @@ try {
   function simClosedOrders() {
     return (state.simOrders || []).filter((o) => o.status === 'closed');
   }
+  function clampSimParam(key, value) {
+    const rules = {
+      tpAtr: [0.5, 3, SIM_AUTO_DEFAULTS.tpAtr],
+      slAtr: [0.5, 3, SIM_AUTO_DEFAULTS.slAtr],
+      holdSec: [30, 900, SIM_AUTO_DEFAULTS.holdSec],
+      coolSec: [0, 300, SIM_AUTO_DEFAULTS.coolSec],
+    };
+    const rule = rules[key];
+    if (!rule) return null;
+    const n = Number(value);
+    const safe = Number.isFinite(n) ? n : rule[2];
+    const v = Math.min(rule[1], Math.max(rule[0], safe));
+    return key === 'holdSec' || key === 'coolSec' ? Math.round(v) : Math.round(v * 100) / 100;
+  }
+  function normalizeSimAutoParams(raw) {
+    const src = raw && typeof raw === 'object' ? raw : {};
+    return {
+      tpAtr: clampSimParam('tpAtr', src.tpAtr),
+      slAtr: clampSimParam('slAtr', src.slAtr),
+      holdSec: clampSimParam('holdSec', src.holdSec),
+      coolSec: clampSimParam('coolSec', src.coolSec),
+    };
+  }
+  function fastHoldMs() { return (state.simAutoParams.holdSec || SIM_AUTO_DEFAULTS.holdSec) * 1000; }
+  function fastCoolMs() { return (state.simAutoParams.coolSec != null ? state.simAutoParams.coolSec : SIM_AUTO_DEFAULTS.coolSec) * 1000; }
   function normalizeSimOrder(raw, fallbackStatus) {
     if (!raw || typeof raw.entry !== 'number') return null;
     const dir = raw.dir === -1 ? -1 : 1;
@@ -2751,12 +2930,21 @@ try {
     state.simOrders = open.concat(closed);
   }
   function loadSim() {
+    state.simDir = 1;
+    state.simOrders = [];
+    state.simLastClose = null;
+    state.simAuto = false;
+    state.simAutoParams = Object.assign({}, SIM_AUTO_DEFAULTS);
+    state.simJudge = null;
     try {
       let stored = localStorage.getItem(simKey());
       if (!stored && mkt().id === 'xau') stored = localStorage.getItem('gold-minute-sim');
       const raw = JSON.parse(stored || 'null');
       if (!raw || typeof raw !== 'object') return;
       if (raw.dir === 1 || raw.dir === -1) state.simDir = raw.dir;
+      if (typeof raw.auto === 'boolean') state.simAuto = raw.auto;
+      if (state.simAuto) state.ind.fast = true;
+      state.simAutoParams = normalizeSimAutoParams(raw.autoParams);
       const orders = [];
       if (Array.isArray(raw.orders) && raw.orders.length) {
         raw.orders.forEach((item) => {
@@ -2782,6 +2970,8 @@ try {
       trimSimOrders();
       localStorage.setItem(simKey(), JSON.stringify({
         dir: state.simDir,
+        auto: state.simAuto,
+        autoParams: state.simAutoParams,
         orders: state.simOrders,
       }));
     } catch (e) {}
@@ -7209,8 +7399,9 @@ try {
     const wick = Math.abs(entry - extreme);
     const spec = mkt().fast;
     const bounds = fastBounds(entry);
-    let tpDist = clampFastDist(spec.tpAtr * atr1, bounds.tpMin, bounds.tpMax);
-    let slDist = clampFastDist(Math.max(spec.slAtr * atr1, wick * 1.8), bounds.slMin, bounds.slMax);
+    const auto = state.simAutoParams || SIM_AUTO_DEFAULTS;
+    let tpDist = clampFastDist(auto.tpAtr * atr1, bounds.tpMin, bounds.tpMax);
+    let slDist = clampFastDist(Math.max(auto.slAtr * atr1, wick * 1.8), bounds.slMin, bounds.slMax);
     if (spreadTooWide(spread, tpDist)) return null;
     if (spread != null) slDist = Math.max(slDist, 4 * spread);
     const tp = dir > 0 ? entry + tpDist : entry - tpDist;
@@ -7273,7 +7464,7 @@ try {
     if (ctx.a1 == null) return '还在补 1 分钟波动，样本不够。';
     const bounds = fastBounds(ctx.last && ctx.last.c);
     const spec = mkt().fast;
-    const tpGuess = clampFastDist((spec.tpAtr || 1.2) * ctx.a1, bounds.tpMin, bounds.tpMax);
+    const tpGuess = clampFastDist((state.simAutoParams.tpAtr || SIM_AUTO_DEFAULTS.tpAtr) * ctx.a1, bounds.tpMin, bounds.tpMax);
     if (spreadTooWide(ctx.spread, tpGuess)) {
       return '点差 ' + px(ctx.spread, 2) + ' 相对目标过大，暂停开单。';
     }
@@ -7370,7 +7561,7 @@ try {
       if (bar.h >= tr.sl) return closeSnapshot(tr, 'sl', tr.sl, now);
       if (bar.l <= tr.tp) return closeSnapshot(tr, 'tp', tr.tp, now);
     }
-    if (now - tr.entryAt >= FAST_HOLD_MS) return closeSnapshot(tr, 'time', bar.c, now);
+    if (now - tr.entryAt >= fastHoldMs()) return closeSnapshot(tr, 'time', bar.c, now);
     return null;
   }
 
@@ -7424,12 +7615,12 @@ try {
         if (!hit && againstCount(open, all.slice(0, i + 1)) >= 3) {
           closeFastReplay(open, 'invalid', bar.c, now, hist, marks);
           open = null;
-          coolT = bar.t + 20;
+          coolT = bar.t + Math.ceil(fastCoolMs() / 1000);
         } else if (hit) {
           hist.push(hit);
           marks.push({ t: open.t, dir: open.dir });
           open = null;
-          coolT = bar.t + 20;
+          coolT = bar.t + Math.ceil(fastCoolMs() / 1000);
         }
         continue;
       }
@@ -7479,7 +7670,7 @@ try {
     state.fastMarks = state.fastMarks.concat([{ t: tr.t, dir: tr.dir }]).slice(-12);
     state.fastTrade = null;
     state.fastWatch = null;
-    state.fastCoolUntil = now + FAST_COOL_MS;
+    state.fastCoolUntil = now + fastCoolMs();
     recordFastSimClose(done, simId);
     state.chartScale = null;
     scheduleChart();
@@ -7499,7 +7690,7 @@ try {
       if (px <= tr.tp) kind = 'tp';
       else if (px >= tr.sl) kind = 'sl';
     }
-    if (!kind && now - tr.entryAt >= FAST_HOLD_MS) kind = 'time';
+    if (!kind && now - tr.entryAt >= fastHoldMs()) kind = 'time';
     if (!kind && againstCount(tr, closedFastBars(now)) >= 3) kind = 'invalid';
     if (!kind) return false;
     const exit = kind === 'tp' ? tr.tp : kind === 'sl' ? tr.sl : px;
@@ -7568,6 +7759,7 @@ try {
 
   function tryOpenFast(now, ticker) {
     if (!state.ind.fast) return;
+    if (!state.simAuto) return;
     if (state.fastTrade && state.fastTrade.status === 'open') return;
     if (now < state.fastCoolUntil) return;
     if (!isMarketOpen(ticker)) return;
@@ -7601,7 +7793,7 @@ try {
   }
 
   function remainFast(tr, now) {
-    const left = Math.max(0, Math.ceil((tr.entryAt + FAST_HOLD_MS - now) / 1000));
+    const left = Math.max(0, Math.ceil((tr.entryAt + fastHoldMs() - now) / 1000));
     return Math.floor(left / 60) + ':' + pad2(left % 60);
   }
 
@@ -7993,6 +8185,13 @@ try {
       live.style.color = lastClose.pnl > 0 ? 'var(--up)' : lastClose.pnl < 0 ? 'var(--down)' : '';
       return;
     }
+    if (state.simAuto) {
+      btn.classList.remove('holding');
+      live.hidden = false;
+      live.textContent = '自动';
+      live.style.color = 'var(--accent)';
+      return;
+    }
     btn.classList.remove('holding');
     live.hidden = true;
     live.textContent = '';
@@ -8010,6 +8209,102 @@ try {
     document.querySelectorAll('[data-sim-dir]').forEach((b) => {
       b.setAttribute('aria-pressed', String(Number(b.dataset.simDir) === state.simDir));
     });
+  }
+
+  function syncSimAutoUi() {
+    const sw = $('simAutoSwitch');
+    const status = $('simAutoState');
+    if (sw) sw.setAttribute('aria-checked', String(!!state.simAuto));
+    if (status) {
+      status.textContent = state.simAuto ? '已开启，信号确认后自动建立纸面订单' : '已关闭，只显示开单信号';
+      status.classList.toggle('is-on', !!state.simAuto);
+    }
+    document.querySelectorAll('[data-sim-param]').forEach((input) => {
+      const key = input.dataset.simParam;
+      const value = state.simAutoParams[key];
+      if (document.activeElement !== input && value != null) input.value = String(value);
+    });
+  }
+
+  function renderSimJudge() {
+    const box = $('simJudgeResult');
+    if (!box) return;
+    box.className = 'sim-judge-result';
+    box.replaceChildren();
+    const result = state.simJudge;
+    if (!result) {
+      box.textContent = '读取当前页面全部已加载K线后给出方向';
+      return;
+    }
+    if (result.error) {
+      box.classList.add('err');
+      box.textContent = result.error;
+      return;
+    }
+    box.classList.add(result.dir > 0 ? 'bull' : 'bear');
+    const strong = document.createElement('b');
+    strong.textContent = result.label;
+    const detail = document.createElement('span');
+    detail.textContent = ' · ' + result.detail;
+    box.append(strong, detail);
+  }
+
+  function allKlineSlope(bars) {
+    if (!bars || bars.length < 2) return 0;
+    const closes = bars.map((bar) => Number(bar.c)).filter(Number.isFinite);
+    const n = closes.length;
+    if (n < 2) return 0;
+    const xMean = (n - 1) / 2;
+    const yMean = closes.reduce((sum, value) => sum + value, 0) / n;
+    let top = 0;
+    let bottom = 0;
+    closes.forEach((value, index) => {
+      const dx = index - xMean;
+      top += dx * (value - yMean);
+      bottom += dx * dx;
+    });
+    return bottom ? top / bottom : 0;
+  }
+
+  function judgeSimDirection() {
+    const bars = (state.klines || []).filter((bar) => bar && Number.isFinite(Number(bar.c)));
+    if (bars.length < 30) {
+      state.simJudge = { error: 'K线样本不足：当前只有' + bars.length + '根，至少需要30根。' };
+      renderSimJudge();
+      return;
+    }
+    const result = judge(bars, state.ticker, state.mtf);
+    const factors = result && Array.isArray(result.factors) ? result.factors : [];
+    const bull = factors.filter((factor) => factor.vote > 0).length;
+    const bear = factors.filter((factor) => factor.vote < 0).length;
+    let dir = result && result.dir === '偏多' ? 1 : result && result.dir === '偏空' ? -1 : 0;
+    let basis = '核心因子一致';
+    if (!dir && bull !== bear) {
+      dir = bull > bear ? 1 : -1;
+      basis = '方向票占优，但核心结构尚未完全一致';
+    }
+    if (!dir) {
+      const slope = allKlineSlope(bars);
+      if (slope !== 0) {
+        dir = slope > 0 ? 1 : -1;
+        basis = '方向票持平，按全部K线收盘价回归斜率判断';
+      }
+    }
+    if (!dir) {
+      state.simJudge = { error: '全部K线与方向票均持平，当前无法给出可靠的多空方向。' };
+      renderSimJudge();
+      return;
+    }
+    state.simDir = dir;
+    state.simJudge = {
+      dir: dir,
+      label: dir > 0 ? '偏多' : '偏空',
+      detail: bars.length + '根' + state.tf + 'K线；' + bull + '项偏多，' + bear + '项偏空；' + basis,
+    };
+    saveSim();
+    syncSimDirButtons();
+    renderSimJudge();
+    setSimMsg('已按当前页面全部K线选择' + (dir > 0 ? '做多' : '做空') + '方向', 'ok');
   }
 
   function syncSimNow(price) {
@@ -8036,6 +8331,8 @@ try {
     const closeAll = $('btnSimCloseAll');
     if (closeAll) closeAll.disabled = !simOpenOrders().length;
     syncSimDirButtons();
+    syncSimAutoUi();
+    renderSimJudge();
     syncSimNow(simLastPrice());
     renderSimKpis();
     renderSimOrders();
@@ -11343,10 +11640,56 @@ try {
     document.querySelectorAll('[data-sim-dir]').forEach((b) => {
       b.addEventListener('click', () => {
         state.simDir = Number(b.dataset.simDir) === -1 ? -1 : 1;
+        state.simJudge = null;
         saveSim();
         syncSimDirButtons();
+        renderSimJudge();
       });
     });
+    const autoSwitch = $('simAutoSwitch');
+    if (autoSwitch) {
+      autoSwitch.addEventListener('click', () => {
+        state.simAuto = !state.simAuto;
+        if (state.simAuto && !state.ind.fast) {
+          state.ind.fast = true;
+          saveInd();
+          syncIndButtons();
+          renderFastPanel();
+        }
+        saveSim();
+        syncSimAutoUi();
+        renderSimLiveBtn();
+        setSimMsg(state.simAuto ? '自动开单已开启，等待收盘信号' : '自动开单已关闭，已有持仓继续按原计划管理', state.simAuto ? 'ok' : '');
+      });
+    }
+    document.querySelectorAll('[data-sim-param]').forEach((input) => {
+      input.addEventListener('change', () => {
+        const key = input.dataset.simParam;
+        const value = clampSimParam(key, input.value);
+        if (value == null) return;
+        state.simAutoParams[key] = value;
+        input.value = String(value);
+        saveSim();
+        renderFastPanel();
+        setSimMsg('自动开单参数已保存，下一笔新单生效', 'ok');
+      });
+    });
+    const judgeBtn = $('btnSimJudge');
+    if (judgeBtn) {
+      judgeBtn.addEventListener('click', () => {
+        judgeBtn.disabled = true;
+        judgeBtn.dataset.state = 'loading';
+        judgeBtn.textContent = '判断中';
+        window.setTimeout(() => {
+          try { judgeSimDirection(); }
+          finally {
+            judgeBtn.disabled = false;
+            delete judgeBtn.dataset.state;
+            judgeBtn.textContent = '判断多空';
+          }
+        }, 0);
+      });
+    }
     const openBtn = $('btnSimOpen');
     if (openBtn) openBtn.addEventListener('click', () => openSimTrade());
     const closeAllBtn = $('btnSimCloseAll');

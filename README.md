@@ -6,6 +6,12 @@
 
 仓库地址：<https://github.com/stysams/xau-indicator>
 
+## 最新更新
+
+### 2026-08-27
+
+模拟交易弹窗支持自动开单开关、止盈止损和持仓冷却参数，并可根据当前页面已加载的全部K线判断多空方向。详见[发布说明](docs/releases/release-notes.md)。
+
 ![黄金分钟台桌面，1 分钟 180 根](memory/_bars-180.png)
 
 ## 快速开始
