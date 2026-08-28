@@ -216,6 +216,41 @@ export function drawBox(svg, pack, vx, y, xRight) {
       r: '2.2', fill: color, opacity: broke ? '.4' : '.62',
     }));
   });
+  const ext = pack.extension;
+  if (ext) {
+    const extColor = ext.dir > 0 ? 'var(--up)' : 'var(--down)';
+    const extOpacity = broke ? '.28' : '.5';
+    const extGroup = svgEl('g', { opacity: extOpacity });
+    const extTitle = svgEl('title', {});
+    extTitle.textContent = (ext.dir > 0 ? '向上' : '向下') + '斜向通道参考，' + ext.anchorCount + '组摆动锚点；不构成开单信号';
+    extGroup.appendChild(extTitle);
+    // SVG 绘制只需要把索引映射到右边界；使用可见槽宽近似未来投影长度。
+    const project = (line) => {
+      const from = line.fromI;
+      const to = line.toI;
+      const slotPx = Math.max(1, Math.abs(vx(to) - vx(Math.max(from, to - 1))));
+      const extraBars = Math.max(0, (xRight - vx(to)) / slotPx);
+      return {
+        x1: vx(from), x2: xRight,
+        y1: y(line.intercept + line.slope * from),
+        y2: y(line.intercept + line.slope * (to + extraBars)),
+      };
+    };
+    [ext.upper, ext.lower].forEach((line) => {
+      const q = project(line);
+      extGroup.appendChild(svgEl('line', {
+        x1: q.x1.toFixed(1), x2: q.x2.toFixed(1),
+        y1: q.y1.toFixed(1), y2: q.y2.toFixed(1),
+        stroke: extColor, 'stroke-width': '1.15', 'stroke-dasharray': '5 4',
+      }));
+      (line.anchors || []).forEach((a) => {
+        extGroup.appendChild(svgEl('circle', {
+          cx: vx(a.i).toFixed(1), cy: y(a.price).toFixed(1), r: '2', fill: extColor,
+        }));
+      });
+    });
+    g.appendChild(extGroup);
+  }
   function label(lv, txt, below) {
     const t = svgEl('text', {
       x: (left + width - 4).toFixed(1),
@@ -237,6 +272,22 @@ export function drawBox(svg, pack, vx, y, xRight) {
   const botTxt = pack.status === 'breakDn' ? '箱体已下破 ' : '箱体下沿 ';
   label(pack.top, topTxt + px(pack.top) + (pack.topTouches >= 2 ? ' · ' + pack.topTouches + '次' : ''), false);
   label(pack.bottom, botTxt + px(pack.bottom) + (pack.botTouches >= 2 ? ' · ' + pack.botTouches + '次' : ''), true);
+  if (broke && pack.target != null) {
+    const targetY = y(pack.target);
+    g.appendChild(svgEl('line', {
+      x1: vx(pack.breakI >= 0 ? pack.breakI : pack.boxStart).toFixed(1),
+      x2: xRight.toFixed(1), y1: targetY.toFixed(1), y2: targetY.toFixed(1),
+      stroke: color, 'stroke-width': '1.15', 'stroke-dasharray': '2 5', opacity: '.72',
+    }));
+    const targetLab = svgEl('text', {
+      x: (xRight - 4).toFixed(1), y: (targetY - 4).toFixed(1),
+      fill: color, 'font-size': '10', 'font-weight': '650',
+      'font-family': 'var(--font)', 'text-anchor': 'end',
+      stroke: 'var(--bg)', 'stroke-width': '3', 'paint-order': 'stroke', opacity: '.8',
+    });
+    targetLab.textContent = '量度目标 ' + px(pack.target) + ' · 参考';
+    g.appendChild(targetLab);
+  }
   svg.appendChild(g);
 }
 

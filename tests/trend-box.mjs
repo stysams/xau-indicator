@@ -16,14 +16,14 @@ function resetCache() {
 
 // 收盘来回于 lo..hi 之间的锯齿波。影线只跟随本根收盘，保证峰谷的最高最低唯一，
 // 否则峰值那根会和它后面一根影线等高，分形条件不成立。
-function zigzag(n, lo, hi, half, t0) {
+function zigzag(n, lo, hi, half, t0, slope) {
   const bars = [];
   let prev = lo;
   for (let i = 0; i < n; i++) {
     const phase = i % (half * 2);
     const up = phase < half;
     const r = up ? phase / half : (phase - half) / half;
-    const c = up ? lo + (hi - lo) * r : hi - (hi - lo) * r;
+    const c = (up ? lo + (hi - lo) * r : hi - (hi - lo) * r) + (slope || 0) * i;
     const h = c + 0.15;
     const l = c - 0.15;
     bars.push(bar((t0 || 0) + i * 60, Math.min(h, Math.max(l, prev)), h, l, c));
@@ -193,6 +193,61 @@ function zigzag(n, lo, hi, half, t0) {
   });
   assert(p.boxStart >= 0 && p.boxStart < zz.length - 2, '箱体起点有效: ' + p.boxStart);
   assert(p.sig.indexOf('range') >= 0, '震荡 sig 带状态: ' + p.sig);
+  assert(p.target == null, '未破位箱体不应有量度目标');
+  assert(p.extension == null, '横向箱体不应强行画斜向扩展');
+}
+
+// --- 箱体：有三组以上平行摆动锚点时生成斜向通道参考 ---
+{
+  state.boxLen = 120;
+  const rising = zigzag(120, 100, 105, 4, 0, 0.01);
+  const p = computeBox(rising);
+  assert(p.ok, '上倾箱体 ok: ' + p.why);
+  assert(p.extension && p.extension.kind === 'channel', '上倾箱体生成斜向通道');
+  assert(p.extension.dir === 1, '斜向通道方向向上');
+  assert(p.extension.anchorCount >= 3, '斜向通道至少三组锚点');
+  assert(p.extension.upper.toPrice > p.extension.upper.fromPrice, '上轨投影向上');
+  assert(p.extension.lower.toPrice > p.extension.lower.fromPrice, '下轨投影向上');
+  assert(p.extension.rms < p.atrv, '斜向通道拟合误差受控');
+
+  const falling = zigzag(120, 105, 100, 4, 0, -0.01);
+  const d = computeBox(falling);
+  assert(d.ok, '下倾箱体 ok: ' + d.why);
+  assert(d.extension && d.extension.dir === -1, '下倾箱体生成斜向通道');
+  assert(d.extension.upper.toPrice < d.extension.upper.fromPrice, '下轨投影向下');
+}
+
+// --- 箱体：斜率方向不一致时不把结构误画成通道 ---
+{
+  state.boxLen = 120;
+  const mixed = zigzag(120, 100, 105, 4, 0, 0);
+  mixed.forEach((k, i) => {
+    if (i >= 64 && i % 8 === 4) k.h += i * 0.03;
+  });
+  const p = computeBox(mixed);
+  assert(p.ok, '混合斜率样本仍有箱体');
+  assert(p.extension == null, '非平行结构不生成斜向通道');
+}
+
+// --- 箱体：破位后目标为一倍箱高 ---
+{
+  state.boxLen = 120;
+  const zz = zigzag(64, 100, 105, 4);
+  const upBreak = zz.concat([
+    bar(64 * 60, 101.25, 106.2, 101.2, 106),
+    bar(65 * 60, 106, 106.9, 105.9, 106.7),
+    bar(66 * 60, 106.7, 107.6, 106.6, 107.4),
+  ]);
+  const pu = computeBox(upBreak);
+  approx(pu.target, pu.top + pu.height, { label: '上破量度目标' });
+
+  const dnBreak = zz.concat([
+    bar(64 * 60, 101.25, 101.3, 98.5, 98.8),
+    bar(65 * 60, 98.8, 98.9, 97.8, 98),
+    bar(66 * 60, 98, 98.1, 97, 97.2),
+  ]);
+  const pd = computeBox(dnBreak);
+  approx(pd.target, pd.bottom - pd.height, { label: '下破量度目标' });
 }
 
 // --- 箱体：收盘越过边缘记破位，破位起点指向连续段的第一根 ---

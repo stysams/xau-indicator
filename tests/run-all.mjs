@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
-const tests = ['math-indicators.mjs', 'trend-box.mjs', 'rw-benchmark.mjs', 'oos-split.mjs'];
+const tests = ['math-indicators.mjs', 'trend-box.mjs', 'hkld-confidence.mjs', 'rw-benchmark.mjs', 'oos-split.mjs'];
 
 // 基线回归要开 headless Chrome，默认不跑。
 // 改动 src/ 之后建议跑一次：WITH_BROWSER=1 node tests/run-all.mjs

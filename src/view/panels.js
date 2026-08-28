@@ -138,12 +138,16 @@ export function renderBoxStatus(klines) {
   const track = posPct == null
     ? ''
     : '<span class="box-track" aria-hidden="true"><i class="box-dot" style="left:' + posPct.toFixed(1) + '%"></i></span>';
+  const extHtml = b.extension
+    ? '<span>' + b.extensionLab + ' · ' + b.extension.anchorCount + '组锚点</span>'
+    : '<span>扩展：无足够方向证据</span>';
+  const targetHtml = b.target == null ? '' : '<span>量度目标 <b>' + px(b.target) + '</b> · 结构参考</span>';
   el.innerHTML =
     '<i class="box-flag ' + cls + '">' + b.statusLab + '</i>' +
     '<span>箱体 <b>' + px(b.bottom) + '</b>–<b>' + px(b.top) + '</b></span>' +
     '<span>高度 <b>' + px(b.height) + '</b> · <b>' + atrTxt + '</b> ATR</span>' +
     '<span>上沿 <b>' + b.topTouches + '</b> 次 · 下沿 <b>' + b.botTouches + '</b> 次</span>' +
-    track +
+    extHtml + targetHtml + track +
     '<span>' + (b.pos == null ? b.posLab : (b.posLab + ' ' + Math.round(b.pos * 100) + '%')) + '</span>';
 }
 

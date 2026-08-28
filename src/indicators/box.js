@@ -8,9 +8,79 @@ export function boxEmpty(len, why) {
     top: null, bottom: null, mid: null, height: 0,
     topTouches: 0, botTouches: 0, topSwings: 0, botSwings: 0,
     boxStart: -1, lastTopAt: -1, lastBotAt: -1, breakI: -1, touches: [],
-    pos: null, posLab: '未现',
+    pos: null, posLab: '未现', target: null, extension: null,
+    extensionLab: '未形成斜向通道参考',
     label: '箱体未现', title: '箱体震荡', why: why,
     sig: '',
+  };
+}
+
+function lineFit(points) {
+  const n = points.length;
+  if (n < 3) return null;
+  let sx = 0, sy = 0;
+  points.forEach((p) => { sx += p.i; sy += p.price; });
+  const mx = sx / n, my = sy / n;
+  let xx = 0, xy = 0;
+  points.forEach((p) => {
+    const dx = p.i - mx;
+    xx += dx * dx;
+    xy += dx * (p.price - my);
+  });
+  if (!(xx > 0)) return null;
+  const slope = xy / xx;
+  const intercept = my - slope * mx;
+  let err2 = 0;
+  points.forEach((p) => {
+    const d = p.price - (intercept + slope * p.i);
+    err2 += d * d;
+  });
+  return {
+    slope: slope,
+    intercept: intercept,
+    rms: Math.sqrt(err2 / n),
+    fromI: points[0].i,
+    toI: points[points.length - 1].i,
+    fromPrice: intercept + slope * points[0].i,
+    toPrice: intercept + slope * points[points.length - 1].i,
+    anchors: points,
+  };
+}
+
+// 斜向扩展只在两侧都形成平行、方向显著的摆动通道时出现。
+// 这不是另一个方向因子：它只描述箱体内部的倾斜结构，避免用一条任意连线制造信号。
+function buildExtension(klines, boxStart, highs, lows, atrv) {
+  const hs = highs.filter((p) => p.i >= boxStart).slice(-6);
+  const ls = lows.filter((p) => p.i >= boxStart).slice(-6);
+  if (hs.length < 3 || ls.length < 3) return null;
+  const upper = lineFit(hs);
+  const lower = lineFit(ls);
+  if (!upper || !lower) return null;
+  const span = Math.min(upper.toI - upper.fromI, lower.toI - lower.fromI);
+  if (span < 8) return null;
+  const sameDir = upper.slope * lower.slope > 0;
+  if (!sameDir) return null;
+  const slopeAbs = (Math.abs(upper.slope) + Math.abs(lower.slope)) / 2;
+  const slopeGap = Math.abs(upper.slope - lower.slope);
+  const parallelTol = Math.max(atrv * 0.012, slopeAbs * 0.5);
+  if (slopeGap > parallelTol) return null;
+  // 斜率累计位移必须可见，但不能让单边急拉伪装成箱体扩展。
+  const move = slopeAbs * span;
+  if (move < atrv * 0.22 || move > atrv * 2.4) return null;
+  const maxRms = Math.max(atrv * 0.28, move * 0.7);
+  if (upper.rms > maxRms || lower.rms > maxRms) return null;
+  const widthAt = (i) => (upper.intercept + upper.slope * i) - (lower.intercept + lower.slope * i);
+  const width = widthAt(Math.round((upper.fromI + lower.fromI) / 2));
+  if (!(width > atrv * 0.8) || width > atrv * 7) return null;
+  const dir = upper.slope > 0 ? 1 : -1;
+  return {
+    kind: 'channel', dir: dir,
+    fromI: Math.min(upper.fromI, lower.fromI),
+    toI: Math.max(upper.toI, lower.toI),
+    upper: upper, lower: lower,
+    span: span, move: move, width: width,
+    slope: slopeAbs, rms: Math.max(upper.rms, lower.rms),
+    anchorCount: Math.min(upper.anchors.length, lower.anchors.length),
   };
 }
 
@@ -94,6 +164,9 @@ export function computeBox(klines) {
   }
 
   const topPx = best.topPx, botPx = best.botPx;
+  // 破位后的经典量度目标：从突破边界向外投影一倍箱体高度。
+  // 先声明，等收盘确认状态后再赋值，避免把观察中的越界当成目标。
+  let target = null;
   // 箱体起点先取上下沿最早的摆动点，再向左扩展，把仍然落在区间内的 K 一起纳入
   let boxStart = Math.min(best.t.minI, best.b.minI);
   while (boxStart > start) {
@@ -133,25 +206,37 @@ export function computeBox(klines) {
 
   let status, dir, statusLab, pos, posLab, why;
   let breakI = -1;
+  const extension = buildExtension(klines, boxStart, highs, lows, atrv);
   const base = {
     ok: true, len: lookback, top: topPx, bottom: botPx, mid: mid, height: best.h,
     topTouches: topTouch, botTouches: botTouch, topSwings: best.t.cnt, botSwings: best.b.cnt,
     boxStart: boxStart, lastTopAt: lastTopAt, lastBotAt: lastBotAt,
     touches: touches.slice(-14),
     atrv: atrv, radius: radius, breakout: breakout,
+    target: target, extension: extension,
+    extensionLab: extension
+      ? ('斜向通道 · ' + (extension.dir > 0 ? '向上' : '向下') + '参考')
+      : '未形成斜向通道参考',
     label: '箱体震荡', title: '箱体震荡',
-    sig: [topPx.toFixed(4), botPx.toFixed(4), boxStart, 'range'].join(':'),
+    sig: [topPx.toFixed(4), botPx.toFixed(4), boxStart, 'range',
+      extension ? extension.dir + ':' + extension.toI + ':' + extension.anchorCount : 'flat'].join(':'),
   };
   if (close > topPx + breakout) {
     status = 'breakUp'; dir = 1; statusLab = '上破'; pos = null; posLab = '上破';
     breakI = breakFrom(1);
-    why = '收盘站上箱体上沿 ' + px(topPx) + '，箱体震荡结束，按向上突破看待。只描述结构，不是下单指令。';
-    base.sig = [topPx.toFixed(4), botPx.toFixed(4), boxStart, 'breakUp', breakI].join(':');
+    target = topPx + best.h;
+    why = '收盘站上箱体上沿 ' + px(topPx) + '，箱体震荡结束，按向上突破看待；一倍箱高量度目标约 ' + px(target) + '，只作结构参考。';
+    base.target = target;
+    base.sig = [topPx.toFixed(4), botPx.toFixed(4), boxStart, 'breakUp', breakI,
+      extension ? extension.dir + ':' + extension.toI + ':' + extension.anchorCount : 'flat'].join(':');
   } else if (close < botPx - breakout) {
     status = 'breakDn'; dir = -1; statusLab = '下破'; pos = null; posLab = '下破';
     breakI = breakFrom(-1);
-    why = '收盘跌破箱体下沿 ' + px(botPx) + '，箱体震荡结束，按向下突破看待。只描述结构，不是下单指令。';
-    base.sig = [topPx.toFixed(4), botPx.toFixed(4), boxStart, 'breakDn', breakI].join(':');
+    target = botPx - best.h;
+    why = '收盘跌破箱体下沿 ' + px(botPx) + '，箱体震荡结束，按向下突破看待；一倍箱高量度目标约 ' + px(target) + '，只作结构参考。';
+    base.target = target;
+    base.sig = [topPx.toFixed(4), botPx.toFixed(4), boxStart, 'breakDn', breakI,
+      extension ? extension.dir + ':' + extension.toI + ':' + extension.anchorCount : 'flat'].join(':');
   } else {
     status = 'range'; dir = 0; statusLab = '震荡中';
     pos = (close - botPx) / best.h;

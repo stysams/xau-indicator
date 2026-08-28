@@ -10,6 +10,28 @@ export function mixPx(a, b, wa) {
   return wa * a + (1 - wa) * b;
 }
 
+// 重心、慢速位置和 %B 同时处于极端区时，优先视为趋势延伸而不是回归。
+// 仅凭一根影线收回不能解除该门控，避免强趋势中反复逆势出票。
+export function hkldTrendAgainst(dir, positionRec) {
+  if (!positionRec || positionRec.bandWidth == null || positionRec.midSlope == null) return false;
+  const threshold = positionRec.bandWidth * 0.08;
+  return dir > 0
+    ? positionRec.midSlope < -threshold
+    : positionRec.midSlope > threshold;
+}
+
+export function hkldTrendExtended(dir, positionRec, triggerRec) {
+  if (!positionRec) return false;
+  const trigger = triggerRec || positionRec;
+  const grav = positionRec.grav;
+  const kin = trigger.kin != null ? trigger.kin : positionRec.kin;
+  const pb = trigger.pb != null ? trigger.pb : positionRec.pb;
+  const rsi = trigger.rsi != null ? trigger.rsi : positionRec.rsi;
+  if (grav == null || kin == null || pb == null || rsi == null) return false;
+  if (dir > 0) return grav <= 16 && kin <= 16 && pb <= 0.30 && rsi <= 35;
+  return grav >= 84 && kin >= 84 && pb >= 0.70 && rsi >= 65;
+}
+
 export function computeHkldChart(klines) {
   // A21：与 hkldPrep 共用序列与 recAt/hugging/openingAt/wasInside/breakoutAt，避免双份维护
   const prep = hkldPrep(klines, state.tf);
@@ -61,10 +83,11 @@ export function computeHkldChart(klines) {
     }
     const primary = loc.some((s) => s.indexOf('重心') === 0 || s.indexOf('%B') === 0);
     if (!primary || loc.length < 2) return idle;
-    if (!extra.length) {
-      if (hugging(idx, dir)) return { status: 'block', loc: loc, extra: extra };
-      return { status: 'watch', loc: loc, extra: extra };
+    // 持续贴轨是趋势延伸，不因一根影线收回就把逆势回归升级为正式信号。
+    if (hugging(idx, dir) || hkldTrendAgainst(dir, rec) || hkldTrendExtended(dir, rec, rec)) {
+      return { status: 'block', loc: loc, extra: extra };
     }
+    if (!extra.length) return { status: 'watch', loc: loc, extra: extra };
     return { status: form ? 'watch' : 'trigger', loc: loc, extra: extra };
   }
 
@@ -291,9 +314,13 @@ export function hkldPrep(klines, tf) {
     const r20 = lo + 0.20 * span;
     const r80 = lo + 0.80 * span;
     const dn = bands.dn[idx], up = bands.up[idx], mid = core.mid[idx];
+    const i8 = Math.max(period - 1, idx - 8);
+    const bandWidth = (up != null && dn != null) ? up - dn : null;
+    const midSlope = (mid != null && core.mid[i8] != null) ? mid - core.mid[i8] : null;
     const pb = (up != null && dn != null && up !== dn) ? (closes[idx] - dn) / (up - dn) : null;
     return {
-      lo: lo, hi: hi, r20: r20, r80: r80, dn: dn, up: up, mid: mid, pb: pb,
+      lo: lo, hi: hi, r20: r20, r80: r80, dn: dn, up: up, mid: mid,
+      bandWidth: bandWidth, midSlope: midSlope, pb: pb,
       pbPrev: (idx > 0 && bands.up[idx - 1] != null && bands.dn[idx - 1] != null && bands.up[idx - 1] !== bands.dn[idx - 1])
         ? (closes[idx - 1] - bands.dn[idx - 1]) / (bands.up[idx - 1] - bands.dn[idx - 1]) : null,
       longPx: mixPx(dn, r20, 0.55),
@@ -395,6 +422,7 @@ export function hkldMixRec(locRec, trigRec, wa) {
   if (!trigRec || wa >= 1) return locRec;
   return {
     lo: locRec.lo, hi: locRec.hi, r20: locRec.r20, r80: locRec.r80,
+    bandWidth: locRec.bandWidth, midSlope: locRec.midSlope,
     dn: mixPx(locRec.dn, trigRec.dn, wa),
     up: mixPx(locRec.up, trigRec.up, wa),
     mid: mixPx(locRec.mid, trigRec.mid, wa),
@@ -494,8 +522,13 @@ export function gradeHkldHtf(dir, ctx, form) {
   if (!extra.length) {
     const hugLoc = locPrep.hugging(locI, dir);
     const hugTrig = trigPrep.hugging(extraI, dir);
-    if (hugLoc || hugTrig) return { status: 'block', loc: loc, extra: extra };
+    if (hugLoc || hugTrig || hkldTrendAgainst(dir, locRec) || hkldTrendExtended(dir, locRec, trigRec)) {
+      return { status: 'block', loc: loc, extra: extra };
+    }
     return { status: 'watch', loc: loc, extra: extra };
+  }
+  if (hkldTrendAgainst(dir, locRec) || hkldTrendExtended(dir, locRec, trigRec)) {
+    return { status: 'block', loc: loc, extra: extra };
   }
   return { status: form ? 'watch' : 'trigger', loc: loc, extra: extra };
 }
@@ -582,10 +615,13 @@ export function computeHkldHtf(chart, src5, src15) {
   const trigI = trigClosed >= 33 ? trigClosed : trigLast;
   const chartLast = chart.length - 1;
   const chartClosed = hkldClosedEnd(chart, state.tf);
-  // 只按本图未收盘降级为预备；HTF 评估已用 closed 索引，不能因 HTF 末根未收盘而永久挡票
-  const forming = chartClosed >= 0 && chartLast > chartClosed;
-  const recLoc = locPrep.recAt(locLast);
-  const recTrig = trigPrep.recAt(trigLast);
+  // 当前评分统一只取各周期已收盘索引；任一层仍在形成时只能观察，不能出票。
+  const formingChart = chartClosed >= 0 && chartLast > chartClosed;
+  const formingLoc = locClosed >= 0 && locLast > locClosed;
+  const formingTrig = trigClosed >= 0 && trigLast > trigClosed;
+  const forming = formingChart || formingLoc || formingTrig;
+  const recLoc = locPrep.recAt(locI);
+  const recTrig = trigPrep.recAt(trigI);
   const extraRec = trigPrep.recAt(trigI);
   if (!recLoc) return none;
   const wa = (src15 && src5) ? 0.62 : 1;
@@ -617,7 +653,7 @@ export function computeHkldHtf(chart, src5, src15) {
     rec.shortLo = rec.shortPx - atrv * 0.12;
     rec.shortHi = rec.shortPx + atrv * 0.28;
   }
-  const chartBar = chart[chartLast];
+  const chartBar = chart[chartClosed >= 0 ? chartClosed : chartLast];
   const extraBar = trigSrc[trigI];
   const ctx = {
     locRec: recLoc, trigRec: recTrig, extraRec: extraRec,

@@ -168,6 +168,29 @@ export function drawChart(klines, ticker, hover) {
   if (box && box.ok) {
     lo = Math.min(lo, box.bottom);
     hi = Math.max(hi, box.top);
+    if (box.target != null && Number.isFinite(box.target)) {
+      lo = Math.min(lo, box.target);
+      hi = Math.max(hi, box.target);
+    }
+    const ext = box.extension;
+    if (ext && ext.upper && ext.lower) {
+      const plotW0 = W - PAD.l - PAD.r;
+      const slots0 = Math.max(1, view.count);
+      const slot0 = plotW0 / slots0;
+      const rightX0 = W - PAD.r;
+      const projected = (line) => {
+        const xAt = PAD.l + (line.toI - view.start + 0.5) * slot0;
+        const extra = Math.max(0, (rightX0 - xAt) / Math.max(1, slot0));
+        return line.intercept + line.slope * (line.toI + extra);
+      };
+      [ext.upper, ext.lower].forEach((line) => {
+        const end = projected(line);
+        if (Number.isFinite(end)) {
+          lo = Math.min(lo, end);
+          hi = Math.max(hi, end);
+        }
+      });
+    }
   }
   const padY = (hi - lo) * 0.08 || 1;
   lo -= padY; hi += padY;
@@ -1101,7 +1124,9 @@ export function showTip(e, klines) {
     const pack = getBox(klines);
     extra += '<br>' + (pack && pack.ok
       ? ('箱体 ' + px(pack.bottom) + '–' + px(pack.top) + '  ' + pack.statusLab +
-        (pack.pos != null ? '  位置 ' + Math.round(pack.pos * 100) + '%' : ''))
+        (pack.pos != null ? '  位置 ' + Math.round(pack.pos * 100) + '%' : '') +
+        (pack.extension ? '  ' + pack.extensionLab : '  扩展无足够方向证据') +
+        (pack.target != null ? '  量度目标 ' + px(pack.target) + '（结构参考）' : ''))
       : '箱体未现');
   }
   if (state.ind.hkld) {
