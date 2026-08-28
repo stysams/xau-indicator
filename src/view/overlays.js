@@ -164,6 +164,82 @@ export function drawHold(svg, pack, vx, y, xRight, bodyW) {
   });
 }
 
+export function drawBox(svg, pack, vx, y, xRight) {
+  if (!pack || !pack.ok || pack.top == null || pack.bottom == null) return;
+  const broke = pack.status === 'breakUp' || pack.status === 'breakDn';
+  const color = pack.status === 'breakUp'
+    ? 'var(--up)'
+    : (pack.status === 'breakDn' ? 'var(--down)' : 'var(--accent)');
+  const x1 = vx(pack.boxStart >= 0 ? pack.boxStart : 0);
+  const x2 = xRight;
+  const left = Math.min(x1, x2);
+  const width = Math.max(2, Math.abs(x2 - x1));
+  const yTop = y(pack.top);
+  const yBot = y(pack.bottom);
+  const g = svgEl('g', {});
+  const tip = svgEl('title', {});
+  tip.textContent = pack.why || pack.label;
+  g.appendChild(tip);
+  g.appendChild(svgEl('rect', {
+    x: left.toFixed(1),
+    y: Math.min(yTop, yBot).toFixed(1),
+    width: width.toFixed(1),
+    height: Math.max(1.5, Math.abs(yBot - yTop)).toFixed(1),
+    fill: color,
+    opacity: broke ? '.05' : '.09',
+  }));
+  const dash = broke ? '5 4' : '';
+  const op = broke ? '.5' : '.85';
+  [pack.top, pack.bottom].forEach((lv) => {
+    g.appendChild(svgEl('line', {
+      x1: left.toFixed(1), x2: (left + width).toFixed(1),
+      y1: y(lv).toFixed(1), y2: y(lv).toFixed(1),
+      stroke: color, 'stroke-width': broke ? '1.2' : '1.5',
+      'stroke-dasharray': dash, opacity: op,
+    }));
+  });
+  if (pack.mid != null) {
+    g.appendChild(svgEl('line', {
+      x1: left.toFixed(1), x2: (left + width).toFixed(1),
+      y1: y(pack.mid).toFixed(1), y2: y(pack.mid).toFixed(1),
+      stroke: color, 'stroke-width': '1',
+      'stroke-dasharray': '2 5', opacity: '.42',
+    }));
+  }
+  (pack.touches || []).forEach((tc) => {
+    if (tc.i == null || tc.price == null) return;
+    const xc = vx(tc.i);
+    if (xc < left - 1 || xc > left + width + 1) return;
+    g.appendChild(svgEl('circle', {
+      cx: xc.toFixed(1),
+      cy: y(tc.price).toFixed(1),
+      r: '2.2', fill: color, opacity: broke ? '.4' : '.62',
+    }));
+  });
+  function label(lv, txt, below) {
+    const t = svgEl('text', {
+      x: (left + width - 4).toFixed(1),
+      y: (y(lv) + (below ? 11 : -4)).toFixed(1),
+      fill: color,
+      'font-size': '10.5',
+      'font-weight': broke ? '650' : '750',
+      'font-family': 'var(--font)',
+      'text-anchor': 'end',
+      stroke: 'var(--bg)',
+      'stroke-width': '3',
+      'paint-order': 'stroke',
+      opacity: op,
+    });
+    t.textContent = txt;
+    g.appendChild(t);
+  }
+  const topTxt = pack.status === 'breakUp' ? '箱体已上破 ' : '箱体上沿 ';
+  const botTxt = pack.status === 'breakDn' ? '箱体已下破 ' : '箱体下沿 ';
+  label(pack.top, topTxt + px(pack.top) + (pack.topTouches >= 2 ? ' · ' + pack.topTouches + '次' : ''), false);
+  label(pack.bottom, botTxt + px(pack.bottom) + (pack.botTouches >= 2 ? ' · ' + pack.botTouches + '次' : ''), true);
+  svg.appendChild(g);
+}
+
 export function drawHkld(svg, pack, vx, y, xRight) {
   if (!pack || !pack.ok) return;
   const x1 = vx(pack.fromI != null ? pack.fromI : 0);

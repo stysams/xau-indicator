@@ -36,6 +36,18 @@ try {
       <div class="top-actions">
         <button type="button" class="btn" id="btnSim" aria-haspopup="dialog" aria-expanded="false" title="纸面模拟交易，只记在本机">模拟交易<span class="sim-live" id="simLive" hidden></span></button>
         <button type="button" class="btn" id="btnSess" aria-pressed="true" title="显示或隐藏各交易所开盘时间">开盘时间</button>
+        <button type="button" class="btn" id="btnSigRail" aria-pressed="true" title="主图底部时间信号线：企稳、开单、破位等">信号线</button>
+        <div class="layout-more" id="layoutMore">
+          <button type="button" class="btn" id="btnLayout" aria-expanded="false" aria-haspopup="menu" aria-controls="layoutMenu" title="布局预设">布局</button>
+          <div class="layout-menu" id="layoutMenu" role="menu" hidden>
+            <button type="button" role="menuitemradio" data-layout="standard" aria-checked="false" title="左侧判断 + 多周期 + 开盘时段 + 时间信号线">标准盯盘</button>
+            <button type="button" role="menuitemradio" data-layout="naked" aria-checked="false" title="收起左侧与多周期，主图只留现价与信号线">裸K专注</button>
+            <button type="button" role="menuitemradio" data-layout="structure" aria-checked="false" title="打开布林、SMC、支压、企稳与现价">布林+SMC</button>
+            <button type="button" role="menuitemradio" data-layout="fast" aria-checked="false" title="打开开单、EMA9、布林主轨与时间信号线">开单跟单</button>
+            <button type="button" role="menuitemradio" data-layout="custom" aria-checked="false" title="恢复你保存的自定义布局" disabled>我的布局</button>
+            <button type="button" role="menuitem" id="btnLayoutSave" title="把当前指标与面板状态存为「我的布局」">保存当前</button>
+          </div>
+        </div>
         <div class="seg" role="group" aria-label="涨跌配色">
           <button type="button" data-color="cn" aria-pressed="false" title="A股习惯，上涨为红、下跌为绿">红涨绿跌</button>
           <button type="button" data-color="us" aria-pressed="true" title="国际习惯，上涨为绿、下跌为红">红跌绿涨</button>
@@ -153,7 +165,7 @@ try {
             <button type="button" data-ind="macd" aria-pressed="false" title="MACD 副图与布林复合信号">MACD</button>
             <button type="button" data-ind="fast" aria-pressed="false" title="开单信号：1分/5分定方向，10秒回踩或触轨收回后给出开多/开空">开单</button>
             <div class="ind-more" id="indMore">
-              <button type="button" class="ind-caret" id="btnIndMore" aria-expanded="false" aria-haspopup="menu" aria-controls="indMoreMenu" aria-pressed="false" title="更多指标：高低、反弹、回踩、诱空诱多、企稳、SMC多空、套轨、高空低多、斐波那契、EMA9、EMA21" aria-label="更多指标">
+              <button type="button" class="ind-caret" id="btnIndMore" aria-expanded="false" aria-haspopup="menu" aria-controls="indMoreMenu" aria-pressed="false" title="更多指标：高低、反弹、回踩、诱空诱多、企稳、SMC多空、套轨、高空低多、箱体震荡、斐波那契、超级趋势、EMA9、EMA21" aria-label="更多指标">
                 <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
                   <path d="M2.4 4.2L6 8l3.6-3.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
@@ -167,7 +179,9 @@ try {
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="smcSig" aria-pressed="false" aria-checked="false" title="SMC 做多/做空：转势或延续后回踩订单区块或缺口，收盘守住才标。正在走的那根不确认。只控制主图箭头，左侧 SMC 因子仍单独勾选"><i class="smcsig-c"></i>SMC多空</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="stack" aria-pressed="false" aria-checked="false" title="套轨：1小时定性、15分许可、5分与1分扳机。只输出顺势回中、套轨开口、宽轨收回。正在走的1分只预备。只控制主图菱形和套轨条，左侧套轨因子仍单独勾选"><i class="stack-c"></i>套轨</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="hkld" aria-pressed="false" aria-checked="false" title="高空低多：15 分钟定高低结构，5 分钟细化位置。震荡里在相对高位标空、相对低位标多。15 分钟还在中部时，本图近端高低不加票。收盘越过 15 分钟前高或跌破前低，按突破反转。影线收回仍按高空低多。只画位置，不是下单指令。左侧因子仍单独勾选"><i class="hkld-c"></i>高空低多</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="box" aria-pressed="false" aria-checked="false" title="箱体震荡：摆动高低点按 ATR 容差聚类，上下沿各有两次以上触碰才画箱体。框出上沿、下沿、中轴与触碰点，收盘越过边缘一定幅度记为上破或下破。回看根数可调。只画结构，不是下单指令"><i class="box-c"></i>箱体震荡</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="fib" aria-pressed="false" aria-checked="false" title="斐波那契：近端足够大的摆动自动画回撤。0% 在冲动终点，100% 在起点。回踩 0.5 / 0.618 / 0.786 后收盘收回才计票，穿过 100% 算原段失效。正在走的那根只观察。左侧因子仍单独勾选"><i class="fib-c"></i>斐波那契</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="st" aria-pressed="false" aria-checked="false" title="超级趋势：以 ATR 包络做趋势跟踪。多头段线在价格下方为绿，空头段线在价格上方为红，收盘穿越才换向，换向处标转多或转空。周期与倍数可调。滞后于反转，震荡里会来回换向，只描述趋势方向，不是下单指令"><i class="st-c"></i>超级趋势</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="ema9" aria-pressed="false" aria-checked="false"><i class="ema9"></i>EMA9</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="ema21" aria-pressed="false" aria-checked="false"><i class="ema21"></i>EMA21</button>
               </div>
@@ -284,7 +298,32 @@ try {
           </div>
           <span class="hint-wide">Wilder 平滑 · 70/30 超买超卖 · 50 中轴 · 副图可与 MACD 叠放</span>
         </div>
+        <div class="toolbar sub-toolbar" id="stBar" hidden>
+          <span class="lab">超级趋势周期</span>
+          <div class="seg" role="group" aria-label="超级趋势 ATR 周期">
+            <button type="button" data-st-n="7" aria-pressed="false" title="周期越小越灵敏，换向更频繁">7</button>
+            <button type="button" data-st-n="10" aria-pressed="true" title="常用默认">10</button>
+            <button type="button" data-st-n="14" aria-pressed="false" title="周期越大越平滑，滞后更多">14</button>
+          </div>
+          <span class="lab">倍数</span>
+          <div class="seg" role="group" aria-label="超级趋势 ATR 倍数">
+            <button type="button" data-st-k="2" aria-pressed="false" title="轨道更窄，信号更多也更容易被震出">2</button>
+            <button type="button" data-st-k="2.5" aria-pressed="false" title="折中">2.5</button>
+            <button type="button" data-st-k="3" aria-pressed="true" title="常用默认，轨道更宽，信号更少">3</button>
+          </div>
+          <span class="st-state" id="stState" role="status"></span>
+        </div>
+        <div class="toolbar sub-toolbar" id="boxBar" hidden>
+          <span class="lab">箱体回看</span>
+          <div class="seg" role="group" aria-label="箱体回看根数">
+            <button type="button" data-box-len="60" aria-pressed="false" title="只看近端，箱体更贴当前波动">60</button>
+            <button type="button" data-box-len="120" aria-pressed="true" title="常用默认">120</button>
+            <button type="button" data-box-len="180" aria-pressed="false" title="回看更长，容易框出更大的箱体">180</button>
+          </div>
+          <span class="hint-wide">摆动点按 ATR 容差聚类 · 上下沿各需两次以上触碰 · 收盘越过边缘才记破位</span>
+        </div>
         <div class="subbar" id="bollStatus" hidden></div>
+        <div class="subbar" id="boxStatus" hidden></div>
         <div class="stack-line" id="stackBar" hidden></div>
         <div class="chart-wrap" id="chartWrap">
           <svg id="chart" viewBox="0 0 960 400" preserveAspectRatio="none" role="img" aria-label="分钟 K 线，滚轮缩放，拖动平移"></svg>
@@ -299,7 +338,12 @@ try {
           <div id="simTags" aria-hidden="true"></div>
           <div class="last-tag num" id="lastTag">--</div>
           <div class="tip" id="tip"></div>
+          <div class="sig-tip num" id="sigTip" hidden></div>
           <div class="empty" id="chartEmpty">正在拉取 XAUUSD K 线</div>
+        </div>
+        <div class="sig-rail" id="sigRail" aria-label="时间信号线说明">
+          <span class="sig-rail-lab">时间信号线</span>
+          <span class="sig-rail-hint">主图底部圆点：企稳 / 开单 / 破位 / SMC 等 · 悬停看说明 · 点击跳到该根</span>
         </div>
       </main>
     </div>

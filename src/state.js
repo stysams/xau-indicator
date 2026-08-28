@@ -91,8 +91,11 @@ export const state = {
   pointer: null,
   ind: {
     ema9: false, ema21: false, boll: false, smc: false, smcSig: false, stack: false, hkld: false, fib: false, hs: false, sr: false, bounce: false, pull: false, trap: false, hold: false, last: false, hl: false,
-    boll1: false, boll2: false, boll3: false, macd: false, rsi: false, fast: false,
+    boll1: false, boll2: false, boll3: false, macd: false, rsi: false, fast: false, st: false, box: false,
   },
+  stN: 10,
+  stK: 3,
+  boxLen: 120,
   bollN: 20,
   bollK: 2,
   bollStyle: {
@@ -115,6 +118,10 @@ export const state = {
   _sr: null,
   _smcKey: '',
   _smc: null,
+  _stKey: '',
+  _st: null,
+  _boxKey: '',
+  _box: null,
   _pbKey: '',
   _pb: null,
   _trapKey: '',
@@ -145,6 +152,12 @@ export const state = {
   fac: {},
   facOrder: null,
   _facDrag: false,
+  sigRail: true,
+  showMtf: true,
+  layoutId: '',
+  layoutCustom: null,
+  _sigEvents: null,
+  _sigHover: null,
 };
 
 export const MIN_BARS = 12;

@@ -1,7 +1,9 @@
 import { fmtBarTime, fmtClock, fmtFunding, fmtHm, px } from '../core/format.js';
 import { bwRankWindow } from '../core/math.js';
 import { analyzeBoll, bollMacdSignal } from '../indicators/boll.js';
+import { getBox } from '../indicators/box.js';
 import { STACK_GLOSS, STACK_TFS, getStack, stackKindText, stackSame, stackTrend } from '../indicators/stack.js';
+import { getSuperTrend } from '../indicators/supertrend.js';
 import { judge } from '../judge/judge.js';
 import { sortFactorsByOrder } from '../judge/factors.js';
 import { mtfBias } from '../judge/votes.js';
@@ -90,6 +92,59 @@ export function renderBollStatus(klines) {
     '<span>' + b.shape + '</span>' +
     '<span>' + b.touchKind + '</span>' +
     macdHtml;
+}
+
+export function renderStState(klines) {
+  const el = $('stState');
+  if (!el) return;
+  if (!state.ind.st) {
+    el.innerHTML = '';
+    return;
+  }
+  const pack = getSuperTrend(klines);
+  if (!pack.ok) {
+    el.innerHTML = '<span>' + pack.why + '</span>';
+    return;
+  }
+  const cls = pack.lastDir > 0 ? 'up' : 'dn';
+  const lab = pack.lastDir > 0 ? '多' : '空';
+  const last = klines[klines.length - 1];
+  const dist = (last && pack.last != null) ? Math.abs(last.c - pack.last) : null;
+  const bars = pack.barsSinceFlip;
+  el.innerHTML =
+    '<i class="st-flag ' + cls + '">' + lab + '</i>' +
+    '<span>翻转位 <b>' + px(pack.last) + '</b></span>' +
+    '<span>距现价 <b>' + (dist == null ? '--' : px(dist)) + '</b></span>' +
+    '<span>' + (bars == null ? '本段自起点延续' : ('本段已走 <b>' + bars + '</b> 根')) + '</span>';
+}
+
+export function renderBoxStatus(klines) {
+  const el = $('boxStatus');
+  if (!el) return;
+  if (!state.ind.box) {
+    el.hidden = true;
+    el.innerHTML = '';
+    return;
+  }
+  el.hidden = false;
+  const b = getBox(klines);
+  if (!b.ok) {
+    el.innerHTML = '<span>' + b.why + '</span>';
+    return;
+  }
+  const cls = b.status === 'breakUp' ? 'up' : (b.status === 'breakDn' ? 'dn' : 'mid');
+  const atrTxt = b.atrv ? (b.height / b.atrv).toFixed(1) : '--';
+  const posPct = b.pos == null ? null : Math.max(0, Math.min(1, b.pos)) * 100;
+  const track = posPct == null
+    ? ''
+    : '<span class="box-track" aria-hidden="true"><i class="box-dot" style="left:' + posPct.toFixed(1) + '%"></i></span>';
+  el.innerHTML =
+    '<i class="box-flag ' + cls + '">' + b.statusLab + '</i>' +
+    '<span>箱体 <b>' + px(b.bottom) + '</b>–<b>' + px(b.top) + '</b></span>' +
+    '<span>高度 <b>' + px(b.height) + '</b> · <b>' + atrTxt + '</b> ATR</span>' +
+    '<span>上沿 <b>' + b.topTouches + '</b> 次 · 下沿 <b>' + b.botTouches + '</b> 次</span>' +
+    track +
+    '<span>' + (b.pos == null ? b.posLab : (b.posLab + ' ' + Math.round(b.pos * 100) + '%')) + '</span>';
 }
 
 export function renderStackBar() {
@@ -187,6 +242,8 @@ export function renderHeavy(klines) {
   renderFastPanel();
   renderBollStatus(klines);
   renderStackBar();
+  renderStState(klines);
+  renderBoxStatus(klines);
   const t = state.ticker;
   const j = judge(klines, t, state.mtf);
 

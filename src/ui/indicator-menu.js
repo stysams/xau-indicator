@@ -4,12 +4,12 @@ import { barsForChart } from '../net/rest.js';
 import { $, state } from '../state.js';
 import { applyFastPos } from './fast-float.js';
 import { drawChart, wrap } from '../view/chart.js';
-import { renderBollStatus, renderHeavy, renderStackBar } from '../view/panels.js';
+import { renderBollStatus, renderBoxStatus, renderHeavy, renderStState, renderStackBar } from '../view/panels.js';
 import { renderFastPanel } from '../view/trade-overlay.js';
 
 export const IND_KEY = 'gold-minute-ind';
 
-export const IND_KEYS = ['ema9', 'ema21', 'boll', 'smc', 'smcSig', 'stack', 'hkld', 'fib', 'hs', 'sr', 'bounce', 'pull', 'trap', 'hold', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'fast'];
+export const IND_KEYS = ['ema9', 'ema21', 'boll', 'smc', 'smcSig', 'stack', 'hkld', 'fib', 'hs', 'sr', 'bounce', 'pull', 'trap', 'hold', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'fast', 'st', 'box'];
 
 export const IND_MORE = [
   { k: 'hl', lab: '高低' },
@@ -20,10 +20,18 @@ export const IND_MORE = [
   { k: 'smcSig', lab: 'SMC多空' },
   { k: 'stack', lab: '套轨' },
   { k: 'hkld', lab: '高空低多' },
+  { k: 'box', lab: '箱体震荡' },
   { k: 'fib', lab: '斐波那契' },
+  { k: 'st', lab: '超级趋势' },
   { k: 'ema9', lab: 'EMA9' },
   { k: 'ema21', lab: 'EMA21' },
 ];
+
+export const ST_PERIODS = [7, 10, 14];
+
+export const ST_MULTS = [2, 2.5, 3];
+
+export const BOX_LENS = [60, 120, 180];
 
 export function parseHexColor(v) {
   if (typeof v !== 'string') return '';
@@ -125,6 +133,9 @@ export function loadInd() {
     if (raw.bollN === 10 || raw.bollN === 20 || raw.bollN === 30) state.bollN = raw.bollN;
     if (raw.bollK === 1.5 || raw.bollK === 2 || raw.bollK === 2.5) state.bollK = raw.bollK;
     if (raw.rsiN === 6 || raw.rsiN === 9 || raw.rsiN === 14) state.rsiN = raw.rsiN;
+    if (ST_PERIODS.indexOf(raw.stN) >= 0) state.stN = raw.stN;
+    if (ST_MULTS.indexOf(raw.stK) >= 0) state.stK = raw.stK;
+    if (BOX_LENS.indexOf(raw.boxLen) >= 0) state.boxLen = raw.boxLen;
     if (typeof raw.fastBeep === 'boolean') state.fastBeep = raw.fastBeep;
     state.bollStyle = readBollStyle(raw.bollStyle);
   } catch (e) { /* 沿用默认 */ }
@@ -134,6 +145,7 @@ export function saveInd() {
   try {
     localStorage.setItem(IND_KEY, JSON.stringify(Object.assign({}, state.ind, {
       bollN: state.bollN, bollK: state.bollK, rsiN: state.rsiN, fastBeep: state.fastBeep,
+      stN: state.stN, stK: state.stK, boxLen: state.boxLen,
       bollStyle: state.bollStyle,
     })));
   } catch (e) {}
@@ -167,6 +179,21 @@ export function syncIndButtons() {
   document.querySelectorAll('button[data-rsi-n]').forEach((b) => {
     b.setAttribute('aria-pressed', String(Number(b.dataset.rsiN) === state.rsiN));
   });
+  const stBar = $('stBar');
+  if (stBar) stBar.hidden = !state.ind.st;
+  document.querySelectorAll('button[data-st-n]').forEach((b) => {
+    b.setAttribute('aria-pressed', String(Number(b.dataset.stN) === state.stN));
+  });
+  document.querySelectorAll('button[data-st-k]').forEach((b) => {
+    b.setAttribute('aria-pressed', String(Number(b.dataset.stK) === state.stK));
+  });
+  const boxBar = $('boxBar');
+  if (boxBar) boxBar.hidden = !state.ind.box;
+  document.querySelectorAll('button[data-box-len]').forEach((b) => {
+    b.setAttribute('aria-pressed', String(Number(b.dataset.boxLen) === state.boxLen));
+  });
+  const boxStatus = $('boxStatus');
+  if (boxStatus) boxStatus.hidden = !state.ind.box;
   const beep = $('btnFastBeep');
   if (beep) beep.setAttribute('aria-pressed', String(!!state.fastBeep));
   const fastBox = $('fastBox');
@@ -238,10 +265,14 @@ export function refreshAfterInd(key) {
   state._stackKey = '';
   state._hkldKey = '';
   state._fibKey = '';
+  state._stKey = '';
+  state._boxKey = '';
   const klines = barsForChart();
   drawChart(klines, state.ticker, state.hover);
   renderBollStatus(klines);
   renderStackBar();
+  renderStState(klines);
+  renderBoxStatus(klines);
   if (key === 'fast') renderFastPanel();
   if (key === 'rsi') renderHeavy(klines);
 }

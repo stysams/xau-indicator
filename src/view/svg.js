@@ -16,6 +16,19 @@ export function lineD(arr, x, y) {
   return d;
 }
 
+// 分段折线：遇到 null 断开子路径，避免跨空档连线（超级趋势等按段分色的线用）
+export function lineSegD(arr, x, y) {
+  let d = '';
+  let started = false;
+  for (let i = 0; i < arr.length; i++) {
+    const v = arr[i];
+    if (v == null) { started = false; continue; }
+    d += (started ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(v).toFixed(1);
+    started = true;
+  }
+  return d;
+}
+
 export function bollAreaD(up, dn, x, y) {
   const u = [];
   const d = [];

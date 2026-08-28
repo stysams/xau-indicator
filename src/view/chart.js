@@ -1,6 +1,7 @@
 import { fmtAxis, fmtBarTime, px } from '../core/format.js';
 import { rsi } from '../core/math.js';
 import { getBollMacd } from '../indicators/boll.js';
+import { getBox } from '../indicators/box.js';
 import { fibRatioText, getFib } from '../indicators/fib.js';
 import { getHkld } from '../indicators/hkld.js';
 import { getHold } from '../indicators/hold.js';
@@ -9,13 +10,15 @@ import { getPb } from '../indicators/pb.js';
 import { getSmc } from '../indicators/smc.js';
 import { getSr, srTitle } from '../indicators/sr.js';
 import { getStack, stackMarkIndex } from '../indicators/stack.js';
+import { getSuperTrend } from '../indicators/supertrend.js';
 import { getTrap } from '../indicators/trap.js';
 import { $, H, PAD, W, state } from '../state.js';
 import { simOpenOrders } from '../trade/sim.js';
 import { bollDash, bollSt } from '../ui/indicator-menu.js';
 import { drawOscPanes, findPane, oscLayout, paneY } from './osc.js';
-import { drawFib, drawHkld, drawHold, drawPbSetup, drawTrapSetup } from './overlays.js';
-import { bollAreaD, lineD, svgEl } from './svg.js';
+import { drawBox, drawFib, drawHkld, drawHold, drawPbSetup, drawTrapSetup } from './overlays.js';
+import { drawSignalRail } from './signal-rail.js';
+import { bollAreaD, lineD, lineSegD, svgEl } from './svg.js';
 import { drawFastOverlay, drawSimOverlay, openFastTrade, placeFastTags } from './trade-overlay.js';
 import { chartSlice, updateZoomLabel } from './viewport.js';
 
@@ -45,6 +48,8 @@ export function drawChart(klines, ticker, hover) {
   const hold = state.ind.hold ? getHold(klines) : null;
   const hkld = state.ind.hkld ? getHkld(klines) : null;
   const fib = state.ind.fib ? getFib(klines) : null;
+  const stPack = state.ind.st ? getSuperTrend(klines) : null;
+  const box = state.ind.box ? getBox(klines) : null;
   let lo = Infinity, hi = -Infinity;
   vis.forEach((k) => { lo = Math.min(lo, k.l); hi = Math.max(hi, k.h); });
   if (state.ind.ema9) {
@@ -151,6 +156,18 @@ export function drawChart(klines, ticker, hover) {
       lo = Math.min(lo, lv.price);
       hi = Math.max(hi, lv.price);
     });
+  }
+  if (stPack && stPack.ok) {
+    const a = Math.max(0, view.start);
+    const b = Math.min(klines.length, view.end);
+    for (let i = a; i < b; i++) {
+      const v = stPack.st[i];
+      if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+    }
+  }
+  if (box && box.ok) {
+    lo = Math.min(lo, box.bottom);
+    hi = Math.max(hi, box.top);
   }
   const padY = (hi - lo) * 0.08 || 1;
   lo -= padY; hi += padY;
@@ -281,6 +298,10 @@ export function drawChart(klines, ticker, hover) {
     svg.appendChild(gOb);
   }
 
+  if (box && box.ok) {
+    drawBox(svg, box, vx, y, W - PAD.r);
+  }
+
   if (state.ind.hl && ticker && ticker.high && ticker.low) {
     [ticker.high, ticker.low].forEach((lv, idx) => {
       if (lv < lo || lv > hi) return;
@@ -329,6 +350,57 @@ export function drawChart(klines, ticker, hover) {
   }
   if (state.ind.ema9) poly(e9, 'var(--accent)', '', 'ck-ema9');
   if (state.ind.ema21) poly(e21, 'var(--accent-2)', '4 3', 'ck-ema21');
+
+  if (stPack && stPack.ok) {
+    const stUpVis = stPack.up.slice(i0, i0 + nBars);
+    const stDnVis = stPack.dn.slice(i0, i0 + nBars);
+    function stLine(arr, stroke, id) {
+      const d = lineSegD(arr, x, y);
+      if (!d) return;
+      const path = svgEl('path', {
+        d: d, fill: 'none', stroke: stroke, 'stroke-width': '1.75',
+        'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: '.92',
+      });
+      path.setAttribute('id', id);
+      svg.appendChild(path);
+    }
+    stLine(stUpVis, 'var(--up)', 'ck-st-up');
+    stLine(stDnVis, 'var(--down)', 'ck-st-dn');
+    (stPack.flips || []).forEach((fl) => {
+      if (fl.i < view.start || fl.i > view.end) return;
+      const xc = vx(fl.i);
+      const yy = y(fl.price);
+      const upFlip = fl.dir > 0;
+      const color = upFlip ? 'var(--up)' : 'var(--down)';
+      const gFl = svgEl('g', {});
+      const tip = svgEl('title', {});
+      tip.textContent = (upFlip ? '超级趋势转多 ' : '超级趋势转空 ') + px(fl.price);
+      gFl.appendChild(tip);
+      gFl.appendChild(svgEl('polygon', {
+        points: upFlip
+          ? xc.toFixed(1) + ',' + (yy - 8.5).toFixed(1) + ' ' + (xc - 5.5).toFixed(1) + ',' + (yy + 2).toFixed(1) + ' ' + (xc + 5.5).toFixed(1) + ',' + (yy + 2).toFixed(1)
+          : xc.toFixed(1) + ',' + (yy + 8.5).toFixed(1) + ' ' + (xc - 5.5).toFixed(1) + ',' + (yy - 2).toFixed(1) + ' ' + (xc + 5.5).toFixed(1) + ',' + (yy - 2).toFixed(1),
+        fill: color,
+        opacity: '.92',
+      }));
+      const lab = svgEl('text', {
+        x: xc.toFixed(1),
+        y: (upFlip ? yy + 14 : yy - 11).toFixed(1),
+        fill: color,
+        'font-size': '10.5',
+        'font-weight': '750',
+        'font-family': 'var(--font)',
+        'text-anchor': 'middle',
+        stroke: 'var(--bg)',
+        'stroke-width': '3',
+        'paint-order': 'stroke',
+        opacity: '.92',
+      });
+      lab.textContent = upFlip ? '转多' : '转空';
+      gFl.appendChild(lab);
+      svg.appendChild(gFl);
+    });
+  }
 
   if (smc) {
     const gEv = svgEl('g', {});
@@ -569,12 +641,14 @@ export function drawChart(klines, ticker, hover) {
     sr.levels.forEach((lv) => {
       if (lv.price < lo || lv.price > hi) return;
       const asSup = lastPx == null ? lv.role === 'sup' : lastPx >= lv.price;
-      const color = lv.role === 'res' || (lv.role === 'test' && !asSup) ? 'var(--down)' : 'var(--up)';
+      const color = lv.role === 'res' || (lv.role === 'test' && !asSup) ? 'var(--sr-res)' : 'var(--sr-sup)';
       const broken = lv.breakI != null;
-      const op = lv.role === 'test' ? '.92' : (broken ? '.42' : (lv.touches >= 3 ? '.82' : '.66'));
+      const isTest = lv.role === 'test';
+      const op = isTest ? '.62' : (broken ? '.32' : (lv.touches >= 3 ? '.5' : '.38'));
+      const labOp = isTest ? '.8' : (broken ? '.42' : (lv.touches >= 3 ? '.66' : '.52'));
       const isBoll20 = lv.source === 'boll20' || lv.boll20;
       const dash = broken ? '4 4' : (lv.source === 'round' || lv.session ? '6 4' : (isBoll20 ? '2 3' : ''));
-      const width = lv.role === 'test' ? '1.7' : (lv.touches >= 3 ? '1.45' : '1.15');
+      const width = isTest ? '1.5' : (lv.touches >= 3 ? '1.3' : '1.05');
       const yy = y(lv.price);
       const x1 = vx(lv.firstI);
       const x2 = W - PAD.r;
@@ -588,7 +662,7 @@ export function drawChart(klines, ticker, hover) {
           width: Math.max(2, Math.abs(x2 - x1)).toFixed(1),
           height: Math.max(1.5, Math.abs(bot - top)).toFixed(1),
           fill: color,
-          opacity: isBoll20 ? '.07' : '.10',
+          opacity: isBoll20 ? '.05' : '.07',
         }));
       }
       svg.appendChild(svgEl('line', {
@@ -615,7 +689,7 @@ export function drawChart(klines, ticker, hover) {
         stroke: 'var(--bg)',
         'stroke-width': '3',
         'paint-order': 'stroke',
-        opacity: op,
+        opacity: labOp,
       });
       const touchTxt = lv.touches >= 2 ? ' · ' + lv.touches + '次' : '';
       const strengthTxt = lv.strength >= 70 ? ' · 强' : (lv.strength >= 50 ? ' · 中' : ' · 弱');
@@ -688,6 +762,7 @@ export function drawChart(klines, ticker, hover) {
       key: p.key, top: p.top, h: p.h, lo: p.lo, hi: p.hi, digits: p.digits,
     })),
     bodyW: bodyW, wickW: wickW, bodyStroke: bodyStroke, hollowUp: hollowUp,
+    boxSig: box ? box.sig : '', stDir: stPack ? stPack.lastDir : 0,
   };
   drawFastOverlay(svg, vis, view, x, y);
   drawSimOverlay(svg, y);
@@ -714,6 +789,8 @@ export function drawChart(klines, ticker, hover) {
     t.textContent = fmtAxis(vis[i].t);
     svg.appendChild(t);
   }
+
+  drawSignalRail(svg, klines, vis, view, x);
 
   if (hover >= 0 && hover < nBars) {
     const xc = x(hover);
@@ -763,6 +840,17 @@ export function patchLastCandle(klines) {
     const lastH = view.macdHist[view.macdHist.length - 1];
     if (lastH != null && (lastH > macdPane.hi || lastH < macdPane.lo)) return false;
   }
+  // 箱体破位或超级趋势换向都会改变配色与标签，交回整图重绘
+  let stLive = null;
+  if (state.ind.box) {
+    const bx = getBox(klines);
+    if ((bx ? bx.sig : '') !== s.boxSig) return false;
+  }
+  if (state.ind.st) {
+    stLive = getSuperTrend(klines);
+    if ((stLive ? stLive.lastDir : 0) !== s.stDir) return false;
+    if (stLive.last != null && (stLive.last > s.hi || stLive.last < s.lo)) return false;
+  }
   const y = s.y, x = s.x;
   const up = k.c >= k.o;
   const color = up ? 'var(--up)' : 'var(--down)';
@@ -789,6 +877,14 @@ export function patchLastCandle(klines) {
   const d21 = lineD(view.e21, x, y);
   if (p9) p9.setAttribute('d', d9);
   if (p21) p21.setAttribute('d', d21);
+  if (stLive && stLive.ok) {
+    const a = Math.max(0, view.start);
+    const b = a + view.bars.length;
+    const pStUp = document.getElementById('ck-st-up');
+    const pStDn = document.getElementById('ck-st-dn');
+    if (pStUp) pStUp.setAttribute('d', lineSegD(stLive.up.slice(a, b), x, y));
+    if (pStDn) pStDn.setAttribute('d', lineSegD(stLive.dn.slice(a, b), x, y));
+  }
   if (state.ind.boll) {
     const pu = document.getElementById('ck-boll-up');
     const pm = document.getElementById('ck-boll-mid');
@@ -990,6 +1086,23 @@ export function showTip(e, klines) {
   }
   if (state.ind.rsi && view.rsi && view.rsi[i] != null) {
     extra += '<br>RSI' + (state.rsiN || 14) + ' ' + view.rsi[i].toFixed(1);
+  }
+  if (state.ind.st) {
+    const pack = getSuperTrend(klines);
+    const gi = i + i0;
+    if (pack && pack.ok && pack.st[gi] != null) {
+      extra += '<br>超级趋势 ' + px(pack.st[gi]) + '  ' + (pack.dir[gi] > 0 ? '多' : '空') +
+        '（' + pack.period + '×' + pack.mult + '）';
+    } else {
+      extra += '<br>' + ((pack && pack.why) || '超级趋势样本不足');
+    }
+  }
+  if (state.ind.box) {
+    const pack = getBox(klines);
+    extra += '<br>' + (pack && pack.ok
+      ? ('箱体 ' + px(pack.bottom) + '–' + px(pack.top) + '  ' + pack.statusLab +
+        (pack.pos != null ? '  位置 ' + Math.round(pack.pos * 100) + '%' : ''))
+      : '箱体未现');
   }
   if (state.ind.hkld) {
     const pack = getHkld(klines);

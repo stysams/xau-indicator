@@ -5,9 +5,11 @@ import { fmtBj, fmtRange, fromZoned, sessSnapshot, venueState } from './core/ses
 import { getFib } from './indicators/fib.js';
 import { getHkld } from './indicators/hkld.js';
 import { getHold } from './indicators/hold.js';
+import { getBox } from './indicators/box.js';
 import { getSmc } from './indicators/smc.js';
 import { getSr } from './indicators/sr.js';
 import { getStack } from './indicators/stack.js';
+import { getSuperTrend } from './indicators/supertrend.js';
 import { getTrap } from './indicators/trap.js';
 import { FAC_ITEMS, factorOn } from './judge/factors.js';
 import { judge } from './judge/judge.js';
@@ -23,10 +25,12 @@ import { applyColor, endDrag, switchMarket, syncMarketChrome, zoomAt } from './u
 import { bindFacDrag, bindFacMenu, buildFacMenu, closeFacMenu, loadFac, refreshAfterFac, syncFacButtons } from './ui/factor-menu.js';
 import { bindFastFloat, loadFastPos } from './ui/fast-float.js';
 import { IND_KEYS, applyBollCssVars, closeBollStyleMenu, closeIndMenu, defaultBollStyle, indMenuItems, loadInd, onBollStyleChange, parseHexColor, refreshAfterInd, resetBollStyle, saveInd, setIndMenu, syncIndButtons, toggleBollStyleMenu, toggleIndMenu } from './ui/indicator-menu.js';
+import { bindLayoutPreset, closeLayoutMenu } from './ui/layout-preset.js';
 import { bindSessRail, tickSess } from './ui/session-rail.js';
 import { drawChart, hideCrosshair, showTip, wrap } from './view/chart.js';
 import { oscLayout } from './view/osc.js';
 import { banner, remainText, render, renderHeavy, renderQuote } from './view/panels.js';
+import { bindSignalRail, collectSignalEvents } from './view/signal-rail.js';
 import { openSignalView, renderFastPanel } from './view/trade-overlay.js';
 import { applyView, chartSlice, resetZoom, updateZoomLabel } from './view/viewport.js';
 
@@ -130,6 +134,7 @@ document.addEventListener('click', (e) => {
   const t = e.target;
   if (!t || !t.closest || !t.closest('#indMore')) closeIndMenu();
   if (!t || !t.closest || !t.closest('#facMore')) closeFacMenu();
+  if (!t || !t.closest || !t.closest('#layoutMore')) closeLayoutMenu();
   if (state._bollColorOpen) return;
   if (!t || !t.closest || !t.closest('#bollStyleWrap')) closeBollStyleMenu();
 });
@@ -138,6 +143,7 @@ document.addEventListener('keydown', (e) => {
   closeIndMenu();
   closeFacMenu();
   closeBollStyleMenu();
+  closeLayoutMenu();
 });
 document.querySelectorAll('button[data-boll-n]').forEach((b) => {
   b.addEventListener('click', () => {
@@ -239,6 +245,39 @@ document.querySelectorAll('button[data-rsi-n]').forEach((b) => {
     syncFacButtons();
     state.chartScale = null;
     state._hkldKey = '';
+    const klines = barsForChart();
+    drawChart(klines, state.ticker, state.hover);
+    renderHeavy(klines);
+  });
+});
+function onStParamChange() {
+  saveInd();
+  syncIndButtons();
+  state.chartScale = null;
+  state._stKey = '';
+  const klines = barsForChart();
+  drawChart(klines, state.ticker, state.hover);
+  renderHeavy(klines);
+}
+document.querySelectorAll('button[data-st-n]').forEach((b) => {
+  b.addEventListener('click', () => {
+    state.stN = Number(b.dataset.stN);
+    onStParamChange();
+  });
+});
+document.querySelectorAll('button[data-st-k]').forEach((b) => {
+  b.addEventListener('click', () => {
+    state.stK = Number(b.dataset.stK);
+    onStParamChange();
+  });
+});
+document.querySelectorAll('button[data-box-len]').forEach((b) => {
+  b.addEventListener('click', () => {
+    state.boxLen = Number(b.dataset.boxLen);
+    saveInd();
+    syncIndButtons();
+    state.chartScale = null;
+    state._boxKey = '';
     const klines = barsForChart();
     drawChart(klines, state.ticker, state.hover);
     renderHeavy(klines);
@@ -378,6 +417,27 @@ bindFacDrag();
 bindSessRail();
 bindFastFloat();
 
+function refreshAfterLayout() {
+  state.chartScale = null;
+  const klines = barsForChart();
+  drawChart(klines, state.ticker, state.hover);
+  renderHeavy(klines);
+  renderFastPanel();
+}
+
+bindLayoutPreset(refreshAfterLayout);
+bindSignalRail((i) => {
+  const klines = barsForChart();
+  if (!klines.length) return;
+  const view = chartSlice(klines);
+  const half = Math.floor(view.count / 2);
+  state.viewEnd = Math.min(klines.length, Math.max(view.count, i + 1 + half));
+  state.followLive = state.viewEnd >= klines.length;
+  state.chartScale = null;
+  drawChart(klines, state.ticker, -1);
+  updateZoomLabel();
+});
+
 window.__goldTest = {
   mkt: () => mkt(),
   switchMarket: (id) => switchMarket(id),
@@ -397,6 +457,8 @@ window.__goldTest = {
   getStack: () => getStack(),
   getHkld: (kl) => getHkld(kl || state.klines),
   getFib: (kl) => getFib(kl || state.klines),
+  getSuperTrend: (kl) => getSuperTrend(kl || state.klines),
+  getBox: (kl) => getBox(kl || state.klines),
   judge: (kl) => judge(kl || state.klines, state.ticker, state.mtf),
   evalFastSetup: (bars, ticker, preview) => evalFastSetup(bars, ticker, preview),
   mtfLean: (kl) => mtfLean(kl),
@@ -434,6 +496,8 @@ window.__goldTest = {
     state._stackKey = '';
     state._hkldKey = '';
     state._fibKey = '';
+    state._stKey = '';
+    state._boxKey = '';
     state.viewCount = null;
     state.viewEnd = null;
     state.followLive = true;
@@ -447,6 +511,8 @@ window.__goldTest = {
       stack: getStack(),
       hkld: getHkld(used),
       fib: getFib(used),
+      st: getSuperTrend(used),
+      box: getBox(used),
       judge: judge(used, state.ticker, state.mtf),
     };
   },
@@ -516,6 +582,13 @@ window.__goldTest = {
     state.fac[k] = !!on;
     refreshAfterFac();
     return factorOn(k);
+  },
+  collectSignals: (kl) => collectSignalEvents(kl || barsForChart()),
+  pushFastMark: (t, dir) => {
+    state.fastMarks = (state.fastMarks || []).concat([{ t: Number(t), dir: Number(dir) || 1 }]).slice(-12);
+    state.chartScale = null;
+    render();
+    return state.fastMarks.length;
   },
 };
 
