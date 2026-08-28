@@ -16,6 +16,7 @@ import { judge } from './judge/judge.js';
 import { mtfLean } from './judge/votes.js';
 import { loadMain, loadMtf, loadSession } from './net/loader.js';
 import { barsForChart, parseKlines, parseStreamName, parseTicker } from './net/rest.js';
+import { clearUsidx, loadUsidx } from './net/usidx.js';
 import { connectWs, startPing, stopPing } from './net/ws.js';
 import { $, LIVE_ANCHOR, PAD, W, mkt, state } from './state.js';
 import { evalFastSetup, loadFast, refresh10sTail, spreadTooWide, stepFastTrade } from './trade/fast.js';
@@ -60,6 +61,7 @@ document.querySelectorAll('[data-tf]').forEach((b) => {
     resetZoom();
     hideCrosshair();
     loadMain();
+    if (state.ind.usidx) loadUsidx().then((ok) => { if (ok && state.ind.usidx) render(); });
   });
 });
 document.querySelectorAll('[data-n]').forEach((b) => {
@@ -68,6 +70,7 @@ document.querySelectorAll('[data-n]').forEach((b) => {
     document.querySelectorAll('[data-n]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
     resetZoom();
     loadMain();
+    if (state.ind.usidx) loadUsidx().then((ok) => { if (ok && state.ind.usidx) render(); });
   });
 });
 document.querySelectorAll('[data-ind]').forEach((b) => {
@@ -78,6 +81,13 @@ document.querySelectorAll('[data-ind]').forEach((b) => {
       state.ind.boll2 = true;
     }
     refreshAfterInd(key);
+    if (key === 'usidx') {
+      if (state.ind.usidx) loadUsidx().then((ok) => { if (ok && state.ind.usidx) render(); });
+      else {
+        clearUsidx();
+        render();
+      }
+    }
   });
 });
 const btnIndMore = $('btnIndMore');
@@ -464,6 +474,7 @@ window.__goldTest = {
   mtfLean: (kl) => mtfLean(kl),
   spreadTooWide: (spread, tpDist) => spreadTooWide(spread, tpDist),
   openSignalView: () => openSignalView(),
+  loadUsidx: () => loadUsidx(),
   applyKlines: (klines, tf) => {
     state.reqId += 1;
     state.paused = true;
@@ -557,6 +568,7 @@ window.__goldTest = {
   factorOn: (k) => factorOn(k),
   rsiSeries: (closes, period) => rsiSeries(closes, period),
   oscLayout: () => oscLayout(),
+  usidx: () => ({ ticker: state.usidxTicker, bars: state.usidxBars }),
   setInd: (k, on) => {
     if (k === '*') {
       IND_KEYS.forEach((key) => { state.ind[key] = !!on; });
@@ -596,11 +608,15 @@ syncMarketChrome();
 loadMain();
 loadMtf();
 loadFast();
+if (state.ind.usidx) loadUsidx().then((ok) => { if (ok && state.ind.usidx) render(); });
 connectWs();
 setInterval(() => { if (!state.paused && !state.wsOk) loadMain(); }, 2000);
 setInterval(() => { if (!state.paused) loadSession(); }, 60000);
 setInterval(() => { if (!state.paused) loadMtf(); }, 45000);
 setInterval(() => { if (!state.paused) refresh10sTail(); }, 8000);
+setInterval(() => {
+  if (!state.paused && state.ind.usidx) loadUsidx().then((ok) => { if (ok && state.ind.usidx) render(); });
+}, 10000);
 setInterval(() => {
   $('clock').textContent = fmtClock();
   if (state.ticker) $('remain').textContent = remainText(state.ticker.closeTime);

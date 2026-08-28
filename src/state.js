@@ -91,8 +91,12 @@ export const state = {
   pointer: null,
   ind: {
     ema9: false, ema21: false, boll: false, smc: false, smcSig: false, stack: false, hkld: false, fib: false, hs: false, sr: false, bounce: false, pull: false, trap: false, hold: false, last: false, hl: false,
-    boll1: false, boll2: false, boll3: false, macd: false, rsi: false, fast: false, st: false, box: false,
+    boll1: false, boll2: false, boll3: false, macd: false, rsi: false, usidx: false, fast: false, st: false, box: false,
   },
+  usidxBars: [],
+  usidxTicker: null,
+  usidxReqId: 0,
+  usidxInflight: false,
   stN: 10,
   stK: 3,
   boxLen: 120,

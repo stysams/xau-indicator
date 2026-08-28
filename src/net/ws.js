@@ -1,6 +1,7 @@
 import { n } from '../core/format.js';
 import { parseStreamName, rowSymbol, upsertBar } from './rest.js';
 import { FAST_LIMIT, MIN_BARS, mkt, state, streamTfs } from '../state.js';
+import { mergeUsidxTicker } from './usidx.js';
 import { applyTickBar, onFastBarClosed, tickFastOpen } from '../trade/fast.js';
 import { renderQuote, scheduleChart, scheduleQuote } from '../view/panels.js';
 
@@ -47,6 +48,14 @@ export function applyBook(row) {
   scheduleQuote();
 }
 
+export function applyUsidxCandle(row) {
+  if (!state.ind.usidx || rowSymbol(row) !== 'USIDX') return;
+  const bar = { t: n(row.t), o: n(row.o), h: n(row.h), l: n(row.l), c: n(row.c) };
+  if (!bar.t || bar.c == null) return;
+  state.usidxBars = upsertBar(state.usidxBars || [], bar, 480);
+  scheduleChart();
+}
+
 export function applyCandle(row) {
   const parsed = parseStreamName(row.n);
   if (parsed.symbol !== mkt().symbol) return;
@@ -77,11 +86,25 @@ export function applyCandle(row) {
 export function onWs(msg) {
   if (!msg || msg.error) return;
   if (msg.event !== 'update') return;
-  const rows = Array.isArray(msg.result) ? msg.result : (msg.result && typeof msg.result === 'object' ? [msg.result] : []);
+  let rows = Array.isArray(msg.result) ? msg.result : (msg.result && typeof msg.result === 'object' ? [msg.result] : []);
   const ch = msg.channel || '';
+  if (ch === 'tradfi.tickers' && state.ind.usidx) {
+    rows.forEach((row) => {
+      if (rowSymbol(row) === 'USIDX') {
+        mergeUsidxTicker(row);
+        scheduleChart();
+      }
+    });
+    rows = rows.filter((row) => rowSymbol(row) !== 'USIDX');
+  }
   if (ch === 'tradfi.tickers' || ch === 'futures.tickers') rows.forEach(applyTicker);
   else if (ch === 'tradfi.order_book' || ch === 'futures.book_ticker') rows.forEach(applyBook);
-  else if (ch === 'tradfi.candlesticks' || ch === 'futures.candlesticks') rows.forEach(applyCandle);
+  else if (ch === 'tradfi.candlesticks' || ch === 'futures.candlesticks') {
+    rows.forEach((row) => {
+      if (rowSymbol(row) === 'USIDX') applyUsidxCandle(row);
+      else applyCandle(row);
+    });
+  }
 }
 
 export function wsUrl() {
@@ -97,6 +120,12 @@ export function wsSend(obj) {
   if (state.ws && state.ws.readyState === 1) state.ws.send(JSON.stringify(obj));
 }
 
+function subscribeUsidx(now) {
+  if (!state.ind.usidx) return;
+  wsSend({ time: now, channel: 'tradfi.tickers', event: 'subscribe', payload: { markets: ['USIDX'] } });
+  wsSend({ time: now, channel: 'tradfi.candlesticks', event: 'subscribe', payload: ['1m', 'USIDX'] });
+}
+
 export function subscribeAll() {
   const now = Math.floor(Date.now() / 1000);
   const symbol = mkt().symbol;
@@ -106,6 +135,7 @@ export function subscribeAll() {
     streamTfs().forEach((tf) => {
       wsSend({ time: now, channel: 'futures.candlesticks', event: 'subscribe', payload: [tf, symbol] });
     });
+    subscribeUsidx(now);
     return;
   }
   wsSend({ time: now, channel: 'tradfi.tickers', event: 'subscribe', payload: { markets: [symbol] } });
@@ -113,6 +143,7 @@ export function subscribeAll() {
   streamTfs().forEach((tf) => {
     wsSend({ time: now, channel: 'tradfi.candlesticks', event: 'subscribe', payload: [tf, symbol] });
   });
+  subscribeUsidx(now);
 }
 
 export function stopPing() {

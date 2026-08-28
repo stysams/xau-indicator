@@ -9,7 +9,7 @@ import { renderFastPanel } from '../view/trade-overlay.js';
 
 export const IND_KEY = 'gold-minute-ind';
 
-export const IND_KEYS = ['ema9', 'ema21', 'boll', 'smc', 'smcSig', 'stack', 'hkld', 'fib', 'hs', 'sr', 'bounce', 'pull', 'trap', 'hold', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'fast', 'st', 'box'];
+export const IND_KEYS = ['ema9', 'ema21', 'boll', 'smc', 'smcSig', 'stack', 'hkld', 'fib', 'hs', 'sr', 'bounce', 'pull', 'trap', 'hold', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'usidx', 'fast', 'st', 'box'];
 
 export const IND_MORE = [
   { k: 'hl', lab: '高低' },
@@ -176,6 +176,8 @@ export function syncIndButtons() {
   });
   const rsiBar = $('rsiBar');
   if (rsiBar) rsiBar.hidden = !state.ind.rsi;
+  const usidxBar = $('usidxBar');
+  if (usidxBar) usidxBar.hidden = !state.ind.usidx;
   document.querySelectorAll('button[data-rsi-n]').forEach((b) => {
     b.setAttribute('aria-pressed', String(Number(b.dataset.rsiN) === state.rsiN));
   });

@@ -863,6 +863,8 @@ export function patchLastCandle(klines) {
     const lastH = view.macdHist[view.macdHist.length - 1];
     if (lastH != null && (lastH > macdPane.hi || lastH < macdPane.lo)) return false;
   }
+  const usidxPane = findPane(s, 'usidx');
+  if (state.ind.usidx && usidxPane && state.usidxTicker) return false;
   // 箱体破位或超级趋势换向都会改变配色与标签，交回整图重绘
   let stLive = null;
   if (state.ind.box) {

@@ -2,10 +2,12 @@ import { n } from '../core/format.js';
 import { rsi } from '../core/math.js';
 import { H, PAD, W, state } from '../state.js';
 import { lineD, svgEl } from './svg.js';
+import { drawUsidxPane } from './usidx.js';
 
 export const OSC_PANES = [
   { key: 'macd', height: 68, digits: 3, title: 'MACD 12/26/9' },
   { key: 'rsi', height: 62, digits: 1, title: function () { return 'RSI ' + (state.rsiN || 14); }, lo: 0, hi: 100 },
+  { key: 'usidx', height: 62, digits: 3, title: 'USIDX DXY', lo: 0, hi: 1 },
 ];
 
 export function oscLayout() {
@@ -173,5 +175,6 @@ export function drawOscPanes(svg, view, panes, x, nBars, bodyW) {
   panes.forEach((pane) => {
     if (pane.key === 'macd') drawMacdPane(svg, view, pane, x, nBars, bodyW);
     else if (pane.key === 'rsi') drawRsiPane(svg, view, pane, x, nBars);
+    else if (pane.key === 'usidx') drawUsidxPane(svg, view, pane, x, nBars);
   });
 }

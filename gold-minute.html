@@ -163,6 +163,7 @@ try {
             <button type="button" data-ind="last" aria-pressed="false" title="现价水平线">现价</button>
             <button type="button" data-ind="rsi" aria-pressed="false" title="RSI 副图：Wilder 平滑，默认 14，可改 6/9。70/30 超买超卖带，超买超卖不加方向票">RSI</button>
             <button type="button" data-ind="macd" aria-pressed="false" title="MACD 副图与布林复合信号">MACD</button>
+            <button type="button" data-ind="usidx" aria-pressed="false" title="USIDX 美元指数副图：独立请求 Gate TradFi 数据，关闭时不请求">USIDX</button>
             <button type="button" data-ind="fast" aria-pressed="false" title="开单信号：1分/5分定方向，10秒回踩或触轨收回后给出开多/开空">开单</button>
             <div class="ind-more" id="indMore">
               <button type="button" class="ind-caret" id="btnIndMore" aria-expanded="false" aria-haspopup="menu" aria-controls="indMoreMenu" aria-pressed="false" title="更多指标：高低、反弹、回踩、诱空诱多、企稳、SMC多空、套轨、高空低多、箱体震荡、斐波那契、超级趋势、EMA9、EMA21" aria-label="更多指标">
@@ -288,6 +289,10 @@ try {
           </div>
             </div>
           </div>
+        </div>
+        <div class="toolbar sub-toolbar" id="usidxBar" hidden>
+          <span class="lab">USIDX</span>
+          <span class="hint-wide">Gate TradFi · 美元指数 DXY · 独立副图，不参与黄金判断</span>
         </div>
         <div class="toolbar sub-toolbar" id="rsiBar" hidden>
           <span class="lab">RSI周期</span>

@@ -1,5 +1,6 @@
 import { loadMain, loadMtf } from '../net/loader.js';
 import { barsForChart, liveEndFor } from '../net/rest.js';
+import { clearUsidx, loadUsidx } from '../net/usidx.js';
 import { connectWs, disconnectWs } from '../net/ws.js';
 import { $, MARKETS, MIN_BARS, MKT_KEY, PAD, W, mkt, state } from '../state.js';
 import { loadFast } from '../trade/fast.js';
@@ -47,6 +48,7 @@ export function clearMarketData() {
   state._pbKey = '';
   state._trapKey = '';
   state._holdKey = '';
+  clearUsidx();
   state.simOrders = [];
   state.simLastClose = null;
   state.hover = -1;
@@ -78,6 +80,7 @@ export function switchMarket(id) {
   loadMain();
   loadMtf();
   loadFast();
+  if (state.ind.usidx) loadUsidx().then((ok) => { if (ok && state.ind.usidx) drawChart(barsForChart(), state.ticker, state.hover); });
   if (!state.paused) connectWs();
 }
 
