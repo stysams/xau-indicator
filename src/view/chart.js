@@ -352,11 +352,25 @@ export function drawChart(klines, ticker, hover) {
       width: Math.max(2, ex - sx).toFixed(1), height: Math.max(1.5, Math.abs(bot - top)).toFixed(1),
       fill: 'var(--accent-2)', opacity: '.055',
     }));
-    [[swing.hi, '波段高', 'var(--sr-res)'], [swing.lo, '波段低', 'var(--sr-sup)']].forEach((row) => {
+    const fromPrice = swing.dir > 0 ? swing.lo : swing.hi;
+    const toPrice = swing.dir > 0 ? swing.hi : swing.lo;
+    gSwing.appendChild(svgEl('line', {
+      x1: vx(swing.startI).toFixed(1), x2: vx(swing.endI).toFixed(1),
+      y1: y(fromPrice).toFixed(1), y2: y(toPrice).toFixed(1),
+      stroke: 'var(--accent-2)', 'stroke-width': '1.35',
+      'stroke-dasharray': swing.status === 'forming' ? '3 4' : '', opacity: '.72',
+      'vector-effect': 'non-scaling-stroke',
+    }));
+    [
+      [swing.hi, swing.hiConfirmed ? '波段高（已确认）' : '波段高（进行中）', 'var(--sr-res)', swing.hiConfirmed],
+      [swing.lo, swing.loConfirmed ? '波段低（已确认）' : '波段低（进行中）', 'var(--sr-sup)', swing.loConfirmed],
+    ].forEach((row) => {
       const yy = y(row[0]);
       gSwing.appendChild(svgEl('line', {
         x1: sx.toFixed(1), x2: ex.toFixed(1), y1: yy.toFixed(1), y2: yy.toFixed(1),
-        stroke: row[2], 'stroke-width': '1.15', 'stroke-dasharray': '3 3', opacity: '.78',
+        stroke: row[2], 'stroke-width': '1.15',
+        'stroke-dasharray': row[3] ? '3 3' : '2 5', opacity: row[3] ? '.78' : '.58',
+        'vector-effect': 'non-scaling-stroke',
       }));
       const lab = svgEl('text', {
         x: (ex - 4).toFixed(1), y: (yy - 4).toFixed(1), fill: row[2],
@@ -712,17 +726,17 @@ export function drawChart(klines, ticker, hover) {
       const yy = y(lv.price);
       const x1 = vx(lv.firstI);
       const x2 = W - PAD.r;
-      if ((lv.role === 'test' || isBoll20) && sr.radius) {
-        const zone = isBoll20 && lv.spread ? Math.max(sr.radius * 0.7, lv.spread * 0.5) : sr.radius;
-        const top = y(lv.price + zone);
-        const bot = y(lv.price - zone);
+      if ((lv.source === 'swing' || lv.role === 'test' || isBoll20) && sr.radius) {
+        const zone = isBoll20 && lv.spread ? Math.max(sr.radius * 0.7, lv.spread * 0.5) : (lv.zoneHalf || sr.radius);
+        const top = y(lv.zoneHi != null ? lv.zoneHi : lv.price + zone);
+        const bot = y(lv.zoneLo != null ? lv.zoneLo : lv.price - zone);
         svg.appendChild(svgEl('rect', {
           x: Math.min(x1, x2).toFixed(1),
           y: Math.min(top, bot).toFixed(1),
           width: Math.max(2, Math.abs(x2 - x1)).toFixed(1),
           height: Math.max(1.5, Math.abs(bot - top)).toFixed(1),
           fill: color,
-          opacity: isBoll20 ? '.05' : '.07',
+          opacity: isBoll20 ? '.05' : (isTest ? '.07' : '.035'),
         }));
       }
       svg.appendChild(svgEl('line', {
@@ -757,7 +771,9 @@ export function drawChart(klines, ticker, hover) {
       svg.appendChild(lab);
     });
   } else if (srLab) {
-    srLab.textContent = state.ind.sr ? '支压未现' : '';
+    srLab.textContent = state.ind.sr
+      ? (srMode === 'swing' ? (swing ? swing.label : '波段未现') : '支压未现')
+      : '';
   }
 
   const bounceLab = $('bounceLab');
@@ -1190,10 +1206,12 @@ export function showTip(e, klines) {
   if (state.ind.sr) {
     const pack = getSr(klines);
     const rad = pack.radius || 0;
-    const hit = (pack.levels || []).find((lv) => k.h >= lv.price - rad && k.l <= lv.price + rad);
+    const hit = (pack.levels || []).find((lv) =>
+      k.h >= (lv.zoneLo != null ? lv.zoneLo : lv.price - rad) &&
+      k.l <= (lv.zoneHi != null ? lv.zoneHi : lv.price + rad));
     extra += '<br>' + (hit ? srTitle(hit, k.c) : (pack.label || '支压未现'));
     if (srMode === 'swing' && pack.swing && pack.swing.range > 0 && i === pack.swing.endI) {
-      extra += '<br>波段 ' + px(pack.swing.lo) + '–' + px(pack.swing.hi) + '（趋势段高低）';
+      extra += '<br>' + pack.swing.label;
     }
   }
   if (state.ind.fib) {

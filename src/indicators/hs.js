@@ -1,5 +1,5 @@
 import { atrFallback, n, px } from '../core/format.js';
-import { atr } from '../core/math.js';
+import { atr, pivotPoints, significantPivots } from '../core/math.js';
 import { state } from '../state.js';
 
 export function hsPivotK(tf) {
@@ -15,33 +15,7 @@ export function hsNeckAt(t1, t2, i) {
 }
 
 export function hsPivots(klines, k) {
-  const raw = [];
-  for (let i = k; i < klines.length - k; i++) {
-    let isH = true, isL = true;
-    for (let j = 1; j <= k; j++) {
-      if (!(klines[i].h > klines[i - j].h && klines[i].h >= klines[i + j].h)) isH = false;
-      if (!(klines[i].l < klines[i - j].l && klines[i].l <= klines[i + j].l)) isL = false;
-    }
-    if (isH && isL) continue;
-    if (isH) raw.push({ i: i, kind: 'h', price: klines[i].h });
-    else if (isL) raw.push({ i: i, kind: 'l', price: klines[i].l });
-  }
-  const alt = [];
-  for (let r = 0; r < raw.length; r++) {
-    const p = raw[r];
-    if (!alt.length) {
-      alt.push(p);
-      continue;
-    }
-    const last = alt[alt.length - 1];
-    if (p.kind === last.kind) {
-      if (p.kind === 'h' && p.price >= last.price) alt[alt.length - 1] = p;
-      if (p.kind === 'l' && p.price <= last.price) alt[alt.length - 1] = p;
-    } else {
-      alt.push(p);
-    }
-  }
-  return alt;
+  return significantPivots(pivotPoints(klines, k), 0);
 }
 
 export function hsPriorMove(klines, ls, head, kind) {

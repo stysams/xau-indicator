@@ -1,5 +1,5 @@
 import { atrFallback, n, px } from '../core/format.js';
-import { atr, bollCore } from '../core/math.js';
+import { atr, bollCore, pivotPoints, significantPivots } from '../core/math.js';
 import { mkt, state } from '../state.js';
 
 export function srPivotK(tf) {
@@ -16,18 +16,15 @@ export function srMedian(arr) {
 }
 
 export function srCollectPivots(klines, k) {
-  const out = [];
-  for (let i = k; i < klines.length - k; i++) {
-    let isH = true, isL = true;
-    for (let j = 1; j <= k; j++) {
-      if (!(klines[i].h > klines[i - j].h && klines[i].h >= klines[i + j].h)) isH = false;
-      if (!(klines[i].l < klines[i - j].l && klines[i].l <= klines[i + j].l)) isL = false;
-    }
-    if (isH && isL) continue;
-    if (isH) out.push({ i: i, kind: 'h', price: klines[i].h });
-    else if (isL) out.push({ i: i, kind: 'l', price: klines[i].l });
-  }
-  return out;
+  return pivotPoints(klines, k);
+}
+
+export function srSwingDeviation(last, atrv) {
+  return Math.max(atrv * 0.75, last * 0.00030);
+}
+
+export function srSignificantPivots(pivots, minMove) {
+  return significantPivots(pivots, minMove);
 }
 
 export function srCluster(pivots, radius) {
@@ -58,10 +55,10 @@ export function srCluster(pivots, radius) {
     const lastI = Math.max.apply(null, pts.map(function (p) { return p.i; }));
     const hN = pts.filter(function (p) { return p.kind === 'h'; }).length;
     const lN = pts.filter(function (p) { return p.kind === 'l'; }).length;
+    const lastPt = pts.reduce(function (a, b) { return a.i > b.i ? a : b; });
     let orig = 'res';
     if (lN > hN) orig = 'sup';
     else if (lN === hN) {
-      const lastPt = pts.reduce(function (a, b) { return a.i > b.i ? a : b; });
       orig = lastPt.kind === 'l' ? 'sup' : 'res';
     }
     return {
@@ -73,45 +70,78 @@ export function srCluster(pivots, radius) {
       hN: hN,
       lN: lN,
       orig: orig,
+      lastRole: lastPt.kind === 'l' ? 'sup' : 'res',
       source: 'swing',
       round: false,
     };
   });
 }
 
-export function srTouchMeta(klines, cluster, radius) {
+export function srLevelZone(cluster, radius) {
+  const spread = Math.max(0, Number(cluster && cluster.spread) || 0);
+  const half = Math.min(radius, Math.max(radius * 0.55, spread * 0.5 + radius * 0.15));
+  return {
+    half: half,
+    lo: cluster.price - half,
+    hi: cluster.price + half,
+  };
+}
+
+export function srTouchMeta(klines, cluster, zone, debounce) {
   const used = {};
   (cluster.pivots || []).forEach(function (p) { used[p.i] = true; });
-  let extra = 0;
+  let touches = 0;
+  let rejections = 0;
   let lastTouch = -99;
-  let firstHit = cluster.pivots && cluster.pivots.length ? cluster.firstI : null;
-  const bandLo = cluster.price - radius;
-  const bandHi = cluster.price + radius;
+  let firstHit = null;
+  const gap = debounce == null ? 2 : Math.max(0, debounce);
+  const bandLo = zone.lo;
+  const bandHi = zone.hi;
   for (let i = 0; i < klines.length; i++) {
     const bar = klines[i];
     if (bar.h < bandLo || bar.l > bandHi) continue;
     const bounceSup = bar.o > bandHi && bar.c > bandHi && bar.l <= bandHi;
     const bounceRes = bar.o < bandLo && bar.c < bandLo && bar.h >= bandLo;
     if (!(bounceSup || bounceRes) && !used[i]) continue;
+    if (i - lastTouch <= gap) continue;
     if (firstHit == null) firstHit = i;
-    if (used[i]) continue;
-    if (i - lastTouch <= 2) continue;
-    extra += 1;
+    touches += 1;
+    if (bounceSup || bounceRes) rejections += 1;
     lastTouch = i;
   }
   return {
-    touches: (cluster.pivots ? cluster.pivots.length : 0) + extra,
+    touches: touches,
+    rejections: rejections,
     firstI: firstHit == null ? cluster.firstI : firstHit,
+    lastI: lastTouch < 0 ? cluster.lastI : lastTouch,
   };
 }
 
-export function srFindBreak(klines, cluster, thresh) {
+export function srBreakMeta(klines, cluster, zone, thresh) {
   const end = Math.max(0, klines.length - 1);
+  let role = cluster.lastRole || cluster.orig;
+  const events = [];
   for (let i = cluster.lastI + 1; i < end; i++) {
-    if (cluster.orig === 'sup' && klines[i].c < cluster.price - thresh) return i;
-    if (cluster.orig === 'res' && klines[i].c > cluster.price + thresh) return i;
+    if (role === 'sup' && klines[i].c < zone.lo - thresh) {
+      events.push({ i: i, dir: -1, from: 'sup', to: 'res' });
+      role = 'res';
+    } else if (role === 'res' && klines[i].c > zone.hi + thresh) {
+      events.push({ i: i, dir: 1, from: 'res', to: 'sup' });
+      role = 'sup';
+    }
   }
-  return null;
+  const last = events.length ? events[events.length - 1] : null;
+  return {
+    breakI: last ? last.i : null,
+    breakDir: last ? last.dir : 0,
+    role: role,
+    flips: events.length,
+    events: events,
+  };
+}
+
+export function srFindBreak(klines, cluster, zone, thresh) {
+  return srBreakMeta(klines, cluster, zone, thresh).breakI;
 }
 
 export function srBollCandidates(klines, atrv) {
@@ -170,31 +200,66 @@ export function srBollCandidates(klines, atrv) {
   return out;
 }
 
-export function srWaveRange(klines, pivots, k) {
+export function srWaveRange(klines, pivots, k, minMove) {
   if (!klines || !klines.length) return null;
-  const n = klines.length;
-  const recent = (pivots || []).filter(function (p) {
-    return p && p.i >= 0 && p.i < n;
-  });
-  // 以最近确认的摆动点为起点，向当前延伸；这样波段描述的是一段趋势，
-  // 而不是把正在走的单根 K 线直接当成支撑压力。
-  let start = Math.max(0, n - Math.max(12, Math.min(32, (k || 2) * 6)));
-  let dir = 0;
-  if (recent.length) {
-    const lastPivot = recent[recent.length - 1];
-    const age = n - 1 - lastPivot.i;
-    if (age <= Math.max(48, Math.round(n * 0.45))) {
-      start = lastPivot.i;
-      dir = lastPivot.kind === 'l' ? 1 : -1;
+  const count = klines.length;
+  const recent = srSignificantPivots((pivots || []).filter(function (p) {
+    return p && p.i >= 0 && p.i < count;
+  }), minMove);
+  if (!recent.length) return null;
+
+  const anchor = recent[recent.length - 1];
+  const age = count - 1 - anchor.i;
+  const fresh = age <= Math.max(48, Math.round(count * 0.45));
+  const dir = anchor.kind === 'l' ? 1 : -1;
+  let projected = anchor.price;
+  let projectedI = anchor.i;
+  let invalidated = false;
+  for (let i = anchor.i + 1; i < count; i++) {
+    if (dir > 0) {
+      if (klines[i].l < anchor.price) invalidated = true;
+      if (klines[i].h >= projected) { projected = klines[i].h; projectedI = i; }
+    } else {
+      if (klines[i].h > anchor.price) invalidated = true;
+      if (klines[i].l <= projected) { projected = klines[i].l; projectedI = i; }
     }
   }
-  let hi = -Infinity, lo = Infinity;
-  for (let i = start; i < n; i++) {
-    hi = Math.max(hi, klines[i].h);
-    lo = Math.min(lo, klines[i].l);
+
+  const move = Math.abs(projected - anchor.price);
+  if (fresh && !invalidated && move >= minMove) {
+    const hi = dir > 0 ? projected : anchor.price;
+    const lo = dir > 0 ? anchor.price : projected;
+    const hiI = dir > 0 ? projectedI : anchor.i;
+    const loI = dir > 0 ? anchor.i : projectedI;
+    return {
+      hi: hi, lo: lo, mid: (hi + lo) / 2,
+      hiI: hiI, loI: loI,
+      hiConfirmed: dir < 0, loConfirmed: dir > 0,
+      startI: anchor.i, endI: projectedI, dir: dir,
+      status: 'forming', source: 'trend-wave', range: hi - lo,
+      minMove: minMove,
+      label: (dir > 0 ? '上涨波段 ' : '下跌波段 ') + px(lo) + '–' + px(hi) + ' · 终点进行中',
+    };
   }
+
+  if (recent.length < 2) return null;
+  const from = recent[recent.length - 2];
+  const to = recent[recent.length - 1];
+  const completedDir = to.kind === 'h' ? 1 : -1;
+  const hiPoint = from.kind === 'h' ? from : to;
+  const loPoint = from.kind === 'l' ? from : to;
+  const hi = hiPoint.price;
+  const lo = loPoint.price;
   if (!(hi > lo)) return null;
-  return { hi: hi, lo: lo, mid: (hi + lo) / 2, startI: start, endI: n - 1, dir: dir, source: 'trend-wave', range: hi - lo };
+  return {
+    hi: hi, lo: lo, mid: (hi + lo) / 2,
+    hiI: hiPoint.i, loI: loPoint.i,
+    hiConfirmed: true, loConfirmed: true,
+    startI: from.i, endI: to.i, dir: completedDir,
+    status: 'confirmed', source: 'trend-wave', range: hi - lo,
+    minMove: minMove,
+    label: (completedDir > 0 ? '最近上涨波段 ' : '最近下跌波段 ') + px(lo) + '–' + px(hi) + ' · 已确认',
+  };
 }
 
 export function srMergeLevel(levels, price, radius, patch) {
@@ -211,9 +276,10 @@ export function srTitle(lv, lastPx) {
   if (!lv) return '';
   if (lv.session) return lv.session + ' ' + px(lv.price);
   if (lv.source === 'boll20' || lv.boll20) return 'BOLL20' + (lv.bollKind ? lv.bollKind : '') + ' ' + px(lv.price);
-  if (lv.role === 'test') return (lastPx >= lv.price ? '测试支撑 ' : '测试压力 ') + px(lv.price);
-  if (lv.role === 'sup') return '支撑 ' + px(lv.price);
-  if (lv.role === 'res') return '压力 ' + px(lv.price);
+  const flipped = lv.flipCount > 0 ? '转换' : '';
+  if (lv.role === 'test') return (lastPx >= lv.price ? '测试' + flipped + '支撑 ' : '测试' + flipped + '压力 ') + px(lv.price);
+  if (lv.role === 'sup') return flipped + '支撑 ' + px(lv.price);
+  if (lv.role === 'res') return flipped + '压力 ' + px(lv.price);
   return px(lv.price);
 }
 
@@ -233,7 +299,8 @@ export function computeSr(klines) {
   const thresh = Math.max(atrv * 0.22, last * 0.00015);
   const k = srPivotK(state.tf);
   const pivots = srCollectPivots(klines, k);
-  const swing = srWaveRange(klines, pivots, k);
+  const swingMinMove = srSwingDeviation(last, atrv);
+  const swing = srWaveRange(klines, pivots, k, swingMinMove);
   const levels = srCluster(pivots, radius);
   // BOLL 轨不再并入静态支压：触碰/强度/破位逻辑与移动轨道量纲不可比
   const bollBands = srBollCandidates(klines, atrv);
@@ -287,14 +354,24 @@ export function computeSr(klines) {
   const nearBand = Math.max(radius, atrv * 0.42);
   const keep = [];
   levels.forEach(function (lv) {
-    const meta = srTouchMeta(klines, lv, radius);
+    const zone = srLevelZone(lv, radius);
+    const meta = srTouchMeta(klines, lv, zone, Math.max(2, Math.floor(k / 2)));
     const isBoll20 = lv.source === 'boll20' || lv.boll20;
     lv.touches = isBoll20 ? Math.max(lv.touches || 0, meta.touches) : meta.touches;
+    lv.rejections = meta.rejections;
     lv.firstI = isBoll20 ? Math.min(lv.firstI == null ? meta.firstI : lv.firstI, meta.firstI) : meta.firstI;
-    lv.breakI = srFindBreak(klines, lv, thresh);
-    const age = n - 1 - lv.lastI;
+    lv.lastTouchI = meta.lastI;
+    lv.zoneLo = zone.lo;
+    lv.zoneHi = zone.hi;
+    lv.zoneHalf = zone.half;
+    const breakMeta = srBreakMeta(klines, lv, zone, thresh);
+    lv.breakI = breakMeta.breakI;
+    lv.breakDir = breakMeta.breakDir;
+    lv.flipCount = breakMeta.flips;
+    lv.structRole = breakMeta.role;
+    const age = n - 1 - lv.lastTouchI;
     const recent = age <= Math.max(16, Math.round(n * 0.22));
-    const extreme = (lv.hN && lv.price >= visHi - radius) || (lv.lN && lv.price <= visLo + radius);
+    const extreme = (lv.hN && lv.zoneHi >= visHi - radius) || (lv.lN && lv.zoneLo <= visLo + radius);
     const special = lv.source === 'round' || !!lv.session;
     if (lv.touches < 2 && !special && !(recent && extreme)) return;
     if (lv.source === 'round' && lv.touches < 2 && Math.abs(last - lv.price) > atrv * 1.2) return;
@@ -302,27 +379,27 @@ export function computeSr(klines) {
       const retested = lv.touches >= 3 && age <= Math.max(20, Math.round(n * 0.18));
       if (!retested) return;
     }
-    const close = Math.abs(last - lv.price) <= nearBand;
+    const distance = last < lv.zoneLo ? lv.zoneLo - last : (last > lv.zoneHi ? last - lv.zoneHi : 0);
+    const close = distance <= nearBand;
     const weakRound = lv.source === 'round' && lv.touches < 2;
     if (close && !weakRound) lv.role = 'test';
-    else if (last > lv.price) lv.role = 'sup';
+    else if (last > lv.zoneHi) lv.role = 'sup';
     else lv.role = 'res';
     const recency = 1.4 * (1 - Math.min(1, age / Math.max(8, n)));
-    const distance = Math.abs(last - lv.price);
     const distanceScore = 2.2 * (1 - Math.min(1, distance / Math.max(atrv * 3, radius * 4)));
     const srcBonus = lv.source === 'swing' ? (lv.boll20 ? 1.25 : 0.9) : (lv.source === 'boll20' ? 0.75 : (lv.session ? 0.35 : (lv.round ? 0.2 : 0)));
     lv.distance = distance;
     lv.distanceScore = distanceScore;
-    lv.score = lv.touches * 1.15 + recency + distanceScore + (lv.breakI == null ? 1 : 0.35) + srcBonus;
+    lv.score = lv.touches * 1.15 + lv.rejections * 0.25 + recency + distanceScore + (lv.breakI == null ? 1 : 0.35) + srcBonus;
     if (lv.role === 'test') lv.score += 0.8;
-    lv.strength = Math.round(Math.min(98, 20 + lv.touches * 6 + distanceScore * 8 + ((lv.source === 'boll20' || lv.boll20) ? 8 : 0)));
+    lv.strength = Math.round(Math.min(98, 20 + lv.touches * 6 + lv.rejections * 3 + distanceScore * 8 + ((lv.source === 'boll20' || lv.boll20) ? 8 : 0)));
     keep.push(lv);
   });
 
   if (!keep.length) return Object.assign({}, empty, { swing: swing });
 
   function srDist(lv, below) {
-    const raw = below ? last - lv.price : lv.price - last;
+    const raw = lv.distance;
     const penalty = lv.source === 'swing' ? 0 : radius * 0.45;
     return raw + penalty;
   }
@@ -379,10 +456,10 @@ export function computeSr(klines) {
     }
   });
   if (recentBreak) {
-    vote = recentBreak.orig === 'sup' ? -1 : 1;
-    why = (recentBreak.orig === 'sup' ? '收盘跌破支撑 ' : '收盘升破压力 ') +
+    vote = recentBreak.breakDir;
+    why = (recentBreak.breakDir < 0 ? '收盘跌破支撑区域 ' : '收盘升破压力区域 ') +
       px(recentBreak.price) +
-      '。破位后该位置可能改当' + (recentBreak.orig === 'sup' ? '压力' : '支撑') + '。';
+      '。破位后该区域改当' + (recentBreak.breakDir < 0 ? '压力' : '支撑') + '观察。';
   } else if (nearTest) {
     const asSup = last >= nearTest.price;
     const wickHold = asSup

@@ -1,6 +1,6 @@
 import { klinesClosed } from '../core/bars.js';
-import { px } from '../core/format.js';
-import { rsi, swings } from '../core/math.js';
+import { atrFallback, px } from '../core/format.js';
+import { atr, rsi, swings } from '../core/math.js';
 import { bollMacdSignal, getBollMacd } from '../indicators/boll.js';
 import { getFib } from '../indicators/fib.js';
 import { getHkld } from '../indicators/hkld.js';
@@ -8,7 +8,7 @@ import { getHold } from '../indicators/hold.js';
 import { getHs } from '../indicators/hs.js';
 import { getPb } from '../indicators/pb.js';
 import { getSmc } from '../indicators/smc.js';
-import { getSr } from '../indicators/sr.js';
+import { getSr, srPivotK, srSwingDeviation } from '../indicators/sr.js';
 import { getStack } from '../indicators/stack.js';
 import { getTrap } from '../indicators/trap.js';
 import { CORE_FAMILIES, FAC_FAMILY_LAB, FAC_FAMILY_W, JUDGE_NET_RATIO, factorFamilyId, factorOn, pickFamilyVote } from './factors.js';
@@ -28,7 +28,11 @@ export function judge(klines, ticker, mtf) {
   const rsiN = state.rsiN || 14;
   const r = voteSrc.length ? rsi(closes, rsiN) : null;
   const rs = voteSrc.length ? rsiVote(r, rsiN) : { vote: 0, why: '正在走的 K 只观察，收盘才确认。' };
-  const sw = voteSrc.length ? swings(voteSrc, 2) : { highs: [], lows: [] };
+  const swingLast = voteSrc.length ? voteSrc[voteSrc.length - 1].c : last;
+  const swingAtr = voteSrc.length ? (atr(voteSrc, 14) || atrFallback(swingLast)) : 0;
+  const sw = voteSrc.length
+    ? swings(voteSrc, srPivotK(state.tf), srSwingDeviation(swingLast, swingAtr))
+    : { highs: [], lows: [] };
   const tp = voteSrc.length >= 3 ? tape(voteSrc) : { vote: 0, why: '正在走的 K 只观察，收盘才确认。' };
 
   if (factorOn('ema')) factors.push({ id: 'ema', name: '均线结构', vote: e.vote, why: e.why, core: true });

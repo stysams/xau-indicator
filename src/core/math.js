@@ -179,17 +179,49 @@ export function atr(klines, period) {
   return a;
 }
 
-export function swings(klines, k) {
+export function pivotPoints(klines, k) {
   k = k || 2;
-  const highs = [], lows = [];
+  const out = [];
   for (let i = k; i < klines.length - k; i++) {
     let isH = true, isL = true;
     for (let j = 1; j <= k; j++) {
       if (!(klines[i].h > klines[i - j].h && klines[i].h >= klines[i + j].h)) isH = false;
       if (!(klines[i].l < klines[i - j].l && klines[i].l <= klines[i + j].l)) isL = false;
     }
-    if (isH) highs.push(klines[i].h);
-    if (isL) lows.push(klines[i].l);
+    if (isH && isL) continue;
+    if (isH) out.push({ i: i, kind: 'h', price: klines[i].h });
+    else if (isL) out.push({ i: i, kind: 'l', price: klines[i].l });
   }
-  return { highs: highs.slice(-2), lows: lows.slice(-2) };
+  return out;
+}
+
+export function significantPivots(pivots, minMove) {
+  const out = [];
+  const threshold = Math.max(0, Number(minMove) || 0);
+  (pivots || []).forEach((p) => {
+    if (!p || !Number.isFinite(p.price)) return;
+    if (!out.length) {
+      out.push(p);
+      return;
+    }
+    const last = out[out.length - 1];
+    if (p.kind === last.kind) {
+      const moreExtreme = p.kind === 'h' ? p.price >= last.price : p.price <= last.price;
+      if (moreExtreme) out[out.length - 1] = p;
+      return;
+    }
+    if (Math.abs(p.price - last.price) >= threshold) out.push(p);
+  });
+  return out;
+}
+
+export function swings(klines, k, minMove) {
+  const pivots = significantPivots(pivotPoints(klines, k), minMove);
+  const highs = pivots.filter((p) => p.kind === 'h');
+  const lows = pivots.filter((p) => p.kind === 'l');
+  return {
+    highs: highs.slice(-2).map((p) => p.price),
+    lows: lows.slice(-2).map((p) => p.price),
+    pivots: pivots,
+  };
 }
