@@ -50,7 +50,7 @@ export function applyBook(row) {
 
 export function applyUsidxCandle(row) {
   if (!state.ind.usidx || rowSymbol(row) !== 'USIDX') return;
-  const bar = { t: n(row.t), o: n(row.o), h: n(row.h), l: n(row.l), c: n(row.c) };
+  const bar = { t: n(row.t), o: n(row.o), h: n(row.h), l: n(row.l), c: n(row.c), v: n(row.v != null ? row.v : (row.volume != null ? row.volume : row.amount)) };
   if (!bar.t || bar.c == null) return;
   state.usidxBars = upsertBar(state.usidxBars || [], bar, 480);
   scheduleChart();
@@ -59,7 +59,7 @@ export function applyUsidxCandle(row) {
 export function applyCandle(row) {
   const parsed = parseStreamName(row.n);
   if (parsed.symbol !== mkt().symbol) return;
-  const bar = { t: n(row.t), o: n(row.o), h: n(row.h), l: n(row.l), c: n(row.c) };
+  const bar = { t: n(row.t), o: n(row.o), h: n(row.h), l: n(row.l), c: n(row.c), v: n(row.v != null ? row.v : (row.volume != null ? row.volume : row.amount)) };
   if (!bar.t || bar.c == null) return;
   if (parsed.interval === '10s') {
     const lastFast = state.fast.length ? state.fast[state.fast.length - 1] : null;

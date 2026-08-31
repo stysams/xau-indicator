@@ -111,6 +111,28 @@ export function bwRankWindow(tf) {
   return 64;
 }
 
+// 日内 VWAP：有成交量时按典型价格加权；黄金无统一现货成交量时退化为日内典型价格均值。
+export function vwapSeries(klines) {
+  const out = new Array((klines || []).length).fill(null);
+  let day = null, pv = 0, vol = 0, mean = 0, count = 0;
+  (klines || []).forEach((k, i) => {
+    const d = new Date((k.t || 0) * 1000).toISOString().slice(0, 10);
+    if (d !== day) { day = d; pv = 0; vol = 0; mean = 0; count = 0; }
+    const typical = (k.h + k.l + k.c) / 3;
+    const volume = Number(k.v != null ? k.v : k.volume);
+    if (Number.isFinite(volume) && volume > 0) {
+      pv += typical * volume;
+      vol += volume;
+      out[i] = pv / vol;
+    } else {
+      mean += typical;
+      count += 1;
+      out[i] = mean / count;
+    }
+  });
+  return out;
+}
+
 export function rsiSeries(closes, period) {
   period = period || 14;
   const n = closes.length;

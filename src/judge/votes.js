@@ -1,8 +1,36 @@
 import { n } from '../core/format.js';
-import { ema, macdOf } from '../core/math.js';
+import { ema, macdOf, vwapSeries } from '../core/math.js';
 import { macdEvents } from '../indicators/boll.js';
 import { getSmc } from '../indicators/smc.js';
 import { mkt, state } from '../state.js';
+
+export function vwapVote(klines) {
+  if (!klines || klines.length < 2) return { vote: 0, why: '日内均价样本不足' };
+  const vw = vwapSeries(klines);
+  const last = klines[klines.length - 1].c;
+  const line = vw[vw.length - 1];
+  const prev = vw[Math.max(0, vw.length - 4)];
+  if (line == null || prev == null) return { vote: 0, why: '日内均价尚未形成' };
+  const gap = Math.abs(last - line);
+  const tol = Math.max(klines[klines.length - 1].h - klines[klines.length - 1].l, last * 0.00008);
+  if (gap <= tol) return { vote: 0, why: '现价贴近日内均价，方向不明确' };
+  if (last > line && line >= prev) return { vote: 1, why: '现价站上日内均价，均价方向向上' };
+  if (last < line && line <= prev) return { vote: -1, why: '现价跌破日内均价，均价方向向下' };
+  return { vote: 0, why: last > line ? '现价在日内均价上方，但均价未同步上行' : '现价在日内均价下方，但均价未同步下行' };
+}
+
+export function dxyVote(gold, dxy) {
+  if (!gold || !dxy || gold.length < 6 || dxy.length < 6) return { vote: 0, why: 'DXY 对照样本不足' };
+  const g0 = gold[gold.length - 6].c, g1 = gold[gold.length - 1].c;
+  const d0 = dxy[dxy.length - 6].c, d1 = dxy[dxy.length - 1].c;
+  if (![g0, g1, d0, d1].every(Number.isFinite) || !d0 || !g0) return { vote: 0, why: 'DXY 对照数据无效' };
+  const gr = (g1 - g0) / g0, dr = (d1 - d0) / d0;
+  const threshold = 0.00015;
+  if (Math.abs(gr) < threshold || Math.abs(dr) < threshold) return { vote: 0, why: '黄金或 DXY 近端变化太小，暂不计票' };
+  if (gr > 0 && dr < 0) return { vote: 1, why: '黄金近端走强，DXY 同期走弱，宏观方向暂时配合' };
+  if (gr < 0 && dr > 0) return { vote: -1, why: '黄金近端走弱，DXY 同期走强，宏观方向暂时配合' };
+  return { vote: 0, why: '黄金与 DXY 同向，传统负相关暂时失效，不加方向票' };
+}
 
 export function tape(klines) {
   if (klines.length < 3) return { vote: 0, why: '近端 K 线不足三根' };

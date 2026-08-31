@@ -62,7 +62,7 @@ export function parseKlines(raw) {
   const list = Array.isArray(raw) ? raw : ((((raw || {}).data) || {}).list || []);
   return list.map((k) => ({
     t: n(k.t), o: n(k.o), h: n(k.h), l: n(k.l), c: n(k.c),
-  })).filter((k) => k.t && k.c != null).sort((a, b) => a.t - b.t);
+    v: n(k.v != null ? k.v : (k.volume != null ? k.volume : k.amount)),  })).filter((k) => k.t && k.c != null).sort((a, b) => a.t - b.t);
 }
 
 export function tickerUrl() {

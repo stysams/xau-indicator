@@ -9,7 +9,7 @@ import { renderFastPanel } from '../view/trade-overlay.js';
 
 export const IND_KEY = 'gold-minute-ind';
 
-export const IND_KEYS = ['ema9', 'ema21', 'boll', 'smc', 'smcSig', 'stack', 'hkld', 'fib', 'hs', 'sr', 'bounce', 'pull', 'trap', 'hold', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'usidx', 'fast', 'st', 'box'];
+export const IND_KEYS = ['ema9', 'ema21', 'boll', 'smc', 'smcSig', 'stack', 'hkld', 'fib', 'hs', 'sr', 'bounce', 'pull', 'trap', 'hold', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'usidx', 'vwap', 'fast', 'st', 'box'];
 
 export const IND_MORE = [
   { k: 'hl', lab: '高低' },
@@ -23,6 +23,7 @@ export const IND_MORE = [
   { k: 'box', lab: '箱体震荡' },
   { k: 'fib', lab: '斐波那契' },
   { k: 'st', lab: '超级趋势' },
+  { k: 'vwap', lab: '日内均价' },
   { k: 'ema9', lab: 'EMA9' },
   { k: 'ema21', lab: 'EMA21' },
 ];

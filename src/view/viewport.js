@@ -1,5 +1,5 @@
 import { n } from '../core/format.js';
-import { bandArr, bollCore, ema, macdOf, rsiSeries } from '../core/math.js';
+import { bandArr, bollCore, ema, macdOf, rsiSeries, vwapSeries } from '../core/math.js';
 import { barsForChart, isLiveFollow, liveEndFor } from '../net/rest.js';
 import { $, LIVE_ANCHOR, MAX_VIEW_SLOTS, MIN_BARS, state } from '../state.js';
 
@@ -46,6 +46,7 @@ export function chartSlice(klines) {
   });
   const md = macdOf(closes);
   const rs = rsiSeries(closes, state.rsiN || 14);
+  const vw = vwapSeries(klines);
   return {
     start: start,
     end: end,
@@ -67,6 +68,7 @@ export function chartSlice(klines) {
     macdDea: md.dea.slice(i0, i1),
     macdHist: md.hist.slice(i0, i1),
     rsi: rs.slice(i0, i1),
+    vwap: vw.slice(i0, i1),
     follow: state.followLive || end >= n,
   };
 }

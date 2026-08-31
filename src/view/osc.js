@@ -175,6 +175,6 @@ export function drawOscPanes(svg, view, panes, x, nBars, bodyW) {
   panes.forEach((pane) => {
     if (pane.key === 'macd') drawMacdPane(svg, view, pane, x, nBars, bodyW);
     else if (pane.key === 'rsi') drawRsiPane(svg, view, pane, x, nBars);
-    else if (pane.key === 'usidx') drawUsidxPane(svg, view, pane, x, nBars);
+    else if (pane.key === 'usidx') drawUsidxPane(svg, view, pane, x, nBars, bodyW);
   });
 }

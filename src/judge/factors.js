@@ -3,6 +3,8 @@ import { state } from '../state.js';
 
 export const FAC_ITEMS = [
   { k: 'ema', lab: '均线结构' },
+  { k: 'vwap', lab: '日内均价' },
+  { k: 'dxy', lab: 'DXY对照' },
   { k: 'rsi', lab: 'RSI' },
   { k: 'swing', lab: '高低点' },
   { k: 'tape', lab: '近端 K 线' },
@@ -25,16 +27,17 @@ export const FAC_ITEMS = [
 ];
 
 export const FAC_FAMILY = {
-  ema: 'mom', rsi: 'mom', macd: 'mom', sig: 'mom', boll: 'mom', tape: 'mom',
+  ema: 'mom', vwap: 'mom', rsi: 'mom', macd: 'mom', sig: 'mom', boll: 'mom', tape: 'mom',
+  dxy: 'macro',
   mtf: 'mom', stack: 'mom', hkld: 'mom',
   swing: 'struct', smc: 'struct', hs: 'struct',
   sr: 'touch', trap: 'touch', bounce: 'touch', pull: 'touch', fib: 'touch', hold: 'touch',
   day: 'pos', range: 'pos',
 };
 
-export const FAC_FAMILY_W = { mom: 1.0, struct: 1.2, touch: 1.0, pos: 0.6 };
+export const FAC_FAMILY_W = { mom: 1.0, struct: 1.2, touch: 1.0, pos: 0.6, macro: 0.8 };
 
-export const FAC_FAMILY_LAB = { mom: '动量', struct: '结构', touch: '触位收回', pos: '位置' };
+export const FAC_FAMILY_LAB = { mom: '动量', struct: '结构', touch: '触位收回', pos: '位置', macro: '宏观对照' };
 
 export const JUDGE_NET_RATIO = 0.35;
 

@@ -58,6 +58,9 @@ export function drawChart(klines, ticker, hover) {
   if (state.ind.ema21) {
     e21.forEach((v) => { if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } });
   }
+  if (state.ind.vwap) {
+    view.vwap.forEach((v) => { if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } });
+  }
   if (state.ind.boll) {
     const addBand = (up, dn) => {
       up.concat(dn).forEach((v) => {
@@ -373,6 +376,7 @@ export function drawChart(klines, ticker, hover) {
   }
   if (state.ind.ema9) poly(e9, 'var(--accent)', '', 'ck-ema9');
   if (state.ind.ema21) poly(e21, 'var(--accent-2)', '4 3', 'ck-ema21');
+  if (state.ind.vwap) poly(view.vwap, 'var(--accent-2)', '6 3', 'ck-vwap');
 
   if (stPack && stPack.ok) {
     const stUpVis = stPack.up.slice(i0, i0 + nBars);
@@ -1102,6 +1106,9 @@ export function showTip(e, klines) {
     extra = '<br>BOLL ' + px(view.bollUp[i]) + ' / ' + px(view.bollMid[i]) + ' / ' + px(view.bollDn[i]);
     if (view.pb[i] != null) extra += '<br>%B ' + view.pb[i].toFixed(2);
     if (view.bw[i] != null) extra += '  带宽 ' + (view.bw[i] * 100).toFixed(2) + '%';
+  }
+  if (state.ind.vwap && view.vwap[i] != null) {
+    extra += '<br>日内均价 ' + px(view.vwap[i]);
   }
   if (state.ind.macd && view.macdHist[i] != null) {
     extra += '<br>MACD柱 ' + view.macdHist[i].toFixed(3);
