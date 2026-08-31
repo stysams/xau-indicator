@@ -100,6 +100,7 @@ export const state = {
   stN: 10,
   stK: 3,
   boxLen: 120,
+  srMode: 'normal',
   bollN: 20,
   bollK: 2,
   bollStyle: {

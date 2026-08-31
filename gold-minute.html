@@ -328,6 +328,15 @@ try {
           </div>
           <span class="hint-wide">摆动点按 ATR 容差聚类 · 上下沿各需两次以上触碰 · 有三组以上平行锚点才画斜向通道 · 破位后投影一倍箱高目标</span>
         </div>
+        <div class="toolbar sub-toolbar" id="srBar" hidden>
+          <span class="lab">支压类型</span>
+          <div class="seg" role="group" aria-label="支撑压力显示类型">
+            <button type="button" data-sr-mode="normal" aria-pressed="true" title="常规支压：显示历史摆动点、整数位和会话位形成的支撑压力线">常规</button>
+            <button type="button" data-sr-mode="swing" aria-pressed="false" title="波段：显示最近确认摆动点延伸至当前的趋势段高低">波段</button>
+            <button type="button" data-sr-mode="pressure" aria-pressed="false" title="撑压：只显示当前价格最近的支撑和压力，参考 Gate 的简洁撑压显示方式">撑压</button>
+          </div>
+          <span class="hint-wide">三种类型只显示一种：常规看结构，波段看趋势高低，撑压看当前最近支撑与压力</span>
+        </div>
         <div class="subbar" id="bollStatus" hidden></div>
         <div class="subbar" id="boxStatus" hidden></div>
         <div class="stack-line" id="stackBar" hidden></div>

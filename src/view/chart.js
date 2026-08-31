@@ -41,6 +41,8 @@ export function drawChart(klines, ticker, hover) {
   const smc = state.ind.smc ? smcPack : null;
   const hs = state.ind.hs ? getHs(klines) : null;
   const sr = state.ind.sr ? getSr(klines) : null;
+  const srMode = state.srMode || 'normal';
+  const swing = (sr && srMode === 'swing') ? sr.swing : null;
   const pbPack = (state.ind.bounce || state.ind.pull) ? getPb(klines) : null;
   const bounce = (state.ind.bounce && pbPack) ? pbPack.bounce : null;
   const pull = (state.ind.pull && pbPack) ? pbPack.pull : null;
@@ -337,6 +339,34 @@ export function drawChart(klines, ticker, hover) {
         'stroke-width': '1', 'stroke-dasharray': '3 4', opacity: '.45',
       }));
     });
+  }
+
+  if (swing && swing.hi > swing.lo && swing.hi >= lo && swing.lo <= hi) {
+    const sx = Math.max(PAD.l, vx(swing.startI));
+    const ex = W - PAD.r;
+    const top = y(swing.hi);
+    const bot = y(swing.lo);
+    const gSwing = svgEl('g', { opacity: '.78' });
+    gSwing.appendChild(svgEl('rect', {
+      x: sx.toFixed(1), y: Math.min(top, bot).toFixed(1),
+      width: Math.max(2, ex - sx).toFixed(1), height: Math.max(1.5, Math.abs(bot - top)).toFixed(1),
+      fill: 'var(--accent-2)', opacity: '.055',
+    }));
+    [[swing.hi, '波段高', 'var(--sr-res)'], [swing.lo, '波段低', 'var(--sr-sup)']].forEach((row) => {
+      const yy = y(row[0]);
+      gSwing.appendChild(svgEl('line', {
+        x1: sx.toFixed(1), x2: ex.toFixed(1), y1: yy.toFixed(1), y2: yy.toFixed(1),
+        stroke: row[2], 'stroke-width': '1.15', 'stroke-dasharray': '3 3', opacity: '.78',
+      }));
+      const lab = svgEl('text', {
+        x: (ex - 4).toFixed(1), y: (yy - 4).toFixed(1), fill: row[2],
+        'font-size': '10', 'font-weight': '650', 'font-family': 'var(--font)', 'text-anchor': 'end',
+        stroke: 'var(--bg)', 'stroke-width': '3', 'paint-order': 'stroke',
+      });
+      lab.textContent = row[1] + ' ' + px(row[0]);
+      gSwing.appendChild(lab);
+    });
+    svg.appendChild(gSwing);
   }
 
   const gC = svgEl('g', {});
@@ -660,12 +690,15 @@ export function drawChart(klines, ticker, hover) {
   }
 
   const srLab = $('srLab');
-  if (sr && sr.levels && sr.levels.length) {
+  const srLevels = srMode === 'pressure'
+    ? [sr && sr.nearSup, sr && sr.nearRes].filter(Boolean)
+    : (srMode === 'normal' && sr ? sr.levels : []);
+  if (sr && srLevels.length) {
     if (srLab) srLab.textContent = sr.label || '';
     const lastPx = vis[nBars - 1] && vis[nBars - 1].c;
     const usedY = [];
     if (lastY != null) usedY.push(lastY - 4);
-    sr.levels.forEach((lv) => {
+    srLevels.forEach((lv) => {
       if (lv.price < lo || lv.price > hi) return;
       const asSup = lastPx == null ? lv.role === 'sup' : lastPx >= lv.price;
       const color = lv.role === 'res' || (lv.role === 'test' && !asSup) ? 'var(--sr-res)' : 'var(--sr-sup)';
@@ -1159,6 +1192,9 @@ export function showTip(e, klines) {
     const rad = pack.radius || 0;
     const hit = (pack.levels || []).find((lv) => k.h >= lv.price - rad && k.l <= lv.price + rad);
     extra += '<br>' + (hit ? srTitle(hit, k.c) : (pack.label || '支压未现'));
+    if (srMode === 'swing' && pack.swing && pack.swing.range > 0 && i === pack.swing.endI) {
+      extra += '<br>波段 ' + px(pack.swing.lo) + '–' + px(pack.swing.hi) + '（趋势段高低）';
+    }
   }
   if (state.ind.fib) {
     const pack = getFib(klines);

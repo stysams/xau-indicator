@@ -25,7 +25,7 @@ import { bindBiasPane } from './ui/bias-pane.js';
 import { applyColor, endDrag, switchMarket, syncMarketChrome, zoomAt } from './ui/chrome.js';
 import { bindFacDrag, bindFacMenu, buildFacMenu, closeFacMenu, loadFac, refreshAfterFac, syncFacButtons } from './ui/factor-menu.js';
 import { bindFastFloat, loadFastPos } from './ui/fast-float.js';
-import { IND_KEYS, applyBollCssVars, closeBollStyleMenu, closeIndMenu, defaultBollStyle, indMenuItems, loadInd, onBollStyleChange, parseHexColor, refreshAfterInd, resetBollStyle, saveInd, setIndMenu, syncIndButtons, toggleBollStyleMenu, toggleIndMenu } from './ui/indicator-menu.js';
+import { IND_KEYS, applyBollCssVars, closeBollStyleMenu, closeIndMenu, defaultBollStyle, indMenuItems, loadInd, normalizeSrMode, onBollStyleChange, parseHexColor, refreshAfterInd, resetBollStyle, saveInd, setIndMenu, syncIndButtons, toggleBollStyleMenu, toggleIndMenu } from './ui/indicator-menu.js';
 import { bindLayoutPreset, closeLayoutMenu } from './ui/layout-preset.js';
 import { bindSessRail, tickSess } from './ui/session-rail.js';
 import { drawChart, hideCrosshair, showTip, wrap } from './view/chart.js';
@@ -90,7 +90,15 @@ document.querySelectorAll('[data-ind]').forEach((b) => {
     }
   });
 });
-const btnIndMore = $('btnIndMore');
+document.querySelectorAll('button[data-sr-mode]').forEach((b) => {
+  b.addEventListener('click', () => {
+    state.srMode = normalizeSrMode(b.dataset.srMode);
+    saveInd();
+    syncIndButtons();
+    refreshAfterInd('srMode');
+  });
+});
+
 if (btnIndMore) {
   btnIndMore.addEventListener('click', (e) => {
     e.stopPropagation();

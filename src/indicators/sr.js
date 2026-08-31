@@ -170,6 +170,33 @@ export function srBollCandidates(klines, atrv) {
   return out;
 }
 
+export function srWaveRange(klines, pivots, k) {
+  if (!klines || !klines.length) return null;
+  const n = klines.length;
+  const recent = (pivots || []).filter(function (p) {
+    return p && p.i >= 0 && p.i < n;
+  });
+  // 以最近确认的摆动点为起点，向当前延伸；这样波段描述的是一段趋势，
+  // 而不是把正在走的单根 K 线直接当成支撑压力。
+  let start = Math.max(0, n - Math.max(12, Math.min(32, (k || 2) * 6)));
+  let dir = 0;
+  if (recent.length) {
+    const lastPivot = recent[recent.length - 1];
+    const age = n - 1 - lastPivot.i;
+    if (age <= Math.max(48, Math.round(n * 0.45))) {
+      start = lastPivot.i;
+      dir = lastPivot.kind === 'l' ? 1 : -1;
+    }
+  }
+  let hi = -Infinity, lo = Infinity;
+  for (let i = start; i < n; i++) {
+    hi = Math.max(hi, klines[i].h);
+    lo = Math.min(lo, klines[i].l);
+  }
+  if (!(hi > lo)) return null;
+  return { hi: hi, lo: lo, mid: (hi + lo) / 2, startI: start, endI: n - 1, dir: dir, source: 'trend-wave', range: hi - lo };
+}
+
 export function srMergeLevel(levels, price, radius, patch) {
   for (let i = 0; i < levels.length; i++) {
     if (Math.abs(levels[i].price - price) <= radius) {
@@ -194,16 +221,19 @@ export function computeSr(klines) {
   const empty = {
     levels: [], nearSup: null, nearRes: null, nearTest: null,
     atrv: 0, radius: 0, label: '支压未现', vote: 0,
+    swing: null,
     why: '摆动点还不够，或还没有聚成可靠的支撑压力。',
   };
   if (!klines || klines.length < 16) return empty;
   const n = klines.length;
-  const last = klines[n - 1].c;
+  const lastBar = klines[n - 1];
+  const last = lastBar.c;
   const atrv = atr(klines, 14) || atrFallback(last);
   const radius = Math.max(atrv * 0.38, last * 0.00022);
   const thresh = Math.max(atrv * 0.22, last * 0.00015);
   const k = srPivotK(state.tf);
   const pivots = srCollectPivots(klines, k);
+  const swing = srWaveRange(klines, pivots, k);
   const levels = srCluster(pivots, radius);
   // BOLL 轨不再并入静态支压：触碰/强度/破位逻辑与移动轨道量纲不可比
   const bollBands = srBollCandidates(klines, atrv);
@@ -289,7 +319,7 @@ export function computeSr(klines) {
     keep.push(lv);
   });
 
-  if (!keep.length) return empty;
+  if (!keep.length) return Object.assign({}, empty, { swing: swing });
 
   function srDist(lv, below) {
     const raw = below ? last - lv.price : lv.price - last;
@@ -385,6 +415,7 @@ export function computeSr(klines) {
   return {
     levels: picked,
     bands: bollBands,
+    swing: swing,
     nearSup: nearSup,
     nearRes: nearRes,
     nearTest: nearTest,

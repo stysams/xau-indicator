@@ -28,6 +28,12 @@ export const IND_MORE = [
   { k: 'ema21', lab: 'EMA21' },
 ];
 
+export const SR_MODES = ['normal', 'swing', 'pressure'];
+
+export function normalizeSrMode(v) {
+  return SR_MODES.indexOf(v) >= 0 ? v : 'normal';
+}
+
 export const ST_PERIODS = [7, 10, 14];
 
 export const ST_MULTS = [2, 2.5, 3];
@@ -133,6 +139,8 @@ export function loadInd() {
     });
     if (raw.bollN === 10 || raw.bollN === 20 || raw.bollN === 30) state.bollN = raw.bollN;
     if (raw.bollK === 1.5 || raw.bollK === 2 || raw.bollK === 2.5) state.bollK = raw.bollK;
+    if (typeof raw.srMode === 'string') state.srMode = normalizeSrMode(raw.srMode);
+    else if (raw.srSwing === true) state.srMode = 'swing';
     if (raw.rsiN === 6 || raw.rsiN === 9 || raw.rsiN === 14) state.rsiN = raw.rsiN;
     if (ST_PERIODS.indexOf(raw.stN) >= 0) state.stN = raw.stN;
     if (ST_MULTS.indexOf(raw.stK) >= 0) state.stK = raw.stK;
@@ -147,6 +155,7 @@ export function saveInd() {
     localStorage.setItem(IND_KEY, JSON.stringify(Object.assign({}, state.ind, {
       bollN: state.bollN, bollK: state.bollK, rsiN: state.rsiN, fastBeep: state.fastBeep,
       stN: state.stN, stK: state.stK, boxLen: state.boxLen,
+      srMode: state.srMode,
       bollStyle: state.bollStyle,
     })));
   } catch (e) {}
@@ -197,6 +206,11 @@ export function syncIndButtons() {
   });
   const boxStatus = $('boxStatus');
   if (boxStatus) boxStatus.hidden = !state.ind.box;
+  const srBar = $('srBar');
+  if (srBar) srBar.hidden = !state.ind.sr;
+  document.querySelectorAll('button[data-sr-mode]').forEach((b) => {
+    b.setAttribute('aria-pressed', String(b.dataset.srMode === state.srMode));
+  });
   const beep = $('btnFastBeep');
   if (beep) beep.setAttribute('aria-pressed', String(!!state.fastBeep));
   const fastBox = $('fastBox');
