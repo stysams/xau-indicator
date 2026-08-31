@@ -1400,7 +1400,7 @@ body.is-float-drag, body.is-float-drag * {
 .stack-bias.weak { opacity: .78; }
 .stack-row {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 64px;
+  grid-template-columns: 40px minmax(44px, 1fr) auto minmax(150px, auto);
   align-items: center;
   gap: 8px;
   min-width: 0;
@@ -1420,6 +1420,24 @@ body.is-float-drag, body.is-float-drag * {
 }
 .stack-row.up .ph { color: var(--up); }
 .stack-row.dn .ph { color: var(--down); }
+.stack-bands {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 3px 6px;
+  justify-content: end;
+  min-width: 0;
+  color: var(--ink-2);
+  font-size: 9.5px;
+  line-height: 1.2;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.stack-bands i {
+  margin-right: 2px;
+  color: var(--ink-3);
+  font-style: normal;
+  font-family: var(--font);
+}
 .stack-track {
   position: relative;
   height: 8px;
@@ -2074,6 +2092,19 @@ td.dn { color: var(--down); }
 }
 @media (max-width: 768px) {
   #bollBar.sub-toolbar { flex-wrap: wrap; }
+  .stackbar,
+  .stack-gloss {
+    flex-basis: 100%;
+    width: 100%;
+  }
+  .stack-row {
+    grid-template-columns: 40px minmax(0, 1fr) 64px;
+  }
+  .stack-bands {
+    grid-column: 1 / -1;
+    justify-content: start;
+    padding-top: 1px;
+  }
   .st-state { margin-left: 0; width: 100%; }
   html, body { height: auto; overflow-x: clip; overflow-y: auto; }
   body { height: auto; min-height: 100dvh; overflow-x: clip; overflow-y: auto; }

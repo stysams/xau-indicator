@@ -63,6 +63,7 @@ export function analyzeBoll(klines) {
   return {
     ok: true, period: period, kMul: kMul,
     lastPb: lastPb, lastBw: bw[last], bwRank: bwRank, bw: bw, pb: pb,
+    lastUp: upK[last], lastMid: core.mid[last], lastDn: dnK[last],
     shape: shape, bwLabel: bwLabel, touchKind: touchKind,
     reclaimUp: reclaimUp, reclaimDn: reclaimDn,
     expandingFromSqueeze: expandingFromSqueeze,

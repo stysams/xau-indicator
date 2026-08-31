@@ -9,7 +9,7 @@ import { getHs, hsNeckAt } from '../indicators/hs.js';
 import { getPb } from '../indicators/pb.js';
 import { getSmc } from '../indicators/smc.js';
 import { getSr, srTitle } from '../indicators/sr.js';
-import { getStack, stackMarkIndex } from '../indicators/stack.js';
+import { getStack, STACK_TFS, stackMarkIndex } from '../indicators/stack.js';
 import { getSuperTrend } from '../indicators/supertrend.js';
 import { getTrap } from '../indicators/trap.js';
 import { $, H, PAD, W, state } from '../state.js';
@@ -21,6 +21,15 @@ import { drawSignalRail } from './signal-rail.js';
 import { bollAreaD, lineD, lineSegD, svgEl } from './svg.js';
 import { drawFastOverlay, drawSimOverlay, openFastTrade, placeFastTags } from './trade-overlay.js';
 import { chartSlice, updateZoomLabel } from './viewport.js';
+
+function stackLevelSignature(pack) {
+  const layers = (pack && pack.layers) || {};
+  return STACK_TFS.map((tf) => {
+    const layer = layers[tf.id];
+    if (!layer || !layer.ok) return tf.id + ':none';
+    return tf.id + ':' + [layer.lastUp, layer.lastMid, layer.lastDn].join(',');
+  }).join('|');
+}
 
 export function drawChart(klines, ticker, hover) {
   const svg = $('chart');
@@ -197,14 +206,49 @@ export function drawChart(klines, ticker, hover) {
       });
     }
   }
-  const padY = (hi - lo) * 0.08 || 1;
-  lo -= padY; hi += padY;
   const plotW = W - PAD.l - PAD.r;
   const osc = oscLayout();
   const plotH = osc.plotH;
   const plotBottom = osc.plotBottom;
   const nBars = vis.length;
   const lastPx = nBars ? vis[nBars - 1].c : null;
+  const stackLevels = [];
+  let stackSig = '';
+  if (state.ind.stack) {
+    const stackPack = getStack();
+    stackSig = stackLevelSignature(stackPack);
+    const stackLayers = (stackPack && stackPack.layers) || {};
+    const stackColors = {
+      '1m': 'var(--accent)',
+      '5m': 'var(--accent-2)',
+      '15m': 'var(--ink-2)',
+      '1h': 'var(--ink-1)',
+    };
+    STACK_TFS.slice().reverse().forEach((tf, tfIndex) => {
+      const layer = stackLayers[tf.id];
+      if (!layer || !layer.ok) return;
+      [
+        { key: 'up', lab: '上轨', price: layer.lastUp, dash: '6 4', width: '1' },
+        { key: 'mid', lab: '中轨', price: layer.lastMid, dash: '', width: '1.25' },
+        { key: 'dn', lab: '下轨', price: layer.lastDn, dash: '2 3', width: '1' },
+      ].forEach((band) => {
+        if (band.price == null || !Number.isFinite(band.price)) return;
+        stackLevels.push(Object.assign({}, band, {
+          tf: tf.id,
+          tfName: tf.name,
+          labelSlot: tfIndex,
+          color: stackColors[tf.id] || 'var(--ink-2)',
+          id: 'ck-stack-' + tf.id + '-' + band.key,
+        }));
+      });
+    });
+    stackLevels.forEach((level) => {
+      lo = Math.min(lo, level.price);
+      hi = Math.max(hi, level.price);
+    });
+  }
+  const padY = (hi - lo) * 0.08 || 1;
+  lo -= padY; hi += padY;
   const slots = Math.max(1, view.count);
   const slot = plotW / slots;
   const bodyW = Math.max(0.7, Math.min(slot * 0.82, Math.max(0.4, slot - 0.35)));
@@ -288,6 +332,47 @@ export function drawChart(klines, ticker, hover) {
       polyB(view.boll1Up, s1.line, bollDash(1), 'ck-boll1-up', '1');
       polyB(view.boll1Dn, s1.line, bollDash(1), 'ck-boll1-dn', '1');
     }
+  }
+
+  if (stackLevels.length) {
+    const usedY = {};
+    stackLevels.forEach((level) => {
+      const yy = y(level.price);
+      const line = svgEl('line', {
+        x1: PAD.l, x2: W - PAD.r,
+        y1: yy.toFixed(1), y2: yy.toFixed(1),
+        stroke: level.color, 'stroke-width': level.width,
+        'stroke-dasharray': level.dash, opacity: '.42',
+      });
+      line.setAttribute('id', level.id);
+      const title = svgEl('title', {});
+      title.textContent = level.tfName + '布林' + level.lab + ' ' + px(level.price);
+      line.appendChild(title);
+      svg.appendChild(line);
+
+      const slotY = usedY[level.tf] || [];
+      let labY = Math.max(PAD.t + 10, Math.min(plotBottom - 4, yy - 4));
+      slotY.forEach((uy) => {
+        if (Math.abs(uy - labY) < 12) labY = Math.min(plotBottom - 4, uy + 12);
+      });
+      slotY.push(labY);
+      usedY[level.tf] = slotY;
+      const lab = svgEl('text', {
+        x: (PAD.l + plotW * (0.2 + level.labelSlot * 0.2)).toFixed(1),
+        y: labY.toFixed(1),
+        fill: level.color,
+        'font-size': '9.5',
+        'font-weight': '650',
+        'font-family': 'var(--font-mono)',
+        'text-anchor': 'middle',
+        stroke: 'var(--bg)',
+        'stroke-width': '3',
+        'paint-order': 'stroke',
+        opacity: '.68',
+      });
+      lab.textContent = level.tfName + ' ' + level.lab + ' ' + px(level.price);
+      svg.appendChild(lab);
+    });
   }
 
   if (smc) {
@@ -839,6 +924,7 @@ export function drawChart(klines, ticker, hover) {
     })),
     bodyW: bodyW, wickW: wickW, bodyStroke: bodyStroke, hollowUp: hollowUp,
     boxSig: box ? box.sig : '', stDir: stPack ? stPack.lastDir : 0,
+    stackSig: stackSig,
   };
   drawFastOverlay(svg, vis, view, x, y);
   drawSimOverlay(svg, y);
@@ -929,6 +1015,7 @@ export function patchLastCandle(klines) {
     if ((stLive ? stLive.lastDir : 0) !== s.stDir) return false;
     if (stLive.last != null && (stLive.last > s.hi || stLive.last < s.lo)) return false;
   }
+  if (state.ind.stack && stackLevelSignature(getStack()) !== s.stackSig) return false;
   const y = s.y, x = s.x;
   const up = k.c >= k.o;
   const color = up ? 'var(--up)' : 'var(--down)';

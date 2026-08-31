@@ -16,8 +16,9 @@ export function smcPoiTap(bar, poi) {
 
 export function smcPoiHold(dir, bar, poi) {
   const span = Math.max(poi.top - poi.bot, 1e-9);
-  if (dir > 0) return bar.c >= poi.bot && bar.c >= poi.bot + span * 0.2;
-  return bar.c <= poi.top && bar.c <= poi.top - span * 0.2;
+  // 守住必须收盘留在 POI 内；区间外的强穿越不能被当成回踩确认。
+  if (dir > 0) return bar.c >= poi.bot + span * 0.2 && bar.c <= poi.top;
+  return bar.c <= poi.top - span * 0.2 && bar.c >= poi.bot;
 }
 
 export function smcPoiThrough(dir, bar, poi) {
@@ -208,19 +209,23 @@ export function smcPivotK(tf) {
 export function computeSmc(klines) {
   const empty = { events: [], obs: [], fvgs: [], signals: [], live: null, trend: 0, label: '' };
   if (!klines || klines.length < 8) return empty;
-  const lastPx = klines[klines.length - 1].c;
-  const atrv = atr(klines, 14) || atrFallback(lastPx);
+  // 结构只能由已收盘 K 线确认，避免实时 K 线临时越过摆点后又收回。
+  const closedEnd = pbClosedEnd(klines);
+  const bars = closedEnd >= 0 ? klines.slice(0, closedEnd + 1) : [];
+  if (bars.length < 8) return empty;
+  const lastPx = bars[bars.length - 1].c;
+  const atrv = atr(bars, 14) || atrFallback(lastPx);
   const SMC_BREAK_ATR = 0.28;
   const k = smcPivotK(state.tf);
   const swings = [];
-  for (let i = k; i < klines.length - k; i++) {
+  for (let i = k; i < bars.length - k; i++) {
     let isH = true, isL = true;
     for (let j = 1; j <= k; j++) {
-      if (!(klines[i].h > klines[i - j].h && klines[i].h >= klines[i + j].h)) isH = false;
-      if (!(klines[i].l < klines[i - j].l && klines[i].l <= klines[i + j].l)) isL = false;
+      if (!(bars[i].h > bars[i - j].h && bars[i].h >= bars[i + j].h)) isH = false;
+      if (!(bars[i].l < bars[i - j].l && bars[i].l <= bars[i + j].l)) isL = false;
     }
-    if (isH) swings.push({ i: i, kind: 'h', price: klines[i].h });
-    if (isL) swings.push({ i: i, kind: 'l', price: klines[i].l });
+    if (isH) swings.push({ i: i, kind: 'h', price: bars[i].h });
+    if (isL) swings.push({ i: i, kind: 'l', price: bars[i].l });
   }
 
   const events = [];
@@ -229,22 +234,22 @@ export function computeSmc(klines) {
   let lastL = null;
   const used = { h: -1, l: -1 };
   let s = 0;
-  for (let i = 0; i < klines.length; i++) {
+  for (let i = 0; i < bars.length; i++) {
     while (s < swings.length && swings[s].i <= i) {
       if (swings[s].kind === 'h') lastH = swings[s];
       else lastL = swings[s];
       s += 1;
     }
-    const c = klines[i].c;
+    const c = bars[i].c;
     if (lastH && i > lastH.i && lastH.i !== used.h && c >= lastH.price + atrv * SMC_BREAK_ATR) {
       const kind = trend === -1 ? 'CHoCH' : 'BOS';
       let obI = -1;
       for (let j = i - 1; j >= lastH.i && j >= 0; j--) {
-        if (klines[j].c < klines[j].o) { obI = j; break; }
+        if (bars[j].c < bars[j].o) { obI = j; break; }
       }
       const ev = { kind: kind, dir: 1, i: i, from: lastH.i, price: lastH.price, ob: null };
       if (obI >= 0) {
-        const b = klines[obI];
+        const b = bars[obI];
         const body = Math.abs(b.o - b.c);
         if (body >= atrv * 0.22) {
           ev.ob = { dir: 1, i: obI, top: Math.max(b.o, b.c), bot: Math.min(b.o, b.c) };
@@ -257,11 +262,11 @@ export function computeSmc(klines) {
       const kind = trend === 1 ? 'CHoCH' : 'BOS';
       let obI = -1;
       for (let j = i - 1; j >= lastL.i && j >= 0; j--) {
-        if (klines[j].c > klines[j].o) { obI = j; break; }
+        if (bars[j].c > bars[j].o) { obI = j; break; }
       }
       const ev = { kind: kind, dir: -1, i: i, from: lastL.i, price: lastL.price, ob: null };
       if (obI >= 0) {
-        const b = klines[obI];
+        const b = bars[obI];
         const body = Math.abs(b.o - b.c);
         if (body >= atrv * 0.22) {
           ev.ob = { dir: -1, i: obI, top: Math.max(b.o, b.c), bot: Math.min(b.o, b.c) };
@@ -281,38 +286,38 @@ export function computeSmc(klines) {
     // 从突破 K 之后开始扫；回补需穿透订单块中位，避免下一根开盘贴着 bot/top 就立刻判回补
     const start = Math.max(ob.i + 1, (ev.i != null ? ev.i : ob.i) + 1);
     const mid = (ob.top + ob.bot) / 2;
-    for (let i = start; i < klines.length; i++) {
-      if (ob.dir > 0 && klines[i].l <= mid) { mit = i; break; }
-      if (ob.dir < 0 && klines[i].h >= mid) { mit = i; break; }
+    for (let i = start; i < bars.length; i++) {
+      if (ob.dir > 0 && bars[i].l <= mid) { mit = i; break; }
+      if (ob.dir < 0 && bars[i].h >= mid) { mit = i; break; }
     }
     ob.mit = mit;
-    ob.end = mit == null ? klines.length - 1 : mit;
+    ob.end = mit == null ? bars.length - 1 : mit;
     if (mit == null) obs.push(ob);
   });
 
   const fvgsAll = [];
-  const minGap = Math.max(atrv * 0.18, (klines[klines.length - 1].c || 1) * 0.00008);
-  for (let i = 2; i < klines.length; i++) {
-    const a = klines[i - 2];
-    const c = klines[i];
+  const minGap = Math.max(atrv * 0.18, (bars[bars.length - 1].c || 1) * 0.00008);
+  for (let i = 2; i < bars.length; i++) {
+    const a = bars[i - 2];
+    const c = bars[i];
     let gap = null;
     if (a.h < c.l) gap = { dir: 1, i0: i - 2, i1: i, top: c.l, bot: a.h };
     else if (a.l > c.h) gap = { dir: -1, i0: i - 2, i1: i, top: a.l, bot: c.h };
     if (!gap || gap.top - gap.bot < minGap) continue;
     let mit = null;
-    for (let j = i + 1; j < klines.length; j++) {
-      if (gap.dir > 0 && klines[j].l <= gap.bot) { mit = j; break; }
-      if (gap.dir < 0 && klines[j].h >= gap.top) { mit = j; break; }
+    for (let j = i + 1; j < bars.length; j++) {
+      if (gap.dir > 0 && bars[j].l <= gap.bot) { mit = j; break; }
+      if (gap.dir < 0 && bars[j].h >= gap.top) { mit = j; break; }
     }
     gap.mit = mit;
-    gap.end = mit == null ? klines.length - 1 : mit;
+    gap.end = mit == null ? bars.length - 1 : mit;
     fvgsAll.push(gap);
   }
   const fvgs = fvgsAll.filter((g) => g.mit == null).slice(-8);
 
   const cfg = smcSigLook(state.tf);
-  const signals = smcBuildSignals(klines, events, fvgsAll);
-  const live = smcLiveOf(signals, klines.length, cfg.recency);
+  const signals = smcBuildSignals(bars, events, fvgsAll);
+  const live = smcLiveOf(signals, bars.length, cfg.recency);
 
   const last = events[events.length - 1];
   let label = '';

@@ -1,4 +1,7 @@
 import { ema, bollCore, macdOf, rsiSeries, atr } from '../src/core/math.js';
+import { analyzeBoll } from '../src/indicators/boll.js';
+import { stackLayer } from '../src/indicators/stack.js';
+import { state } from '../src/state.js';
 import { assert, approx, assertNull } from './_lib/assert.mjs';
 
 function bar(t, o, h, l, c) {
@@ -60,6 +63,26 @@ function bar(t, o, h, l, c) {
   const deaRaw = ema(difRaw, 9);
   approx(pack.dif[40], difRaw[40], { label: 'macd dif vs ema path' });
   approx(pack.dea[40], deaRaw[40], { label: 'macd dea vs ema path' });
+}
+
+// --- analyzeBoll：暴露最新一根已收盘 K 线的三条轨道价格 ---
+{
+  const oldN = state.bollN;
+  const oldK = state.bollK;
+  state.bollN = 3;
+  state.bollK = 2;
+  const klines = [1, 2, 3, 4, 5].map((c, i) => bar(i + 1, c, c, c, c));
+  const b = analyzeBoll(klines);
+  const sd = Math.sqrt(2 / 3);
+  approx(b.lastMid, 4, { label: 'boll last mid' });
+  approx(b.lastUp, 4 + 2 * sd, { label: 'boll last up' });
+  approx(b.lastDn, 4 - 2 * sd, { label: 'boll last dn' });
+  const layer = stackLayer(klines, { id: '1m', name: '1分' });
+  approx(layer.lastMid, b.lastMid, { label: 'stack last mid' });
+  approx(layer.lastUp, b.lastUp, { label: 'stack last up' });
+  approx(layer.lastDn, b.lastDn, { label: 'stack last dn' });
+  state.bollN = oldN;
+  state.bollK = oldK;
 }
 
 // --- rsiSeries：Wilder；ag=al=0 时返回 50（已修，不再是 100）---

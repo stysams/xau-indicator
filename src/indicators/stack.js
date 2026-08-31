@@ -60,7 +60,8 @@ export function stackExpanding(ph, dir) {
 export function stackLayer(klines, meta) {
   const empty = {
     ok: false, id: 'none', lab: '样本不足', dir: 0,
-    name: meta.name, tf: meta.id, lastPb: null, bwRank: null, lastBw: null,
+    name: meta.name, tf: meta.id, lastPb: null, lastUp: null, lastMid: null, lastDn: null,
+    bwRank: null, lastBw: null,
     squeeze: false, wide: false, reclaimUp: false, reclaimDn: false,
     expandingFromSqueeze: false, shape: '', t: null, n: klines ? klines.length : 0,
   };
@@ -108,7 +109,8 @@ export function stackLayer(klines, meta) {
   return {
     ok: true, id: id, lab: lab, dir: dir,
     name: meta.name, tf: meta.id,
-    lastPb: pb, bwRank: b.bwRank, lastBw: b.lastBw, shape: b.shape,
+    lastPb: pb, lastUp: b.lastUp, lastMid: b.lastMid, lastDn: b.lastDn,
+    bwRank: b.bwRank, lastBw: b.lastBw, shape: b.shape,
     squeeze: squeeze, wide: wide, slopeUp: slopeUp, slopeDn: slopeDn,
     reclaimUp: !!b.reclaimUp, reclaimDn: !!b.reclaimDn,
     expandingFromSqueeze: !!b.expandingFromSqueeze,

@@ -164,18 +164,26 @@ export function renderStackBar() {
   const layers = (st && st.layers) || {};
   const kindCls = st && st.dir > 0 ? 'up' : (st && st.dir < 0 ? 'dn' : 'mid');
   const rows = STACK_TFS.map((x) => {
-    const L = layers[x.id] || { lab: '样本不足', lastPb: null, bwRank: null, dir: 0 };
+    const L = layers[x.id] || {
+      lab: '样本不足', lastPb: null, lastUp: null, lastMid: null, lastDn: null,
+      bwRank: null, dir: 0,
+    };
     const pb = L.lastPb;
     const left = pb == null ? 50 : Math.max(2, Math.min(98, pb * 100));
     const thick = L.bwRank == null ? 8 : Math.max(5, Math.min(12, 5 + L.bwRank * 7));
     const rowCls = L.dir > 0 ? 'up' : (L.dir < 0 ? 'dn' : 'mid');
+    const bands = '<span class="stack-bands num" title="最近一根已收盘 K 线的布林价格">' +
+      '<span><i>上</i>' + px(L.lastUp) + '</span>' +
+      '<span><i>中</i>' + px(L.lastMid) + '</span>' +
+      '<span><i>下</i>' + px(L.lastDn) + '</span>' +
+      '</span>';
     return '<div class="stack-row ' + rowCls + '">' +
       '<span class="tf">' + x.name + '</span>' +
       '<span class="stack-track" style="height:' + thick.toFixed(0) + 'px">' +
         '<i class="mid"></i>' +
         '<i class="stack-dot" style="left:' + left.toFixed(1) + '%"></i>' +
       '</span>' +
-      '<span class="ph">' + L.lab + '</span>' +
+      '<span class="ph">' + L.lab + '</span>' + bands +
     '</div>';
   }).join('');
   const aligned = st && st.layers && stackSame(st.layers['1h'], st.layers['1h'] && st.layers['1h'].dir)
