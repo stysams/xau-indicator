@@ -163,6 +163,26 @@ export function renderStackBar() {
   const st = getStack();
   const layers = (st && st.layers) || {};
   const kindCls = st && st.dir > 0 ? 'up' : (st && st.dir < 0 ? 'dn' : 'mid');
+  const kindLab = stackKindText(st);
+  const trend = (st && st.trend) || stackTrend(layers);
+  const trendCls = (trend && trend.cls) || 'mid';
+  const trendLab = (trend && trend.lab) ? trend.lab : '走平';
+  const trendWhy = (trend && trend.why) ? trend.why : '';
+  const collapsed = !!state.stackCollapsed;
+  const foldTitle = collapsed ? '展开套轨卡片' : '收起套轨卡片';
+  const foldButton = '<button type="button" class="stack-fold" data-stack-fold aria-expanded="' + String(!collapsed) + '" title="' + foldTitle + '" aria-label="' + foldTitle + '">' +
+    '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3.5 6l4.5 4 4.5-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+    '</button>';
+  el.classList.toggle('is-collapsed', collapsed);
+  if (collapsed) {
+    el.innerHTML = '<div class="stack-compact">' +
+      '<span class="stack-name">套轨</span>' +
+      '<b class="stack-kind ' + kindCls + '">' + kindLab + '</b>' +
+      '<span class="stack-compact-trend ' + trendCls + '" title="' + String(trendWhy).replace(/"/g, '&quot;') + '">' + trendLab + '</span>' +
+      foldButton +
+    '</div>';
+    return;
+  }
   const rows = STACK_TFS.map((x) => {
     const L = layers[x.id] || {
       lab: '样本不足', lastPb: null, lastUp: null, lastMid: null, lastDn: null,
@@ -190,11 +210,6 @@ export function renderStackBar() {
     && stackSame(st.layers['15m'], st.layers['1h'] && st.layers['1h'].dir)
     && stackSame(st.layers['5m'], st.layers['1h'] && st.layers['1h'].dir);
   const spine = aligned && st.layers['1h'] && st.layers['1h'].dir ? '<div class="stack-spine" aria-hidden="true"></div>' : '';
-  const kindLab = stackKindText(st);
-  const trend = (st && st.trend) || stackTrend(layers);
-  const trendCls = (trend && trend.cls) || 'mid';
-  const trendLab = (trend && trend.lab) ? trend.lab : '走平';
-  const trendWhy = (trend && trend.why) ? trend.why : '';
   const mean = (STACK_GLOSS.filter(function (g) { return g.lab === trendLab; })[0] || {}).mean
     || '1 小时布林样本还不够，不能定性。';
   const whyNorm = String(trendWhy || '').replace(/\s+/g, '').replace(/[。，]/g, '');
@@ -210,6 +225,7 @@ export function renderStackBar() {
         '<div class="stack-head">' +
           '<span class="stack-name">套轨</span>' +
           '<b class="stack-kind ' + kindCls + '">' + kindLab + '</b>' +
+          foldButton +
         '</div>' + spine + rows +
       '</div>' +
       '<div class="stack-bias ' + trendCls + (trend && trend.weak ? ' weak' : '') + '" title="' + String(trendWhy).replace(/"/g, '&quot;') + '">' + trendLab + '</div>' +

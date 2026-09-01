@@ -1,6 +1,7 @@
 import { n } from '../core/format.js';
 import { rsi } from '../core/math.js';
 import { barsForChart } from '../net/rest.js';
+import { normalizeFibMode } from '../indicators/fib.js';
 import { $, state } from '../state.js';
 import { applyFastPos } from './fast-float.js';
 import { drawChart, wrap } from '../view/chart.js';
@@ -9,7 +10,7 @@ import { renderFastPanel } from '../view/trade-overlay.js';
 
 export const IND_KEY = 'gold-minute-ind';
 
-export const IND_KEYS = ['ema9', 'ema21', 'boll', 'smc', 'smcSig', 'stack', 'hkld', 'fib', 'hs', 'sr', 'bounce', 'pull', 'trap', 'hold', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'usidx', 'vwap', 'fast', 'st', 'box'];
+export const IND_KEYS = ['ema9', 'ema21', 'ma100', 'ema100', 'boll', 'smc', 'smcSig', 'stack', 'hkld', 'fib', 'hs', 'sr', 'bounce', 'pull', 'trap', 'hold', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'usidx', 'vwap', 'fast', 'st', 'box'];
 
 export const IND_MORE = [
   { k: 'hl', lab: '高低' },
@@ -26,6 +27,8 @@ export const IND_MORE = [
   { k: 'vwap', lab: '日内均价' },
   { k: 'ema9', lab: 'EMA9' },
   { k: 'ema21', lab: 'EMA21' },
+  { k: 'ma100', lab: 'MA100' },
+  { k: 'ema100', lab: 'EMA100' },
 ];
 
 export const SR_MODES = ['normal', 'swing', 'pressure'];
@@ -145,6 +148,9 @@ export function loadInd() {
     if (ST_PERIODS.indexOf(raw.stN) >= 0) state.stN = raw.stN;
     if (ST_MULTS.indexOf(raw.stK) >= 0) state.stK = raw.stK;
     if (BOX_LENS.indexOf(raw.boxLen) >= 0) state.boxLen = raw.boxLen;
+    if (typeof raw.stackCollapsed === 'boolean') state.stackCollapsed = raw.stackCollapsed;
+    if (typeof raw.fibMode === 'string') state.fibMode = normalizeFibMode(raw.fibMode);
+    if (typeof raw.fibExt === 'boolean') state.fibExt = raw.fibExt;
     if (typeof raw.fastBeep === 'boolean') state.fastBeep = raw.fastBeep;
     state.bollStyle = readBollStyle(raw.bollStyle);
   } catch (e) { /* 沿用默认 */ }
@@ -155,6 +161,8 @@ export function saveInd() {
     localStorage.setItem(IND_KEY, JSON.stringify(Object.assign({}, state.ind, {
       bollN: state.bollN, bollK: state.bollK, rsiN: state.rsiN, fastBeep: state.fastBeep,
       stN: state.stN, stK: state.stK, boxLen: state.boxLen,
+      stackCollapsed: !!state.stackCollapsed,
+      fibMode: normalizeFibMode(state.fibMode), fibExt: !!state.fibExt,
       srMode: state.srMode,
       bollStyle: state.bollStyle,
     })));
@@ -206,6 +214,13 @@ export function syncIndButtons() {
   });
   const boxStatus = $('boxStatus');
   if (boxStatus) boxStatus.hidden = !state.ind.box;
+  const fibBar = $('fibBar');
+  if (fibBar) fibBar.hidden = !state.ind.fib;
+  document.querySelectorAll('button[data-fib-mode]').forEach((b) => {
+    b.setAttribute('aria-pressed', String(b.dataset.fibMode === normalizeFibMode(state.fibMode)));
+  });
+  const fibExt = $('btnFibExt');
+  if (fibExt) fibExt.setAttribute('aria-pressed', String(!!state.fibExt));
   const srBar = $('srBar');
   if (srBar) srBar.hidden = !state.ind.sr;
   document.querySelectorAll('button[data-sr-mode]').forEach((b) => {

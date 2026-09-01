@@ -166,7 +166,7 @@ try {
             <button type="button" data-ind="usidx" aria-pressed="false" title="USIDX 美元指数副图：独立请求 Gate TradFi 数据，关闭时不请求">USIDX</button>
             <button type="button" data-ind="fast" aria-pressed="false" title="开单信号：1分/5分定方向，10秒回踩或触轨收回后给出开多/开空">开单</button>
             <div class="ind-more" id="indMore">
-              <button type="button" class="ind-caret" id="btnIndMore" aria-expanded="false" aria-haspopup="menu" aria-controls="indMoreMenu" aria-pressed="false" title="更多指标：高低、反弹、回踩、诱空诱多、企稳、SMC多空、套轨、高空低多、箱体震荡、斐波那契、超级趋势、EMA9、EMA21" aria-label="更多指标">
+              <button type="button" class="ind-caret" id="btnIndMore" aria-expanded="false" aria-haspopup="menu" aria-controls="indMoreMenu" aria-pressed="false" title="更多指标：高低、反弹、回踩、诱空诱多、企稳、SMC多空、套轨、高空低多、箱体震荡、斐波那契、超级趋势、EMA9、EMA21、MA100、EMA100" aria-label="更多指标">
                 <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
                   <path d="M2.4 4.2L6 8l3.6-3.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
@@ -181,11 +181,13 @@ try {
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="stack" aria-pressed="false" aria-checked="false" title="套轨：1小时定性、15分许可、5分与1分扳机。只输出顺势回中、套轨开口、宽轨收回。正在走的1分只预备。只控制主图菱形和套轨条，左侧套轨因子仍单独勾选"><i class="stack-c"></i>套轨</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="hkld" aria-pressed="false" aria-checked="false" title="高空低多：15 分钟定高低结构，5 分钟细化位置。震荡里在相对高位标空、相对低位标多。15 分钟还在中部时，本图近端高低不加票。收盘越过 15 分钟前高或跌破前低，按突破反转。影线收回仍按高空低多。只画位置，不是下单指令。左侧因子仍单独勾选"><i class="hkld-c"></i>高空低多</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="box" aria-pressed="false" aria-checked="false" title="箱体震荡：摆动高低点按 ATR 容差聚类，上下沿各有两次以上触碰才画箱体。框出上沿、下沿、中轴与触碰点，收盘越过边缘一定幅度记为上破或下破。回看根数可调。只画结构，不是下单指令"><i class="box-c"></i>箱体震荡</button>
-                <button type="button" class="sw" role="menuitemcheckbox" data-ind="fib" aria-pressed="false" aria-checked="false" title="斐波那契：近端足够大的摆动自动画回撤。0% 在冲动终点，100% 在起点。回踩 0.5 / 0.618 / 0.786 后收盘收回才计票，穿过 100% 算原段失效。正在走的那根只观察。左侧因子仍单独勾选"><i class="fib-c"></i>斐波那契</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="fib" aria-pressed="false" aria-checked="false" title="斐波那契：可自动选择摆动，也可指定低点到高点或高点到低点；扩展可独立显示 1.272 / 1.618。左侧因子仍单独勾选"><i class="fib-c"></i>斐波那契</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="st" aria-pressed="false" aria-checked="false" title="超级趋势：以 ATR 包络做趋势跟踪。多头段线在价格下方为绿，空头段线在价格上方为红，收盘穿越才换向，换向处标转多或转空。周期与倍数可调。滞后于反转，震荡里会来回换向，只描述趋势方向，不是下单指令"><i class="st-c"></i>超级趋势</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="vwap" aria-pressed="false" aria-checked="false" title="日内均价：有成交量时按典型价格计算 VWAP；黄金无统一现货成交量时使用日内典型价格均值作为代理。价格站上偏强，跌破偏弱，不单独作为入场信号"><i class="vwap-c"></i>日内均价</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="ema9" aria-pressed="false" aria-checked="false"><i class="ema9"></i>EMA9</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="ema21" aria-pressed="false" aria-checked="false"><i class="ema21"></i>EMA21</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="ma100" aria-pressed="false" aria-checked="false"><i class="ma100"></i>MA100</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="ema100" aria-pressed="false" aria-checked="false"><i class="ema100"></i>EMA100</button>
               </div>
             </div>
           </div>
@@ -327,6 +329,15 @@ try {
             <button type="button" data-box-len="180" aria-pressed="false" title="回看更长，容易框出更大的箱体">180</button>
           </div>
           <span class="hint-wide">摆动点按 ATR 容差聚类 · 上下沿各需两次以上触碰 · 有三组以上平行锚点才画斜向通道 · 破位后投影一倍箱高目标</span>
+        </div>
+        <div class="toolbar sub-toolbar" id="fibBar" hidden>
+          <span class="lab">斐波锚点</span>
+          <div class="seg" role="group" aria-label="斐波那契锚点方向">
+            <button type="button" data-fib-mode="auto" aria-pressed="true" title="自动选择近端最有效的摆动段">自动</button>
+            <button type="button" data-fib-mode="up" aria-pressed="false" title="只选择从低点到高点的上涨摆动">低点→高点</button>
+            <button type="button" data-fib-mode="down" aria-pressed="false" title="只选择从高点到低点的下跌摆动">高点→低点</button>
+          </div>
+          <button type="button" class="btn" id="btnFibExt" aria-pressed="false" title="显示或隐藏顺势 1.272 / 1.618 扩展位">扩展</button>
         </div>
         <div class="toolbar sub-toolbar" id="srBar" hidden>
           <span class="lab">支压类型</span>

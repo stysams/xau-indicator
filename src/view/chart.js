@@ -20,7 +20,7 @@ import { drawBox, drawFib, drawHkld, drawHold, drawPbSetup, drawTrapSetup } from
 import { drawSignalRail } from './signal-rail.js';
 import { bollAreaD, lineD, lineSegD, svgEl } from './svg.js';
 import { drawFastOverlay, drawSimOverlay, openFastTrade, placeFastTags } from './trade-overlay.js';
-import { chartSlice, updateZoomLabel } from './viewport.js';
+import { chartSlice, chartXScale, priceLevelsInRange, updateZoomLabel } from './viewport.js';
 
 function stackLevelSignature(pack) {
   const layers = (pack && pack.layers) || {};
@@ -46,6 +46,8 @@ export function drawChart(klines, ticker, hover) {
   const vis = view.bars;
   const e9 = view.e9;
   const e21 = view.e21;
+  const ma100 = view.ma100;
+  const ema100 = view.ema100;
   const smcPack = (state.ind.smc || state.ind.smcSig) ? getSmc(klines) : null;
   const smc = state.ind.smc ? smcPack : null;
   const hs = state.ind.hs ? getHs(klines) : null;
@@ -68,6 +70,12 @@ export function drawChart(klines, ticker, hover) {
   }
   if (state.ind.ema21) {
     e21.forEach((v) => { if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } });
+  }
+  if (state.ind.ma100) {
+    ma100.forEach((v) => { if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } });
+  }
+  if (state.ind.ema100) {
+    ema100.forEach((v) => { if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } });
   }
   if (state.ind.vwap) {
     view.vwap.forEach((v) => { if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } });
@@ -165,6 +173,11 @@ export function drawChart(klines, ticker, hover) {
     const span = (hi - lo) || 1;
     const cap = Math.max((fib.atrv || 0) * 2.2, span * 0.22);
     (fib.levels || []).forEach((lv) => {
+      if (lv.ext && state.fibExt) {
+        lo = Math.min(lo, lv.price);
+        hi = Math.max(hi, lv.price);
+        return;
+      }
       if (lv.ext) return;
       if (lastVis == null || Math.abs(lv.price - lastVis) > cap) return;
       lo = Math.min(lo, lv.price);
@@ -242,15 +255,14 @@ export function drawChart(klines, ticker, hover) {
         }));
       });
     });
-    stackLevels.forEach((level) => {
-      lo = Math.min(lo, level.price);
-      hi = Math.max(hi, level.price);
-    });
   }
   const padY = (hi - lo) * 0.08 || 1;
   lo -= padY; hi += padY;
-  const slots = Math.max(1, view.count);
-  const slot = plotW / slots;
+  // 套轨是当前时点的多周期参考线，不能把历史/放大视窗的价格轴拉回当前价。
+  // 仅绘制落在当前轴范围内的轨道，避免固定轨道压缩可见 K 线。
+  const visibleStackLevels = priceLevelsInRange(stackLevels, lo, hi);
+  const xScale = chartXScale(view, PAD.l, W - PAD.r);
+  const slot = xScale.slotW;
   const bodyW = Math.max(0.7, Math.min(slot * 0.82, Math.max(0.4, slot - 0.35)));
   const wickW = bodyW < 1.7
     ? Math.max(0.55, bodyW * 0.9)
@@ -260,15 +272,9 @@ export function drawChart(klines, ticker, hover) {
     : Math.min(1.4, Math.max(0.7, bodyW * 0.05));
   const hollowUp = bodyW >= 2.2;
   const i0 = Math.max(0, view.start);
-  const xSlot = (si) => PAD.l + (si + 0.5) * slot;
-  const x = (i) => xSlot(i + (i0 - view.start));
+  const x = xScale.local;
   const y = (v) => PAD.t + (hi - v) / (hi - lo) * plotH;
-  const vx = (i) => {
-    const si = i - view.start;
-    if (si < 0) return PAD.l;
-    if (si >= slots) return W - PAD.r;
-    return xSlot(si);
-  };
+  const vx = xScale.clampedIndex;
   const lastY = (state.ind.last && lastPx != null) ? y(lastPx) : null;
 
   const gGrid = svgEl('g', { opacity: '.55' });
@@ -334,9 +340,9 @@ export function drawChart(klines, ticker, hover) {
     }
   }
 
-  if (stackLevels.length) {
+  if (visibleStackLevels.length) {
     const usedY = {};
-    stackLevels.forEach((level) => {
+    visibleStackLevels.forEach((level) => {
       const yy = y(level.price);
       const line = svgEl('line', {
         x1: PAD.l, x2: W - PAD.r,
@@ -505,6 +511,8 @@ export function drawChart(klines, ticker, hover) {
   }
   if (state.ind.ema9) poly(e9, 'var(--accent)', '', 'ck-ema9');
   if (state.ind.ema21) poly(e21, 'var(--accent-2)', '4 3', 'ck-ema21');
+  if (state.ind.ma100) poly(ma100, 'var(--warn)', '', 'ck-ma100');
+  if (state.ind.ema100) poly(ema100, 'var(--ink-1)', '7 4', 'ck-ema100');
   if (state.ind.vwap) poly(view.vwap, 'var(--accent-2)', '6 3', 'ck-vwap');
 
   if (stPack && stPack.ok) {
@@ -952,7 +960,7 @@ export function drawChart(klines, ticker, hover) {
     svg.appendChild(t);
   }
 
-  drawSignalRail(svg, klines, vis, view, x);
+  drawSignalRail(svg, klines, vis, view, xScale.index);
 
   if (hover >= 0 && hover < nBars) {
     const xc = x(hover);
@@ -977,6 +985,8 @@ export function patchLastCandle(klines) {
   const lastLine = document.getElementById('ck-last');
   const p9 = document.getElementById('ck-ema9');
   const p21 = document.getElementById('ck-ema21');
+  const pMa100 = document.getElementById('ck-ma100');
+  const pEma100 = document.getElementById('ck-ema100');
   if (!wick || !body) return false;
   if (state.ind.last && !lastLine) return false;
   if (state.ind.boll) {
@@ -1040,8 +1050,12 @@ export function patchLastCandle(klines) {
   placeFastTags();
   const d9 = lineD(view.e9, x, y);
   const d21 = lineD(view.e21, x, y);
+  const dMa100 = lineD(view.ma100, x, y);
+  const dEma100 = lineD(view.ema100, x, y);
   if (p9) p9.setAttribute('d', d9);
   if (p21) p21.setAttribute('d', d21);
+  if (pMa100) pMa100.setAttribute('d', dMa100);
+  if (pEma100) pEma100.setAttribute('d', dEma100);
   if (stLive && stLive.ok) {
     const a = Math.max(0, view.start);
     const b = a + view.bars.length;
@@ -1246,6 +1260,8 @@ export function showTip(e, klines) {
   if (state.ind.vwap && view.vwap[i] != null) {
     extra += '<br>日内均价 ' + px(view.vwap[i]);
   }
+  if (state.ind.ma100 && view.ma100[i] != null) extra += '<br>MA100 ' + px(view.ma100[i]);
+  if (state.ind.ema100 && view.ema100[i] != null) extra += '<br>EMA100 ' + px(view.ema100[i]);
   if (state.ind.macd && view.macdHist[i] != null) {
     extra += '<br>MACD柱 ' + view.macdHist[i].toFixed(3);
     if (view.macdDif[i] != null && view.macdDea[i] != null) {

@@ -1,4 +1,4 @@
-import { ema, bollCore, macdOf, rsiSeries, atr } from '../src/core/math.js';
+import { ema, sma, bollCore, macdOf, rsiSeries, atr } from '../src/core/math.js';
 import { analyzeBoll } from '../src/indicators/boll.js';
 import { stackLayer } from '../src/indicators/stack.js';
 import { state } from '../src/state.js';
@@ -18,6 +18,14 @@ function bar(t, o, h, l, c) {
   approx(out[3], 12.125, { label: 'ema[3]' });
   approx(out[4], 13.0625, { label: 'ema[4]' });
   assert(ema([]).length === 0, 'ema empty');
+}
+
+// --- sma：前 period-1 根预热为空，随后为滚动算术平均 ---
+{
+  const out = sma([1, 2, 3, 4, 5], 3);
+  assert(out[0] == null && out[1] == null, 'sma warmup');
+  approx(out[2], 2, { label: 'sma[2]' });
+  approx(out[4], 4, { label: 'sma[4]' });
 }
 
 // --- bollCore：总体标准差（除以 period，非 n-1）；前 period-1 为 null ---

@@ -13,6 +13,20 @@ export function ema(values, period) {
   return out;
 }
 
+export function sma(values, period) {
+  const n = values.length;
+  const out = new Array(n).fill(null);
+  period = Math.max(1, Math.floor(Number(period) || 1));
+  if (n < period) return out;
+  let sum = 0;
+  for (let i = 0; i < n; i++) {
+    sum += values[i];
+    if (i >= period) sum -= values[i - period];
+    if (i >= period - 1) out[i] = sum / period;
+  }
+  return out;
+}
+
 export function emaSkipNull(values, period) {
   const n = values.length;
   const out = new Array(n).fill(null);

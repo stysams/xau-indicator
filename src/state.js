@@ -90,7 +90,7 @@ export const state = {
   drag: null,
   pointer: null,
   ind: {
-    ema9: false, ema21: false, boll: false, smc: false, smcSig: false, stack: false, hkld: false, fib: false, hs: false, sr: false, bounce: false, pull: false, trap: false, hold: false, last: false, hl: false,
+    ema9: false, ema21: false, ma100: false, ema100: false, boll: false, smc: false, smcSig: false, stack: false, hkld: false, fib: false, hs: false, sr: false, bounce: false, pull: false, trap: false, hold: false, last: false, hl: false,
     boll1: false, boll2: false, boll3: false, macd: false, rsi: false, usidx: false, vwap: false, fast: false, st: false, box: false,
   },
   usidxBars: [],
@@ -100,6 +100,9 @@ export const state = {
   stN: 10,
   stK: 3,
   boxLen: 120,
+  stackCollapsed: false,
+  fibMode: 'auto',
+  fibExt: false,
   srMode: 'normal',
   bollN: 20,
   bollK: 2,

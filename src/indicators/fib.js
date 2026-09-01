@@ -9,6 +9,12 @@ export const FIB_EXT = [1.272, 1.618];
 
 export const FIB_KEYS = [0.382, 0.5, 0.618, 0.786];
 
+export const FIB_MODES = ['auto', 'up', 'down'];
+
+export function normalizeFibMode(v) {
+  return FIB_MODES.indexOf(v) >= 0 ? v : 'auto';
+}
+
 export function fibLook(tf) {
   if (tf === '10s') return { k: 6, minAtr: 1.7, minBars: 8, look: 90, pxFloor: 0.00012 };
   if (tf === '1m') return { k: 4, minAtr: 1.5, minBars: 6, look: 80, pxFloor: 0.00018 };
@@ -99,6 +105,19 @@ export function fibLevelPx(endPx, startPx, r) {
   return endPx + (startPx - endPx) * r;
 }
 
+export function fibExtensionPx(startPx, endPx, r) {
+  return startPx + (endPx - startPx) * r;
+}
+
+export function selectFibWave(legs, mode) {
+  const normalized = normalizeFibMode(mode);
+  const dir = normalized === 'up' ? 1 : (normalized === 'down' ? -1 : 0);
+  const pool = (legs || []).filter((leg) => !dir || leg.dir === dir);
+  const ranked = pool.filter((leg) => leg.score >= 0).sort((a, b) => b.score - a.score);
+  if (ranked.length || normalized === 'auto') return ranked[0] || null;
+  return pool.slice().sort((a, b) => b.B.i - a.B.i || b.span - a.span)[0] || null;
+}
+
 export function fibHoldBar(bar, level, dir, radius, thresh) {
   if (!bar) return false;
   const rng = bar.h - bar.l;
@@ -185,8 +204,8 @@ export function computeFib(klines) {
     return s;
   }
   legs.forEach((leg) => { leg.score = fibScore(leg); });
-  const ranked = legs.filter((x) => x.score >= 0).sort((a, b) => b.score - a.score);
-  const wave = ranked[0];
+  const fibMode = normalizeFibMode(state.fibMode);
+  const wave = selectFibWave(legs, fibMode);
   if (!wave) return empty;
 
   const start = wave.A, end = wave.B, dir = wave.dir, span = wave.span;
@@ -197,13 +216,16 @@ export function computeFib(klines) {
     key: fibIsKey(r),
     ext: false,
   }));
-  FIB_EXT.forEach((r) => {
-    const price = fibLevelPx(end.price, start.price, r);
-    const near = Math.abs(lastPx - price) <= Math.max(atrv * 2.4, span * 0.35);
-    if (near || retrace <= 0.12) {
-      levels.push({ r: r, price: price, key: fibNear(r, 1.618), ext: true });
-    }
-  });
+  if (state.fibExt) {
+    FIB_EXT.forEach((r) => {
+      levels.push({
+        r: r,
+        price: fibExtensionPx(start.price, end.price, r),
+        key: fibNear(r, 1.618),
+        ext: true,
+      });
+    });
+  }
 
   const keyLv = levels.filter((lv) => lv.key && !lv.ext);
   function testLevel(bar) {
@@ -226,13 +248,17 @@ export function computeFib(klines) {
   let why = '';
   let label = '斐波那契 ' + (dir > 0 ? '涨势回撤' : '跌势反抽');
   let name = '斐波那契';
+  const visualFallback = fibMode !== 'auto' && wave.score < 0;
   const failClosed = dir > 0
     ? voteBar.c < start.price - thresh
     : voteBar.c > start.price + thresh;
   const failForm = forming && (dir > 0 ? last.c < start.price - thresh : last.c > start.price + thresh);
   const sliced = (voteBar.h - voteBar.l) > span * 0.28;
 
-  if (failClosed && retrace >= 0.86) {
+  if (visualFallback) {
+    label = dir > 0 ? '低点到高点参考' : '高点到低点参考';
+    why = '指定方向当前没有满足回撤条件的有效波段，显示最近同向高低点，仅作画线参考，不参与方向判断。';
+  } else if (failClosed && retrace >= 0.86) {
     kind = 'fail';
     status = 'trigger';
     vote = -dir;
@@ -291,7 +317,7 @@ export function computeFib(klines) {
     atrv: atrv, radius: radius, levels: levels, retrace: retrace, hit: hit,
     hitR: hit ? hit.r : null,
     kind: kind, status: status, vote: vote, why: why, label: label,
-    title: label, name: name, forming: forming,
+    title: label, name: name, forming: forming, mode: fibMode,
     points: [
       { i: start.i, price: start.price, lab: '100%' },
       { i: end.i, price: end.price, lab: '0%' },
@@ -301,7 +327,7 @@ export function computeFib(klines) {
 
 export function getFib(klines) {
   const last = klines[klines.length - 1];
-  const key = [klines.length, last && last.t, last && last.c, last && last.h, last && last.l, state.tf].join(':');
+  const key = [klines.length, last && last.t, last && last.c, last && last.h, last && last.l, state.tf, normalizeFibMode(state.fibMode), state.fibExt ? 1 : 0].join(':');
   if (state._fibKey === key && state._fib) return state._fib;
   const pack = computeFib(klines);
   state._fibKey = key;

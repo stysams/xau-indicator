@@ -206,7 +206,7 @@ export function collectSignalEvents(klines) {
   return dedupeSigs(out);
 }
 
-export function drawSignalRail(svg, klines, vis, view, xFn) {
+export function drawSignalRail(svg, klines, vis, view, xForIndex) {
   if (!state.sigRail) return;
   if (!svg || !klines || !klines.length || !vis || !vis.length) return;
   const events = collectSignalEvents(klines);
@@ -227,16 +227,15 @@ export function drawSignalRail(svg, klines, vis, view, xFn) {
     stroke: 'rgba(15,35,34,.14)', 'stroke-width': '1',
   }));
 
-  const bySlot = Object.create(null);
+  const byIndex = Object.create(null);
   visible.forEach((e) => {
-    const si = e.i - start;
-    if (!bySlot[si]) bySlot[si] = [];
-    bySlot[si].push(e);
+    if (!byIndex[e.i]) byIndex[e.i] = [];
+    byIndex[e.i].push(e);
   });
 
-  Object.keys(bySlot).forEach((key) => {
-    const pack = bySlot[key];
-    const xc = xFn(Number(key));
+  Object.keys(byIndex).forEach((key) => {
+    const pack = byIndex[key];
+    const xc = xForIndex(Number(key));
     pack.forEach((e, idx) => {
       const y = yBase - idx * 5;
       const fill = e.dir > 0 ? 'var(--up)' : (e.dir < 0 ? 'var(--down)' : 'var(--warn)');

@@ -1,5 +1,5 @@
 import { n } from '../core/format.js';
-import { bandArr, bollCore, ema, macdOf, rsiSeries, vwapSeries } from '../core/math.js';
+import { bandArr, bollCore, ema, macdOf, rsiSeries, sma, vwapSeries } from '../core/math.js';
 import { barsForChart, isLiveFollow, liveEndFor } from '../net/rest.js';
 import { $, LIVE_ANCHOR, MAX_VIEW_SLOTS, MIN_BARS, state } from '../state.js';
 
@@ -7,6 +7,35 @@ export function maxViewCount(n) {
   const loaded = Math.max(1, n || 1);
   const fitAll = Math.ceil(loaded / Math.max(0.28, LIVE_ANCHOR));
   return Math.max(loaded, Math.min(fitAll, MAX_VIEW_SLOTS, loaded * 3));
+}
+
+export function chartXScale(view, left, right) {
+  const start = Number(view && view.start) || 0;
+  const count = Math.max(1, Number(view && view.count) || 1);
+  const dataStart = Math.max(0, start);
+  const slotW = (right - left) / count;
+  const atSlot = (slotIndex) => left + (slotIndex + 0.5) * slotW;
+  return {
+    slotW: slotW,
+    local: (localIndex) => atSlot(localIndex + dataStart - start),
+    index: (barIndex) => atSlot(barIndex - start),
+    clampedIndex: (barIndex) => {
+      const slotIndex = barIndex - start;
+      if (slotIndex < 0) return left;
+      if (slotIndex >= count) return right;
+      return atSlot(slotIndex);
+    },
+  };
+}
+
+export function priceLevelsInRange(levels, lo, hi) {
+  if (!Array.isArray(levels) || !Number.isFinite(lo) || !Number.isFinite(hi)) return [];
+  const lower = Math.min(lo, hi);
+  const upper = Math.max(lo, hi);
+  return levels.filter((level) => {
+    const price = level && Number(level.price);
+    return Number.isFinite(price) && price >= lower && price <= upper;
+  });
 }
 
 export function resetZoom() {
@@ -19,7 +48,7 @@ export function resetZoom() {
 export function chartSlice(klines) {
   const n = klines.length;
   if (!n) {
-    return { start: 0, end: 0, count: 0, n: 0, bars: [], e9: [], e21: [], rsi: [], follow: true };
+    return { start: 0, end: 0, count: 0, n: 0, bars: [], e9: [], e21: [], ma100: [], ema100: [], rsi: [], follow: true };
   }
   let count = state.viewCount == null ? n : state.viewCount;
   count = Math.min(maxViewCount(n), Math.max(MIN_BARS, Math.round(count)));
@@ -32,6 +61,8 @@ export function chartSlice(klines) {
   const closes = klines.map((k) => k.c);
   const e9a = ema(closes, 9);
   const e21a = ema(closes, 21);
+  const ma100a = sma(closes, 100);
+  const ema100a = ema(closes, 100);
   const period = state.bollN || 20;
   const kMul = state.bollK || 2;
   const core = bollCore(closes, period);
@@ -55,6 +86,8 @@ export function chartSlice(klines) {
     bars: klines.slice(i0, i1),
     e9: e9a.slice(i0, i1),
     e21: e21a.slice(i0, i1),
+    ma100: ma100a.slice(i0, i1),
+    ema100: ema100a.slice(i0, i1),
     bollMid: core.mid.slice(i0, i1),
     bollUp: bk.up.slice(i0, i1),
     bollDn: bk.dn.slice(i0, i1),

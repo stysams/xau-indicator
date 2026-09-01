@@ -26,11 +26,12 @@ import { applyColor, endDrag, switchMarket, syncMarketChrome, zoomAt } from './u
 import { bindFacDrag, bindFacMenu, buildFacMenu, closeFacMenu, loadFac, refreshAfterFac, syncFacButtons } from './ui/factor-menu.js';
 import { bindFastFloat, loadFastPos } from './ui/fast-float.js';
 import { IND_KEYS, applyBollCssVars, closeBollStyleMenu, closeIndMenu, defaultBollStyle, indMenuItems, loadInd, normalizeSrMode, onBollStyleChange, parseHexColor, refreshAfterInd, resetBollStyle, saveInd, setIndMenu, syncIndButtons, toggleBollStyleMenu, toggleIndMenu } from './ui/indicator-menu.js';
+import { normalizeFibMode } from './indicators/fib.js';
 import { bindLayoutPreset, closeLayoutMenu } from './ui/layout-preset.js';
 import { bindSessRail, tickSess } from './ui/session-rail.js';
 import { drawChart, hideCrosshair, showTip, wrap } from './view/chart.js';
 import { oscLayout } from './view/osc.js';
-import { banner, remainText, render, renderHeavy, renderQuote } from './view/panels.js';
+import { banner, remainText, render, renderHeavy, renderQuote, renderStackBar } from './view/panels.js';
 import { bindSignalRail, collectSignalEvents } from './view/signal-rail.js';
 import { openSignalView, renderFastPanel } from './view/trade-overlay.js';
 import { applyView, chartSlice, resetZoom, updateZoomLabel } from './view/viewport.js';
@@ -301,6 +302,40 @@ document.querySelectorAll('button[data-box-len]').forEach((b) => {
     renderHeavy(klines);
   });
 });
+function onFibParamChange() {
+  saveInd();
+  syncIndButtons();
+  state.chartScale = null;
+  state._fibKey = '';
+  const klines = barsForChart();
+  drawChart(klines, state.ticker, state.hover);
+  renderHeavy(klines);
+}
+document.querySelectorAll('button[data-fib-mode]').forEach((b) => {
+  b.addEventListener('click', () => {
+    state.fibMode = normalizeFibMode(b.dataset.fibMode);
+    onFibParamChange();
+  });
+});
+const btnFibExt = $('btnFibExt');
+if (btnFibExt) {
+  btnFibExt.addEventListener('click', () => {
+    state.fibExt = !state.fibExt;
+    onFibParamChange();
+  });
+}
+const stackBar = $('stackBar');
+if (stackBar) {
+  stackBar.addEventListener('click', (e) => {
+    const btn = e.target && e.target.closest ? e.target.closest('[data-stack-fold]') : null;
+    if (!btn) return;
+    state.stackCollapsed = !state.stackCollapsed;
+    saveInd();
+    renderStackBar();
+    state.chartScale = null;
+    requestAnimationFrame(() => drawChart(barsForChart(), state.ticker, state.hover));
+  });
+}
 syncIndButtons();
 
 applyColor(document.documentElement.getAttribute('data-color') === 'cn' ? 'cn' : 'us');
@@ -639,4 +674,3 @@ setInterval(() => {
   if (last != null) tickSimTrade(last);
   else renderSimLiveBtn();
 }, 1000);
-
