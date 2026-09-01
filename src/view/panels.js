@@ -282,12 +282,23 @@ export function renderHeavy(klines) {
   $('biasAgree').textContent = j.agree;
   $('biasHint').textContent = j.hint;
   const sig = openSignalView();
+  let mobileTitle = j.dir;
+  let mobileClass = j.cls || 'chop';
   if (sig && (sig.mode === 'open' || sig.mode === 'armed')) {
     card.classList.remove('bull', 'bear', 'chop');
     card.classList.add(sig.dir > 0 ? 'bull' : 'bear');
     $('biasDir').textContent = sig.title;
     if (sig.why) $('biasHint').textContent = sig.why;
+    mobileTitle = sig.title;
+    mobileClass = sig.dir > 0 ? 'bull' : 'bear';
   }
+  const mobileSignal = $('mobileSignalStrip');
+  if (mobileSignal) {
+    mobileSignal.classList.remove('bull', 'bear', 'chop');
+    mobileSignal.classList.add(mobileClass);
+  }
+  if ($('mobileBiasDir')) $('mobileBiasDir').textContent = mobileTitle;
+  if ($('mobileBiasAgree')) $('mobileBiasAgree').textContent = j.agree || j.hint || '等待行情';
   const auditEl = $('biasAudit');
   if (auditEl) {
     auditEl.textContent = j.audit || '';

@@ -57,6 +57,14 @@ export function defaultFastPos() {
 export function applyFastPos(persist) {
   const box = $('fastBox');
   if (!box || box.hidden) return;
+  if (window.matchMedia('(max-width: 768px)').matches) {
+    box.style.removeProperty('left');
+    box.style.removeProperty('top');
+    box.style.removeProperty('right');
+    box.style.removeProperty('bottom');
+    box.classList.add('is-placed');
+    return;
+  }
   const next = state.fastPos ? clampFastPos(state.fastPos.x, state.fastPos.y) : defaultFastPos();
   if (state.fastPos) state.fastPos = next;
   box.style.left = next.x + 'px';
@@ -107,6 +115,7 @@ export function bindFastFloat() {
   if (handle && box) {
     handle.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return;
+      if (window.matchMedia('(max-width: 768px)').matches) return;
       if (e.target && e.target.closest && e.target.closest('button')) return;
       e.preventDefault();
       const r = box.getBoundingClientRect();
@@ -122,6 +131,7 @@ export function bindFastFloat() {
     handle.addEventListener('pointerup', endFastDrag);
     handle.addEventListener('pointercancel', endFastDrag);
     handle.addEventListener('dblclick', (e) => {
+      if (window.matchMedia('(max-width: 768px)').matches) return;
       if (e.target && e.target.closest && e.target.closest('button')) return;
       e.preventDefault();
       state.fastPos = null;

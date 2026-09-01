@@ -62,12 +62,23 @@ export function basisHtml(ctx) {
 
 export function renderFastPanel() {
   const box = $('fastBox');
+  const mobileState = $('mobileFastState');
+  const mobileEntry = $('mobileFastEntry');
+  const mobileTp = $('mobileFastTp');
+  const mobileSl = $('mobileFastSl');
   if (box) {
     box.hidden = !state.ind.fast;
     if (!state.ind.fast) box.classList.remove('is-placed');
     else if (!state.fastDrag) applyFastPos(false);
   }
   if (!state.ind.fast) {
+    if (mobileState) {
+      mobileState.textContent = '未启用';
+      mobileState.className = '';
+    }
+    if (mobileEntry) mobileEntry.textContent = '--';
+    if (mobileTp) mobileTp.textContent = '--';
+    if (mobileSl) mobileSl.textContent = '--';
     if (state.fastTrade && state.fastTrade.status === 'open') {
       const pxNow = markPrice(state.fastTrade.dir, state.ticker) || state.fastTrade.entry;
       closeFastTrade('off', pxNow, Date.now());
@@ -129,8 +140,15 @@ export function renderFastPanel() {
     box.classList.add(sig.cls || 'chop');
     box.classList.toggle('pulse-alert', sig.mode === 'armed');  // 新增视觉闪烁
   }
+  if (mobileState) {
+    mobileState.textContent = title;
+    mobileState.className = sig.mode === 'armed' ? 'armed' : (sig.dir > 0 ? 'bull' : (sig.dir < 0 ? 'bear' : ''));
+  }
   if (remainEl) remainEl.textContent = remain;
   if (showLv && showLv.entry != null) {
+    if (mobileEntry) mobileEntry.textContent = px(showLv.entry);
+    if (mobileTp) mobileTp.textContent = px(showLv.tp);
+    if (mobileSl) mobileSl.textContent = px(showLv.sl);
     const tpD = (showLv.dir > 0 ? '+' : '-') + px(Math.abs(showLv.tp - showLv.entry), 2);
     const slD = (showLv.dir > 0 ? '-' : '+') + px(Math.abs(showLv.sl - showLv.entry), 2);
     lvEl.innerHTML =
@@ -138,6 +156,9 @@ export function renderFastPanel() {
       '<div class="cell"><span class="k">止盈</span><b>' + px(showLv.tp) + '</b><span class="d">' + tpD + '</span></div>' +
       '<div class="cell"><span class="k">止损</span><b>' + px(showLv.sl) + '</b><span class="d">' + slD + '</span></div>';
   } else {
+    if (mobileEntry) mobileEntry.textContent = '--';
+    if (mobileTp) mobileTp.textContent = '--';
+    if (mobileSl) mobileSl.textContent = '--';
     lvEl.innerHTML =
       '<div class="cell"><span class="k">入场</span><b>--</b></div>' +
       '<div class="cell"><span class="k">止盈</span><b>--</b></div>' +

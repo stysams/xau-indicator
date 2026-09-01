@@ -45,6 +45,26 @@ loadFastPos();
 
 loadSim();
 
+const indicatorSettings = $('indicatorSettings');
+const indicatorSettingsMedia = window.matchMedia('(max-width: 768px)');
+let indicatorSettingsMobile = indicatorSettingsMedia.matches;
+if (indicatorSettings) indicatorSettings.open = !indicatorSettingsMobile;
+indicatorSettingsMedia.addEventListener('change', (e) => {
+  if (!indicatorSettings || e.matches === indicatorSettingsMobile) return;
+  indicatorSettingsMobile = e.matches;
+  indicatorSettings.open = !e.matches;
+  closeIndMenu();
+  closeBollStyleMenu();
+});
+if (indicatorSettings) {
+  indicatorSettings.addEventListener('toggle', () => {
+    if (!indicatorSettings.open) {
+      closeIndMenu();
+      closeBollStyleMenu();
+    }
+  });
+}
+
 // BOLL20 仅作动态轨参照，不并入静态支压的触碰/强度；下列候选供 bands 图层使用
 // 上下轨和中轨作为动态价格区域候选，再与摆动点候选合并。
 

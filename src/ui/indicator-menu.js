@@ -240,6 +240,11 @@ export function syncIndButtons() {
     caret.setAttribute('aria-pressed', String(opened.length > 0));
     caret.title = opened.length ? ('已开：' + opened.join('、')) : ('更多指标：' + IND_MORE.map((x) => x.lab).join('、'));
   }
+  const mobileSummary = $('mobileIndSummary');
+  if (mobileSummary) {
+    const active = IND_KEYS.filter((k) => !!state.ind[k]).length;
+    mobileSummary.textContent = active ? ('已开 ' + active + ' 项') : '全部关闭';
+  }
 }
 
 export function setIndMenu(open) {
