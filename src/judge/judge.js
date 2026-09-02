@@ -12,7 +12,7 @@ import { getSr, srPivotK, srSwingDeviation } from '../indicators/sr.js';
 import { getStack } from '../indicators/stack.js';
 import { getTrap } from '../indicators/trap.js';
 import { CORE_FAMILIES, FAC_FAMILY_LAB, FAC_FAMILY_W, JUDGE_NET_RATIO, factorFamilyId, factorOn, pickFamilyVote } from './factors.js';
-import { bollVote, dayVote, dxyVote, emaVote, macdVote, mtfVote, rsiVote, smcVote, tape, vwapVote } from './votes.js';
+import { bollVote, dayVote, dxyVote, emaVote, macdVote, mtfVote, rsiVote, smcVote, tape, vwapVote, xauUsidxVote } from './votes.js';
 import { isMarketOpen, mkt, state } from '../state.js';
 
 export function judge(klines, ticker, mtf) {
@@ -44,6 +44,10 @@ export function judge(klines, ticker, mtf) {
   if (factorOn('dxy')) {
     const dx = dxyVote(voteSrc.length ? voteSrc : klines, state.usidxBars);
     factors.push({ id: 'dxy', name: 'DXY对照', vote: voteSrc.length ? dx.vote : 0, why: voteSrc.length ? dx.why : '正在走的 K 只观察，收盘才确认。' });
+  }
+  if (factorOn('xauUsidx')) {
+    const xr = xauUsidxVote(voteSrc.length ? voteSrc : klines, state.usidxBars);
+    factors.push({ id: 'xauUsidx', name: 'XAU-USIDX相关', vote: voteSrc.length ? xr.vote : 0, why: voteSrc.length ? xr.why : '正在走的 K 只观察，收盘才确认。' });
   }
 
   if (factorOn('swing')) {

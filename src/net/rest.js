@@ -2,7 +2,16 @@ import { n } from '../core/format.js';
 import { LIVE_ANCHOR, mkt, state, streamTfs } from '../state.js';
 
 export async function getJson(path) {
+  const now = Date.now();
+  if (state.apiRetryAt && now < state.apiRetryAt) {
+    const wait = Math.ceil((state.apiRetryAt - now) / 1000);
+    throw new Error('接口限流，' + wait + ' 秒后重试');
+  }
   const res = await fetch(path, { headers: { Accept: 'application/json' } });
+  if (res.status === 429) {
+    state.apiRetryAt = Date.now() + 8000;
+    throw new Error('接口限流，请 8 秒后重试');
+  }
   let data = null;
   try { data = await res.json(); }
   catch (e) { throw new Error('上游返回非 JSON'); }

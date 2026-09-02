@@ -226,6 +226,13 @@ export function drawSignalRail(svg, klines, vis, view, xForIndex) {
     x1: PAD.l, x2: W - PAD.r, y1: yBase, y2: yBase,
     stroke: 'rgba(15,35,34,.14)', 'stroke-width': '1',
   }));
+  g.appendChild(svgEl('line', {
+    id: 'ck-sig-guide',
+    x1: PAD.l, x2: PAD.l, y1: PAD.t, y2: yBase,
+    stroke: 'var(--accent)', 'stroke-width': '1',
+    'stroke-dasharray': '3 4', opacity: '.48',
+    'pointer-events': 'none', visibility: 'hidden',
+  }));
 
   const byIndex = Object.create(null);
   visible.forEach((e) => {
@@ -251,10 +258,36 @@ export function drawSignalRail(svg, klines, vis, view, xForIndex) {
         'data-sig-dir': String(e.dir || 0),
         'data-sig-t': String(e.t || ''),
         'data-sig-px': e.price != null ? String(e.price) : '',
+        'data-sig-slot': String(idx),
       }));
     });
   });
   svg.appendChild(g);
+  if (state._sigHover && byIndex[state._sigHover.i]) {
+    syncSigGuide({
+      x: xForIndex(state._sigHover.i),
+      y: yBase - (Number(state._sigHover.slot) || 0) * 5,
+    });
+  } else if (state._sigHover) {
+    state._sigHover = null;
+    syncSigTip(null);
+  }
+}
+
+export function syncSigGuide(point) {
+  const guide = $('ck-sig-guide');
+  if (!guide) return;
+  const x = point && Number(point.x);
+  const y = point && Number(point.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    guide.setAttribute('visibility', 'hidden');
+    return;
+  }
+  guide.setAttribute('x1', String(x));
+  guide.setAttribute('x2', String(x));
+  guide.setAttribute('y1', String(PAD.t));
+  guide.setAttribute('y2', String(y));
+  guide.setAttribute('visibility', 'visible');
 }
 
 export function syncSigTip(payload) {
@@ -281,6 +314,11 @@ export function renderSigChrome() {
   if (rail) rail.hidden = !state.sigRail;
   const btn = $('btnSigRail');
   if (btn) btn.setAttribute('aria-pressed', String(!!state.sigRail));
+  if (!state.sigRail) {
+    state._sigHover = null;
+    syncSigTip(null);
+    syncSigGuide(null);
+  }
 }
 
 export function bindSignalRail(onJump) {
@@ -294,6 +332,7 @@ export function bindSignalRail(onJump) {
       if (state._sigHover) {
         state._sigHover = null;
         syncSigTip(null);
+        syncSigGuide(null);
       }
       return;
     }
@@ -304,13 +343,19 @@ export function bindSignalRail(onJump) {
       dir: Number(t.getAttribute('data-sig-dir') || 0),
       t: Number(t.getAttribute('data-sig-t') || 0) || null,
       price: t.getAttribute('data-sig-px') ? Number(t.getAttribute('data-sig-px')) : null,
+      slot: Number(t.getAttribute('data-sig-slot') || 0),
     };
     state._sigHover = payload;
     syncSigTip(payload);
+    syncSigGuide({
+      x: Number(t.getAttribute('cx')),
+      y: Number(t.getAttribute('cy')),
+    });
   });
   wrap.addEventListener('pointerleave', () => {
     state._sigHover = null;
     syncSigTip(null);
+    syncSigGuide(null);
   });
   wrap.addEventListener('click', (e) => {
     const t = e.target;

@@ -2,6 +2,7 @@ import { n } from '../core/format.js';
 import { rsi } from '../core/math.js';
 import { barsForChart } from '../net/rest.js';
 import { normalizeFibMode } from '../indicators/fib.js';
+import { AVERAGE_KINDS, AVERAGE_TFS, averageLineId, normalizeAverageLines } from '../indicators/moving-average.js';
 import { $, state } from '../state.js';
 import { applyFastPos } from './fast-float.js';
 import { drawChart, wrap } from '../view/chart.js';
@@ -10,7 +11,7 @@ import { renderFastPanel } from '../view/trade-overlay.js';
 
 export const IND_KEY = 'gold-minute-ind';
 
-export const IND_KEYS = ['ema9', 'ema21', 'ma100', 'ema100', 'boll', 'smc', 'smcSig', 'stack', 'hkld', 'fib', 'hs', 'sr', 'bounce', 'pull', 'trap', 'hold', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'usidx', 'vwap', 'fast', 'st', 'box'];
+export const IND_KEYS = ['boll', 'smc', 'smcSig', 'stack', 'hkld', 'fib', 'hs', 'sr', 'bounce', 'pull', 'trap', 'hold', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'usidx', 'vwap', 'fast', 'st', 'box'];
 
 export const IND_MORE = [
   { k: 'hl', lab: '高低' },
@@ -25,10 +26,6 @@ export const IND_MORE = [
   { k: 'fib', lab: '斐波那契' },
   { k: 'st', lab: '超级趋势' },
   { k: 'vwap', lab: '日内均价' },
-  { k: 'ema9', lab: 'EMA9' },
-  { k: 'ema21', lab: 'EMA21' },
-  { k: 'ma100', lab: 'MA100' },
-  { k: 'ema100', lab: 'EMA100' },
 ];
 
 export const SR_MODES = ['normal', 'swing', 'pressure'];
@@ -42,6 +39,8 @@ export const ST_PERIODS = [7, 10, 14];
 export const ST_MULTS = [2, 2.5, 3];
 
 export const BOX_LENS = [60, 120, 180];
+
+export const STACK_DRAW_KEYS = ['1m', '5m', '15m', '1h', 'signal'];
 
 export function parseHexColor(v) {
   if (typeof v !== 'string') return '';
@@ -145,10 +144,29 @@ export function loadInd() {
     if (typeof raw.srMode === 'string') state.srMode = normalizeSrMode(raw.srMode);
     else if (raw.srSwing === true) state.srMode = 'swing';
     if (raw.rsiN === 6 || raw.rsiN === 9 || raw.rsiN === 14) state.rsiN = raw.rsiN;
+    const legacyLines = [];
+    if (Array.isArray(raw.maPeriods)) raw.maPeriods.forEach((period) => legacyLines.push({ kind: 'ma', period: period, tf: '1m' }));
+    if (Array.isArray(raw.emaPeriods)) raw.emaPeriods.forEach((period) => legacyLines.push({ kind: 'ema', period: period, tf: '1m' }));
+    if (raw.ma100 === true) legacyLines.push({ kind: 'ma', period: 100, tf: '1m' });
+    if (raw.ema9 === true) legacyLines.push({ kind: 'ema', period: 9, tf: '1m' });
+    if (raw.ema21 === true) legacyLines.push({ kind: 'ema', period: 21, tf: '1m' });
+    if (raw.ema100 === true) legacyLines.push({ kind: 'ema', period: 100, tf: '1m' });
+    state.averageLines = normalizeAverageLines(Array.isArray(raw.averageLines) ? raw.averageLines : legacyLines);
+    if (raw.averageVisibility && typeof raw.averageVisibility === 'object') {
+      if (typeof raw.averageVisibility.ma === 'boolean') state.averageVisibility.ma = raw.averageVisibility.ma;
+      if (typeof raw.averageVisibility.ema === 'boolean') state.averageVisibility.ema = raw.averageVisibility.ema;
+    }
+    if (AVERAGE_KINDS.indexOf(raw.averageKind) >= 0) state.averageKind = raw.averageKind;
+    if (AVERAGE_TFS.indexOf(raw.averageTf) >= 0) state.averageTf = raw.averageTf;
     if (ST_PERIODS.indexOf(raw.stN) >= 0) state.stN = raw.stN;
     if (ST_MULTS.indexOf(raw.stK) >= 0) state.stK = raw.stK;
     if (BOX_LENS.indexOf(raw.boxLen) >= 0) state.boxLen = raw.boxLen;
     if (typeof raw.stackCollapsed === 'boolean') state.stackCollapsed = raw.stackCollapsed;
+    if (raw.stackDraw && typeof raw.stackDraw === 'object') {
+      STACK_DRAW_KEYS.forEach((k) => {
+        if (typeof raw.stackDraw[k] === 'boolean') state.stackDraw[k] = raw.stackDraw[k];
+      });
+    }
     if (typeof raw.fibMode === 'string') state.fibMode = normalizeFibMode(raw.fibMode);
     if (typeof raw.fibExt === 'boolean') state.fibExt = raw.fibExt;
     if (typeof raw.fastBeep === 'boolean') state.fastBeep = raw.fastBeep;
@@ -161,7 +179,11 @@ export function saveInd() {
     localStorage.setItem(IND_KEY, JSON.stringify(Object.assign({}, state.ind, {
       bollN: state.bollN, bollK: state.bollK, rsiN: state.rsiN, fastBeep: state.fastBeep,
       stN: state.stN, stK: state.stK, boxLen: state.boxLen,
+      averageKind: state.averageKind, averageTf: state.averageTf,
+      averageLines: normalizeAverageLines(state.averageLines),
+      averageVisibility: Object.assign({}, state.averageVisibility),
       stackCollapsed: !!state.stackCollapsed,
+      stackDraw: Object.assign({}, state.stackDraw),
       fibMode: normalizeFibMode(state.fibMode), fibExt: !!state.fibExt,
       srMode: state.srMode,
       bollStyle: state.bollStyle,
@@ -186,6 +208,11 @@ export function syncIndButtons() {
   syncBollStyleUi();
   const stackEl = $('stackBar');
   if (stackEl) stackEl.hidden = !state.ind.stack;
+  const stackDrawEl = $('stackDrawBar');
+  if (stackDrawEl) stackDrawEl.hidden = !state.ind.stack;
+  document.querySelectorAll('button[data-stack-draw]').forEach((b) => {
+    b.setAttribute('aria-pressed', String(state.stackDraw[b.dataset.stackDraw] !== false));
+  });
   document.querySelectorAll('button[data-boll-n]').forEach((b) => {
     b.setAttribute('aria-pressed', String(Number(b.dataset.bollN) === state.bollN));
   });
@@ -211,6 +238,27 @@ export function syncIndButtons() {
   if (boxBar) boxBar.hidden = !state.ind.box;
   document.querySelectorAll('button[data-box-len]').forEach((b) => {
     b.setAttribute('aria-pressed', String(Number(b.dataset.boxLen) === state.boxLen));
+  });
+  document.querySelectorAll('button[data-average-kind]').forEach((b) => {
+    b.setAttribute('aria-pressed', String(b.dataset.averageKind === state.averageKind));
+  });
+  document.querySelectorAll('button[data-average-toggle]').forEach((b) => {
+    const key = b.dataset.averageToggle;
+    b.setAttribute('aria-pressed', String(state.averageVisibility[key] !== false));
+    b.setAttribute('aria-checked', String(state.averageVisibility[key] !== false));
+  });
+  const averageToolbar = $('averageToolbar');
+  if (averageToolbar) {
+    const visibility = state.averageVisibility || {};
+    averageToolbar.hidden = visibility.ma === false && visibility.ema === false;
+  }
+  document.querySelectorAll('button[data-average-tf]').forEach((b) => {
+    b.setAttribute('aria-pressed', String(b.dataset.averageTf === state.averageTf));
+  });
+  document.querySelectorAll('button[data-average-period]').forEach((b) => {
+    const line = { kind: state.averageKind, tf: state.averageTf, period: Number(b.dataset.averagePeriod) };
+    const on = normalizeAverageLines(state.averageLines).some((x) => averageLineId(x) === averageLineId(line));
+    b.setAttribute('aria-pressed', String(on));
   });
   const boxStatus = $('boxStatus');
   if (boxStatus) boxStatus.hidden = !state.ind.box;
@@ -242,7 +290,7 @@ export function syncIndButtons() {
   }
   const mobileSummary = $('mobileIndSummary');
   if (mobileSummary) {
-    const active = IND_KEYS.filter((k) => !!state.ind[k]).length;
+    const active = IND_KEYS.filter((k) => !!state.ind[k]).length + normalizeAverageLines(state.averageLines).length;
     mobileSummary.textContent = active ? ('已开 ' + active + ' 项') : '全部关闭';
   }
 }
@@ -252,10 +300,11 @@ export function setIndMenu(open) {
   const caret = $('btnIndMore');
   const wrap = $('indMore');
   if (!menu || !caret) return;
-  const next = !!open;
-  menu.hidden = !next;
+  // 指标控件常驻展开；保留 API 以兼容旧的键盘/点击绑定。
+  const next = true;
+  menu.hidden = false;
   caret.setAttribute('aria-expanded', String(next));
-  if (wrap) wrap.classList.toggle('is-open', next);
+  if (wrap) wrap.classList.toggle('is-open', false);
 }
 
 export function closeIndMenu() { setIndMenu(false); }

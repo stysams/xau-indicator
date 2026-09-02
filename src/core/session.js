@@ -1,13 +1,13 @@
-import { n, pad2 } from './format.js';
+import { pad2 } from './format.js';
 
 export const SESS_VENUES = [
-  { id: 'eurasia', short: '欧亚', name: '欧亚盘', hint: 'COMEX Globex：周日到周五美东 18:00 开到次日 17:00，每日 17:00–18:00 日切。' },
-  { id: 'japan', short: '日本', name: '日本', hint: 'JPX 黄金：日盘 08:45–15:45 东京，夜盘 17:00–次日 06:00 东京。' },
-  { id: 'shfe', short: '沪金', name: '沪金', hint: '上期所黄金期货 AU：09:00–10:15、10:30–11:30、13:30–15:00，夜盘 21:00–02:30。' },
-  { id: 'sge', short: '上金', name: '上金所', hint: '上海黄金交易所：日盘 09:00–15:30，夜盘 20:00–02:30。' },
-  { id: 'london', short: '欧盘', name: '欧盘', hint: '伦敦 08:00–16:30。夏令时北京 15:00–23:30，冬令时 16:00–00:30。' },
-  { id: 'comex', short: '美盘', name: '美盘', hint: 'COMEX 场内 08:20–13:30 美东。' },
-  { id: 'nyse', short: '美股', name: '美股', hint: '纽交所、纳斯达克常规交易 09:30–16:00 美东。夏令时北京 21:30–04:00，冬令时 22:30–05:00。感恩节次日和圣诞前夕提早 13:00 美东收盘。' },
+  { id: 'eurasia', short: '欧亚', name: '欧亚盘', hint: 'COMEX Globex：周日到周五美东 18:00 开到次日 17:00，每日 17:00–18:00 日切。夏令时北京 06:00–次日 05:00，冬令时 07:00–次日 06:00。' },
+  { id: 'japan', short: '日本', name: '日本', hint: 'JPX 黄金：日盘 08:45–15:45 东京，夜盘 17:00–次日 06:00 东京。北京 07:45–14:45、16:00–次日 05:00。' },
+  { id: 'shfe', short: '沪金', name: '沪金', hint: '上期所黄金期货 AU：09:00–10:15、10:30–11:30、13:30–15:00，夜盘 21:00–次日 02:30。' },
+  { id: 'sge', short: '上金', name: '上金所', hint: '上海黄金交易所：早市 09:00–11:30、午市 13:30–15:30，夜市 20:00–次日 02:30。' },
+  { id: 'london', short: '欧盘', name: '欧盘', hint: '伦敦金银 08:00–17:00。夏令时北京 15:00–次日 00:00，冬令时 16:00–次日 01:00。' },
+  { id: 'comex', short: '美盘', name: '美盘', hint: 'COMEX 场内 08:20–13:30 美东。夏令时北京 20:20–次日 01:30，冬令时 21:20–次日 02:30。' },
+  { id: 'nyse', short: '美股', name: '美股', hint: '纽交所、纳斯达克常规交易 09:30–16:00 美东。夏令时北京 21:30–次日 04:00，冬令时 22:30–次日 05:00。感恩节次日和圣诞前夕提早 13:00 美东收盘。' },
 ];
 
 export const CN_HOLIDAYS = [
@@ -109,7 +109,11 @@ export function fmtBj(ms) {
 
 export function fmtRange(start, end) {
   if (start == null || end == null) return '--';
-  return fmtBj(start) + '–' + fmtBj(end);
+  const a = tzParts('Asia/Shanghai', new Date(start));
+  const b = tzParts('Asia/Shanghai', new Date(end));
+  const right = fmtBj(end);
+  if (ymdNum(b.y, b.mo, b.d) > ymdNum(a.y, a.mo, a.d)) return fmtBj(start) + '–次日' + right;
+  return fmtBj(start) + '–' + right;
 }
 
 export function sessRemain(ms) {
@@ -178,6 +182,9 @@ export function collectWindows(now) {
         fromZoned('Asia/Shanghai', cSh.y, cSh.mo, cSh.d, 15, 0, 0));
       addWin(out, 'sge', '开盘中',
         fromZoned('Asia/Shanghai', cSh.y, cSh.mo, cSh.d, 9, 0, 0),
+        fromZoned('Asia/Shanghai', cSh.y, cSh.mo, cSh.d, 11, 30, 0));
+      addWin(out, 'sge', '午盘中',
+        fromZoned('Asia/Shanghai', cSh.y, cSh.mo, cSh.d, 13, 30, 0),
         fromZoned('Asia/Shanghai', cSh.y, cSh.mo, cSh.d, 15, 30, 0));
     }
     if (cnNightStart(cSh.y, cSh.mo, cSh.d, cSh.w)) {
@@ -192,7 +199,7 @@ export function collectWindows(now) {
     if (cLd.w >= 1 && cLd.w <= 5) {
       addWin(out, 'london', '开盘中',
         fromZoned('Europe/London', cLd.y, cLd.mo, cLd.d, 8, 0, 0),
-        fromZoned('Europe/London', cLd.y, cLd.mo, cLd.d, 16, 30, 0));
+        fromZoned('Europe/London', cLd.y, cLd.mo, cLd.d, 17, 0, 0));
     }
   }
   out.sort(function (a, b) { return a.start - b.start; });

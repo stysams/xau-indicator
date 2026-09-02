@@ -3,6 +3,7 @@ import { applyBiasPane, saveBiasPane } from './bias-pane.js';
 import { IND_KEYS, applyBollCssVars, saveInd, syncIndButtons } from './indicator-menu.js';
 import { applySessChrome, sessRailOn, setSessRailOn } from './session-rail.js';
 import { renderSigChrome } from '../view/signal-rail.js';
+import { normalizeAverageLines } from '../indicators/moving-average.js';
 
 export const LAYOUT_KEY = 'gold-minute-layout';
 
@@ -28,6 +29,7 @@ export const LAYOUT_PRESETS = {
     showSess: false,
     sigRail: true,
     ind: Object.assign({}, ALL_OFF, { last: true }),
+    averageLines: [],
   },
   structure: {
     id: 'structure',
@@ -40,18 +42,20 @@ export const LAYOUT_PRESETS = {
     ind: Object.assign({}, ALL_OFF, {
       boll: true, boll2: true, smc: true, sr: true, hold: true, last: true,
     }),
+    averageLines: [],
   },
   fast: {
     id: 'fast',
     lab: '开单跟单',
-    tip: '打开开单、EMA9、布林主轨与时间信号线',
+    tip: '打开开单、1分EMA9、布林主轨与时间信号线',
     biasCollapsed: false,
     showMtf: true,
     showSess: true,
     sigRail: true,
     ind: Object.assign({}, ALL_OFF, {
-      fast: true, ema9: true, boll: true, boll2: true, last: true,
+      fast: true, boll: true, boll2: true, last: true,
     }),
+    averageLines: [{ kind: 'ema', period: 9, tf: '1m' }],
   },
 };
 
@@ -62,6 +66,7 @@ function blankChrome() {
     showSess: sessRailOn(),
     sigRail: state.sigRail !== false,
     ind: Object.assign({}, state.ind),
+    averageLines: normalizeAverageLines(state.averageLines),
   };
 }
 
@@ -131,6 +136,11 @@ export function applyLayoutPreset(id, opts) {
     }
     saveInd();
     applyBollCssVars();
+    syncIndButtons();
+  }
+  if (Array.isArray(pack.averageLines)) {
+    state.averageLines = normalizeAverageLines(pack.averageLines);
+    saveInd();
     syncIndButtons();
   }
 

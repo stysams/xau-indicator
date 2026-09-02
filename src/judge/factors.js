@@ -5,6 +5,7 @@ export const FAC_ITEMS = [
   { k: 'ema', lab: '均线结构' },
   { k: 'vwap', lab: '日内均价' },
   { k: 'dxy', lab: 'DXY对照' },
+  { k: 'xauUsidx', lab: 'XAU-USIDX相关' },
   { k: 'rsi', lab: 'RSI' },
   { k: 'swing', lab: '高低点' },
   { k: 'tape', lab: '近端 K 线' },
@@ -29,6 +30,7 @@ export const FAC_ITEMS = [
 export const FAC_FAMILY = {
   ema: 'mom', vwap: 'mom', rsi: 'mom', macd: 'mom', sig: 'mom', boll: 'mom', tape: 'mom',
   dxy: 'macro',
+  xauUsidx: 'macro',
   mtf: 'mom', stack: 'mom', hkld: 'mom',
   swing: 'struct', smc: 'struct', hs: 'struct',
   sr: 'touch', trap: 'touch', bounce: 'touch', pull: 'touch', fib: 'touch', hold: 'touch',

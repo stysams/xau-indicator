@@ -1,5 +1,5 @@
 import { barsForChart, getJson, klineUrl, parseKlines, parseTicker, tickerUrl, upsertBar } from './rest.js';
-import { $, FAST_LIMIT, state } from '../state.js';
+import { $, FAST_LIMIT, MTF_LIMIT, state } from '../state.js';
 import { applyTickBar, replayFastHistory } from '../trade/fast.js';
 import { banner, render, renderHeavy, renderQuote, scheduleChart } from '../view/panels.js';
 import { renderFastPanel } from '../view/trade-overlay.js';
@@ -82,7 +82,7 @@ export async function loadSession() {
 export async function loadOneMtf(tf) {
   const reqId = state.reqId;
   try {
-    const kl = await getJson(klineUrl(tf, 80));
+    const kl = await getJson(klineUrl(tf, MTF_LIMIT));
     if (reqId !== state.reqId) return false;
     const bars = parseKlines(kl);
     if (bars && bars.length) {
@@ -98,6 +98,7 @@ export async function loadMtf() {
   try {
     await Promise.all(['1m', '5m', '15m', '1h'].map(loadOneMtf));
     if (reqId !== state.reqId) return;
+    scheduleChart();
     if (!state.fastReplay && state.fast.length >= 40) {
       replayFastHistory();
       if (state.fastReplay) scheduleChart();
@@ -105,6 +106,7 @@ export async function loadMtf() {
     renderHeavy(barsForChart());
     await Promise.all(['4h', '1d'].map(loadOneMtf));
     if (reqId !== state.reqId) return;
+    scheduleChart();
     renderHeavy(barsForChart());
   } catch (e) { /* 主图仍可用 */ }
 }

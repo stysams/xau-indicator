@@ -4,6 +4,8 @@ export const PAD = { l: 10, r: 68, t: 14, b: 26 };
 
 export const FAST_LIMIT = 180;
 
+export const MTF_LIMIT = 240;
+
 export const SIM_AUTO_DEFAULTS = { tpAtr: 1.2, slAtr: 0.95, holdSec: 180, coolSec: 20 };
 
 export const LIVE_ANCHOR = 0.38;
@@ -73,6 +75,7 @@ export const state = {
   mtf: {},
   hover: -1,
   inflight: false,
+  apiRetryAt: 0,
   ws: null,
   wsOk: false,
   wsDirectFailed: false,
@@ -81,6 +84,8 @@ export const state = {
   pingTimer: 0,
   barClosed: false,
   chartScale: null,
+  chartMagnify: 1,
+  priceOffset: 0,
   quoteRaf: 0,
   chartRaf: 0,
   heavyAt: 0,
@@ -90,7 +95,7 @@ export const state = {
   drag: null,
   pointer: null,
   ind: {
-    ema9: false, ema21: false, ma100: false, ema100: false, boll: false, smc: false, smcSig: false, stack: false, hkld: false, fib: false, hs: false, sr: false, bounce: false, pull: false, trap: false, hold: false, last: false, hl: false,
+    boll: false, smc: false, smcSig: false, stack: false, hkld: false, fib: false, hs: false, sr: false, bounce: false, pull: false, trap: false, hold: false, last: false, hl: false,
     boll1: false, boll2: false, boll3: false, macd: false, rsi: false, usidx: false, vwap: false, fast: false, st: false, box: false,
   },
   usidxBars: [],
@@ -101,6 +106,9 @@ export const state = {
   stK: 3,
   boxLen: 120,
   stackCollapsed: false,
+  stackDraw: {
+    '1m': true, '5m': true, '15m': true, '1h': true, signal: true,
+  },
   fibMode: 'auto',
   fibExt: false,
   srMode: 'normal',
@@ -112,6 +120,10 @@ export const state = {
     3: { dash: true, line: '#6b7d7c', fill: '#6b7d7c', fillOn: false },
   },
   rsiN: 14,
+  averageKind: 'ma',
+  averageTf: '1m',
+  averageLines: [],
+  averageVisibility: { ma: true, ema: true },
   _bmKey: '',
   _bm: null,
   _stackKey: '',

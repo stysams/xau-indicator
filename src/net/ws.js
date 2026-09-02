@@ -1,6 +1,6 @@
 import { n } from '../core/format.js';
 import { parseStreamName, rowSymbol, upsertBar } from './rest.js';
-import { FAST_LIMIT, MIN_BARS, mkt, state, streamTfs } from '../state.js';
+import { FAST_LIMIT, MIN_BARS, MTF_LIMIT, mkt, state, streamTfs } from '../state.js';
 import { mergeUsidxTicker } from './usidx.js';
 import { applyTickBar, onFastBarClosed, tickFastOpen } from '../trade/fast.js';
 import { renderQuote, scheduleChart, scheduleQuote } from '../view/panels.js';
@@ -79,7 +79,7 @@ export function applyCandle(row) {
     }
     scheduleChart();
   } else if (parsed.interval !== '10s' && streamTfs().indexOf(parsed.interval) >= 0) {
-    state.mtf[parsed.interval] = upsertBar(state.mtf[parsed.interval] || [], bar, 80);
+    state.mtf[parsed.interval] = upsertBar(state.mtf[parsed.interval] || [], bar, MTF_LIMIT);
   }
 }
 

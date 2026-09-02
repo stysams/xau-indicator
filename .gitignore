@@ -3,5 +3,6 @@ nul
 memory/_*.js
 memory/_*.mjs
 memory/*.md
+.paseo-runtime/
 node_modules/
 *.log

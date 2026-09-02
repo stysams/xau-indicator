@@ -18,15 +18,16 @@ import { loadMain, loadMtf, loadSession } from './net/loader.js';
 import { barsForChart, parseKlines, parseStreamName, parseTicker } from './net/rest.js';
 import { clearUsidx, loadUsidx } from './net/usidx.js';
 import { connectWs, startPing, stopPing } from './net/ws.js';
-import { $, LIVE_ANCHOR, PAD, W, mkt, state } from './state.js';
+import { $, H, LIVE_ANCHOR, PAD, W, mkt, state } from './state.js';
 import { evalFastSetup, loadFast, refresh10sTail, spreadTooWide, stepFastTrade } from './trade/fast.js';
 import { bindSimUi, loadSim, renderSimLiveBtn, simLastPrice, tickSimTrade } from './trade/sim.js';
 import { bindBiasPane } from './ui/bias-pane.js';
-import { applyColor, endDrag, switchMarket, syncMarketChrome, zoomAt } from './ui/chrome.js';
+import { applyColor, endDrag, setChartMagnify, stepChartMagnify, switchMarket, syncMarketChrome, zoomAt } from './ui/chrome.js';
 import { bindFacDrag, bindFacMenu, buildFacMenu, closeFacMenu, loadFac, refreshAfterFac, syncFacButtons } from './ui/factor-menu.js';
 import { bindFastFloat, loadFastPos } from './ui/fast-float.js';
 import { IND_KEYS, applyBollCssVars, closeBollStyleMenu, closeIndMenu, defaultBollStyle, indMenuItems, loadInd, normalizeSrMode, onBollStyleChange, parseHexColor, refreshAfterInd, resetBollStyle, saveInd, setIndMenu, syncIndButtons, toggleBollStyleMenu, toggleIndMenu } from './ui/indicator-menu.js';
 import { normalizeFibMode } from './indicators/fib.js';
+import { averageLineId, normalizeAverageLines } from './indicators/moving-average.js';
 import { bindLayoutPreset, closeLayoutMenu } from './ui/layout-preset.js';
 import { bindSessRail, tickSess } from './ui/session-rail.js';
 import { drawChart, hideCrosshair, showTip, wrap } from './view/chart.js';
@@ -34,7 +35,7 @@ import { oscLayout } from './view/osc.js';
 import { banner, remainText, render, renderHeavy, renderQuote, renderStackBar } from './view/panels.js';
 import { bindSignalRail, collectSignalEvents } from './view/signal-rail.js';
 import { openSignalView, renderFastPanel } from './view/trade-overlay.js';
-import { applyView, chartSlice, resetZoom, updateZoomLabel } from './view/viewport.js';
+import { applyView, chartSlice, priceOffsetForDrag, resetZoom, updateZoomLabel } from './view/viewport.js';
 
 FAC_ITEMS.forEach((x) => { state.fac[x.k] = true; });
 loadFac();
@@ -44,26 +45,39 @@ applyBollCssVars();
 loadFastPos();
 
 loadSim();
+setChartMagnify(state.chartMagnify);
 
-const indicatorSettings = $('indicatorSettings');
-const indicatorSettingsMedia = window.matchMedia('(max-width: 768px)');
-let indicatorSettingsMobile = indicatorSettingsMedia.matches;
-if (indicatorSettings) indicatorSettings.open = !indicatorSettingsMobile;
-indicatorSettingsMedia.addEventListener('change', (e) => {
-  if (!indicatorSettings || e.matches === indicatorSettingsMobile) return;
-  indicatorSettingsMobile = e.matches;
-  indicatorSettings.open = !e.matches;
-  closeIndMenu();
-  closeBollStyleMenu();
-});
-if (indicatorSettings) {
-  indicatorSettings.addEventListener('toggle', () => {
-    if (!indicatorSettings.open) {
+const indicatorSettingsBtn = $('btnIndicatorSettings');
+const indicatorSettingsBody = $('indicatorSettingsBody');
+
+function positionIndicatorSettings() {
+  if (!indicatorSettingsBtn || !indicatorSettingsBody || !indicatorSettingsBody.matches(':popover-open')) return;
+  const gap = 6;
+  const edge = 10;
+  const anchor = indicatorSettingsBtn.getBoundingClientRect();
+  const panel = indicatorSettingsBody.getBoundingClientRect();
+  const left = Math.max(edge, Math.min(anchor.left, window.innerWidth - panel.width - edge));
+  const below = anchor.bottom + gap;
+  const above = anchor.top - panel.height - gap;
+  const top = below + panel.height <= window.innerHeight - edge || above < edge ? below : above;
+  indicatorSettingsBody.style.left = left + 'px';
+  indicatorSettingsBody.style.top = Math.max(edge, top) + 'px';
+}
+
+if (indicatorSettingsBody) {
+  indicatorSettingsBody.addEventListener('toggle', (e) => {
+    const open = e.newState === 'open';
+    if (indicatorSettingsBtn) indicatorSettingsBtn.setAttribute('aria-expanded', String(open));
+    if (open) requestAnimationFrame(positionIndicatorSettings);
+    else {
       closeIndMenu();
       closeBollStyleMenu();
     }
   });
+  if (window.ResizeObserver) new ResizeObserver(positionIndicatorSettings).observe(indicatorSettingsBody);
 }
+window.addEventListener('resize', positionIndicatorSettings);
+document.addEventListener('scroll', positionIndicatorSettings, true);
 
 // BOLL20 仅作动态轨参照，不并入静态支压的触碰/强度；下列候选供 bands 图层使用
 // 上下轨和中轨作为动态价格区域候选，再与摆动点候选合并。
@@ -111,6 +125,46 @@ document.querySelectorAll('[data-ind]').forEach((b) => {
     }
   });
 });
+function selectAverageEditor(key, value) {
+  state[key] = value;
+  saveInd();
+  syncIndButtons();
+}
+document.querySelectorAll('button[data-average-kind]').forEach((b) => {
+  b.addEventListener('click', () => selectAverageEditor('averageKind', b.dataset.averageKind));
+});
+document.querySelectorAll('button[data-average-toggle]').forEach((b) => {
+  b.addEventListener('click', () => {
+    const key = b.dataset.averageToggle;
+    if (!state.averageVisibility) state.averageVisibility = { ma: true, ema: true };
+    state.averageVisibility[key] = state.averageVisibility[key] === false;
+    refreshAfterInd('averageVisibility');
+  });
+});
+document.querySelectorAll('button[data-average-tf]').forEach((b) => {
+  b.addEventListener('click', () => selectAverageEditor('averageTf', b.dataset.averageTf));
+});
+document.querySelectorAll('button[data-average-period]').forEach((b) => {
+  b.addEventListener('click', () => {
+    const line = { kind: state.averageKind, tf: state.averageTf, period: Number(b.dataset.averagePeriod) };
+    const id = averageLineId(line);
+    const current = normalizeAverageLines(state.averageLines);
+    const list = current.filter((x) => averageLineId(x) !== id);
+    if (list.length === current.length) list.push(line);
+    state.averageLines = normalizeAverageLines(list);
+    saveInd();
+    syncIndButtons();
+    state.chartScale = null;
+    drawChart(barsForChart(), state.ticker, state.hover);
+  });
+});
+document.querySelectorAll('button[data-stack-draw]').forEach((b) => {
+  b.addEventListener('click', () => {
+    const key = b.dataset.stackDraw;
+    state.stackDraw[key] = state.stackDraw[key] === false;
+    refreshAfterInd('stackDraw');
+  });
+});
 document.querySelectorAll('button[data-sr-mode]').forEach((b) => {
   b.addEventListener('click', () => {
     state.srMode = normalizeSrMode(b.dataset.srMode);
@@ -120,58 +174,8 @@ document.querySelectorAll('button[data-sr-mode]').forEach((b) => {
   });
 });
 
-if (btnIndMore) {
-  btnIndMore.addEventListener('click', (e) => {
-    e.stopPropagation();
-    closeFacMenu();
-    closeBollStyleMenu();
-    toggleIndMenu();
-  });
-  btnIndMore.addEventListener('keydown', (e) => {
-    if (e.key !== 'ArrowDown') return;
-    e.preventDefault();
-    setIndMenu(true);
-    const first = indMenuItems()[0];
-    if (first) first.focus();
-  });
-}
-const indMoreMenu = $('indMoreMenu');
-if (indMoreMenu) {
-  indMoreMenu.addEventListener('keydown', (e) => {
-    const items = indMenuItems();
-    if (!items.length) return;
-    const i = items.indexOf(document.activeElement);
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      closeIndMenu();
-      if (btnIndMore) btnIndMore.focus();
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      items[(i + 1 + items.length) % items.length].focus();
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      items[(i - 1 + items.length) % items.length].focus();
-    } else if (e.key === 'Home') {
-      e.preventDefault();
-      items[0].focus();
-    } else if (e.key === 'End') {
-      e.preventDefault();
-      items[items.length - 1].focus();
-    }
-  });
-  indMoreMenu.addEventListener('click', (e) => e.stopPropagation());
-}
-const indMore = $('indMore');
-if (indMore) {
-  indMore.addEventListener('focusout', () => {
-    setTimeout(() => {
-      if (!indMore.contains(document.activeElement)) closeIndMenu();
-    }, 0);
-  });
-}
 document.addEventListener('click', (e) => {
   const t = e.target;
-  if (!t || !t.closest || !t.closest('#indMore')) closeIndMenu();
   if (!t || !t.closest || !t.closest('#facMore')) closeFacMenu();
   if (!t || !t.closest || !t.closest('#layoutMore')) closeLayoutMenu();
   if (state._bollColorOpen) return;
@@ -398,6 +402,20 @@ wrap.addEventListener('wheel', (e) => {
   zoomAt(e.clientX, Math.exp(intensity * 0.0024));
 }, { passive: false });
 
+const chartMagnifyControls = document.querySelector('.chart-magnify');
+if (chartMagnifyControls) {
+  chartMagnifyControls.addEventListener('pointerdown', (e) => e.stopPropagation());
+  chartMagnifyControls.addEventListener('pointermove', (e) => e.stopPropagation());
+  chartMagnifyControls.addEventListener('pointerenter', () => hideCrosshair());
+  chartMagnifyControls.addEventListener('dblclick', (e) => e.stopPropagation());
+  chartMagnifyControls.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, { passive: false });
+}
+$('btnChartMagnifyIn').addEventListener('click', () => stepChartMagnify(1));
+$('btnChartMagnifyOut').addEventListener('click', () => stepChartMagnify(-1));
+
 wrap.addEventListener('dblclick', (e) => {
   e.preventDefault();
   resetZoom();
@@ -410,15 +428,31 @@ wrap.addEventListener('dblclick', (e) => {
 
 wrap.addEventListener('pointerdown', (e) => {
   if (e.button !== 0) return;
+  e.preventDefault();
   const view = chartSlice(barsForChart());
-  state.drag = { x: e.clientX, end: view.end, count: view.count, n: view.n, id: e.pointerId, moved: false };
+  const scale = state.chartScale;
+  state.drag = {
+    x: e.clientX,
+    y: e.clientY,
+    end: view.end,
+    count: view.count,
+    n: view.n,
+    priceOffset: Number(state.priceOffset) || 0,
+    priceSpan: scale && Number.isFinite(scale.hi - scale.lo) ? scale.hi - scale.lo : 0,
+    plotSpan: scale ? Math.max(1, (scale.plotBottom || 0) - (scale.plotTop || 0)) : 0,
+    id: e.pointerId,
+    moved: false,
+  };
   try { wrap.setPointerCapture(e.pointerId); } catch (err) {}
 });
-wrap.addEventListener('pointermove', (e) => {
+
+function moveChartDrag(e) {
+  if (state.drag && e.pointerId !== state.drag.id) return;
   state.pointer = { clientX: e.clientX, clientY: e.clientY };
   if (state.drag) {
     const dx = e.clientX - state.drag.x;
-    if (!state.drag.moved && Math.abs(dx) < 5) return;
+    const dy = e.clientY - state.drag.y;
+    if (!state.drag.moved && Math.hypot(dx, dy) < 5) return;
     state.drag.moved = true;
     wrap.classList.add('is-drag');
     $('tip').classList.remove('show');
@@ -427,16 +461,26 @@ wrap.addEventListener('pointermove', (e) => {
     const box = $('chart').getBoundingClientRect();
     const plotW = W - PAD.l - PAD.r;
     const dxBars = (dx / box.width * W) / plotW * state.drag.count;
+    const plotPx = state.drag.plotSpan / H * box.height;
+    state.priceOffset = priceOffsetForDrag(state.drag.priceOffset, dy, plotPx, state.drag.priceSpan);
     applyView(state.drag.count, state.drag.end - dxBars, state.drag.n);
     drawChart(barsForChart(), state.ticker, -1);
     updateZoomLabel();
     return;
   }
+  if (!wrap.contains(e.target)) return;
   const k = barsForChart();
   if (k.length) showTip(e, k);
-});
-wrap.addEventListener('pointerup', endDrag);
-wrap.addEventListener('pointercancel', endDrag);
+}
+
+function finishChartDrag(e) {
+  if (!state.drag || (e && e.pointerId !== state.drag.id)) return;
+  endDrag();
+}
+
+window.addEventListener('pointermove', moveChartDrag);
+window.addEventListener('pointerup', finishChartDrag);
+window.addEventListener('pointercancel', finishChartDrag);
 wrap.addEventListener('pointerleave', () => {
   if (state.drag) return;
   state.hover = -1;
@@ -673,7 +717,7 @@ loadMtf();
 loadFast();
 if (state.ind.usidx) loadUsidx().then((ok) => { if (ok && state.ind.usidx) render(); });
 connectWs();
-setInterval(() => { if (!state.paused && !state.wsOk) loadMain(); }, 2000);
+setInterval(() => { if (!state.paused && !state.wsOk) loadMain(); }, 8000);
 setInterval(() => { if (!state.paused) loadSession(); }, 60000);
 setInterval(() => { if (!state.paused) loadMtf(); }, 45000);
 setInterval(() => { if (!state.paused) refresh10sTail(); }, 8000);

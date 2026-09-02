@@ -8,7 +8,10 @@ import { loadSim, refreshSimUi, saveSim } from '../trade/sim.js';
 import { applySessChrome } from './session-rail.js';
 import { drawChart, hideCrosshair, refreshCrosshair, wrap } from '../view/chart.js';
 import { banner } from '../view/panels.js';
-import { applyView, chartSlice, maxViewCount, resetZoom, updateZoomLabel } from '../view/viewport.js';
+import {
+  CHART_MAGNIFY_MAX, CHART_MAGNIFY_MIN, CHART_MAGNIFY_STEP,
+  applyView, chartSlice, maxViewCount, normalizeChartMagnify, resetZoom, updateZoomLabel,
+} from '../view/viewport.js';
 
 export function syncMarketChrome() {
   const m = mkt();
@@ -25,7 +28,7 @@ export function syncMarketChrome() {
     $('chartEmpty').textContent = '正在拉取 ' + m.symbol + ' K 线';
   }
   const svg = $('chart');
-  if (svg) svg.setAttribute('aria-label', m.name + ' K 线，滚轮缩放，拖动平移');
+  if (svg) svg.setAttribute('aria-label', m.name + ' K 线，滚轮调整可见根数，左侧按钮等比缩放画面，左键拖动平移时间与价格视窗');
 }
 
 export function clearMarketData() {
@@ -114,6 +117,26 @@ export function zoomAt(clientX, factor) {
   drawChart(klines, state.ticker, state.hover);
   updateZoomLabel();
   refreshCrosshair();
+}
+
+export function setChartMagnify(value) {
+  const next = normalizeChartMagnify(value);
+  state.chartMagnify = next;
+  const stage = $('chartStage');
+  const lab = $('chartMagnifyLab');
+  const zoomIn = $('btnChartMagnifyIn');
+  const zoomOut = $('btnChartMagnifyOut');
+  if (stage) stage.style.setProperty('--chart-magnify', String(next));
+  if (lab) lab.textContent = Math.round(next * 100) + '%';
+  if (zoomIn) zoomIn.disabled = next >= CHART_MAGNIFY_MAX;
+  if (zoomOut) zoomOut.disabled = next <= CHART_MAGNIFY_MIN;
+  if ($('tip')) $('tip').classList.remove('show');
+  hideCrosshair();
+  requestAnimationFrame(refreshCrosshair);
+}
+
+export function stepChartMagnify(direction) {
+  setChartMagnify((state.chartMagnify || 1) + (direction > 0 ? CHART_MAGNIFY_STEP : -CHART_MAGNIFY_STEP));
 }
 
 export function endDrag() {

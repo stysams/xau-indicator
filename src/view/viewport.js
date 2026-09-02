@@ -1,7 +1,32 @@
 import { n } from '../core/format.js';
-import { bandArr, bollCore, ema, macdOf, rsiSeries, sma, vwapSeries } from '../core/math.js';
+import { bandArr, bollCore, macdOf, rsiSeries, vwapSeries } from '../core/math.js';
+import { buildAverageSeries } from '../indicators/moving-average.js';
 import { barsForChart, isLiveFollow, liveEndFor } from '../net/rest.js';
 import { $, LIVE_ANCHOR, MAX_VIEW_SLOTS, MIN_BARS, state } from '../state.js';
+
+export const CHART_MAGNIFY_MIN = 0.7;
+export const CHART_MAGNIFY_MAX = 1.6;
+export const CHART_MAGNIFY_STEP = 0.1;
+
+export function normalizeChartMagnify(value) {
+  const numeric = Number(value);
+  const safe = Number.isFinite(numeric) ? numeric : 1;
+  return Math.round(Math.min(CHART_MAGNIFY_MAX, Math.max(CHART_MAGNIFY_MIN, safe)) * 10) / 10;
+}
+
+export function priceOffsetForDrag(startOffset, deltaY, plotHeight, priceSpan) {
+  const base = Number.isFinite(Number(startOffset)) ? Number(startOffset) : 0;
+  const dy = Number(deltaY);
+  const height = Number(plotHeight);
+  const span = Number(priceSpan);
+  if (!Number.isFinite(dy) || !Number.isFinite(height) || height <= 0 || !Number.isFinite(span) || span <= 0) return base;
+  return base + dy / height * span;
+}
+
+export function candleBodyWidth(slotWidth) {
+  const slot = Math.max(0, Number(slotWidth) || 0);
+  return Math.max(0.7, Math.min(14, slot * 0.58, Math.max(0.4, slot - 0.5)));
+}
 
 export function maxViewCount(n) {
   const loaded = Math.max(1, n || 1);
@@ -42,13 +67,14 @@ export function resetZoom() {
   state.viewCount = null;
   state.viewEnd = null;
   state.followLive = true;
+  state.priceOffset = 0;
   state.chartScale = null;
 }
 
 export function chartSlice(klines) {
   const n = klines.length;
   if (!n) {
-    return { start: 0, end: 0, count: 0, n: 0, bars: [], e9: [], e21: [], ma100: [], ema100: [], rsi: [], follow: true };
+    return { start: 0, end: 0, count: 0, n: 0, bars: [], averageSeries: [], rsi: [], follow: true };
   }
   let count = state.viewCount == null ? n : state.viewCount;
   count = Math.min(maxViewCount(n), Math.max(MIN_BARS, Math.round(count)));
@@ -59,10 +85,9 @@ export function chartSlice(klines) {
   const i0 = Math.max(0, start);
   const i1 = Math.min(n, end);
   const closes = klines.map((k) => k.c);
-  const e9a = ema(closes, 9);
-  const e21a = ema(closes, 21);
-  const ma100a = sma(closes, 100);
-  const ema100a = ema(closes, 100);
+  const averageSeries = buildAverageSeries(klines, state.tf, state.mtf, state.averageLines)
+    .filter((line) => !state.averageVisibility || state.averageVisibility[line.kind] !== false)
+    .map((line) => Object.assign({}, line, { values: line.values.slice(i0, i1) }));
   const period = state.bollN || 20;
   const kMul = state.bollK || 2;
   const core = bollCore(closes, period);
@@ -84,10 +109,7 @@ export function chartSlice(klines) {
     count: count,
     n: n,
     bars: klines.slice(i0, i1),
-    e9: e9a.slice(i0, i1),
-    e21: e21a.slice(i0, i1),
-    ma100: ma100a.slice(i0, i1),
-    ema100: ema100a.slice(i0, i1),
+    averageSeries: averageSeries,
     bollMid: core.mid.slice(i0, i1),
     bollUp: bk.up.slice(i0, i1),
     bollDn: bk.dn.slice(i0, i1),
@@ -116,7 +138,7 @@ export function updateZoomLabel() {
   } else {
     lab.textContent = '可见 ' + view.bars.length + ' / ' + view.n;
   }
-  btn.disabled = !!(state.followLive && state.viewCount == null);
+  btn.disabled = !!(state.followLive && state.viewCount == null && !(Number(state.priceOffset) || 0));
 }
 
 export function applyView(count, end, n) {

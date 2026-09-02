@@ -14,6 +14,13 @@ import { bollSt } from '../ui/indicator-menu.js';
 import { paintChart } from './chart.js';
 import { openSignalView, renderFastPanel } from './trade-overlay.js';
 
+export const QUOTE_MTF_TFS = [
+  { id: '1m', name: '1分' },
+  { id: '15m', name: '15分' },
+  { id: '1h', name: '1小时' },
+  { id: '1d', name: '1日' },
+];
+
 export function liveLabel() {
   if (state.paused) return '已暂停';
   if (state.wsOk) return '实时推送';
@@ -281,6 +288,16 @@ export function renderHeavy(klines) {
   $('biasDir').textContent = j.dir;
   $('biasAgree').textContent = j.agree;
   $('biasHint').textContent = j.hint;
+  const relationInfo = $('xauUsidxFactorInfo');
+  const relation = j.factors && j.factors.find((f) => f.id === 'xauUsidx');
+  if (relationInfo) {
+    const active = relation && relation.vote !== 0 && /近期负相关/.test(relation.why || '');
+    relationInfo.textContent = relation ? relation.why : '';
+    relationInfo.hidden = !relation;
+    relationInfo.classList.toggle('bull', !!active && relation.vote > 0);
+    relationInfo.classList.toggle('bear', !!active && relation.vote < 0);
+    relationInfo.classList.toggle('is-active', !!active);
+  }
   const sig = openSignalView();
   let mobileTitle = j.dir;
   let mobileClass = j.cls || 'chop';
@@ -319,13 +336,7 @@ export function renderHeavy(klines) {
     }).join('');
   }
 
-  const tfs = [
-    { id: '1m', name: '1分' },
-    { id: '5m', name: '5分' },
-    { id: '15m', name: '15分' },
-    { id: '1h', name: '1小时' },
-  ];
-  $('mtf').innerHTML = tfs.map((x) => {
+  $('mtf').innerHTML = QUOTE_MTF_TFS.map((x) => {
     const src = x.id === state.tf ? klines : state.mtf[x.id];
     const b = mtfBias(src);
     const color = b.vote > 0 ? 'var(--up)' : b.vote < 0 ? 'var(--down)' : 'var(--ink-2)';

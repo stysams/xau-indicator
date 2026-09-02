@@ -3,9 +3,28 @@ import { analyzeBoll } from '../src/indicators/boll.js';
 import { stackLayer } from '../src/indicators/stack.js';
 import { state } from '../src/state.js';
 import { assert, approx, assertNull } from './_lib/assert.mjs';
+import { xauUsidxVote } from '../src/judge/votes.js';
 
 function bar(t, o, h, l, c) {
   return { t: t, o: o, h: h, l: l, c: c };
+}
+
+// --- XAU-USIDX 关系因子：同步负相关时跟随黄金方向，样本不足时中性 ---
+{
+  const gold = [], dxy = [];
+  let gp = 100, dp = 100;
+  for (let i = 0; i < 12; i++) {
+    gp *= 1 + (i % 2 ? 0.0025 : -0.0018);
+    const g = gp;
+    gold.push(bar(i, g, g, g, g));
+    dp *= 1 - (i % 2 ? 0.002 : -0.0015);
+    const d = dp;
+    dxy.push(bar(i, d, d, d, d));
+  }
+  const out = xauUsidxVote(gold, dxy);
+  assert(out.vote === 1, 'xau-usidx negative correlation bullish vote');
+  assert(out.corr < -0.25, 'xau-usidx negative correlation');
+  assert(xauUsidxVote(gold.slice(0, 4), dxy.slice(0, 4)).vote === 0, 'xau-usidx short sample neutral');
 }
 
 // --- ema：首值种子，k=2/(period+1) ---

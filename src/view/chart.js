@@ -20,7 +20,7 @@ import { drawBox, drawFib, drawHkld, drawHold, drawPbSetup, drawTrapSetup } from
 import { drawSignalRail } from './signal-rail.js';
 import { bollAreaD, lineD, lineSegD, svgEl } from './svg.js';
 import { drawFastOverlay, drawSimOverlay, openFastTrade, placeFastTags } from './trade-overlay.js';
-import { chartSlice, chartXScale, priceLevelsInRange, updateZoomLabel } from './viewport.js';
+import { candleBodyWidth, chartSlice, chartXScale, priceLevelsInRange, updateZoomLabel } from './viewport.js';
 
 function stackLevelSignature(pack) {
   const layers = (pack && pack.layers) || {};
@@ -44,10 +44,7 @@ export function drawChart(klines, ticker, hover) {
 
   const view = chartSlice(klines);
   const vis = view.bars;
-  const e9 = view.e9;
-  const e21 = view.e21;
-  const ma100 = view.ma100;
-  const ema100 = view.ema100;
+  const averageSeries = view.averageSeries || [];
   const smcPack = (state.ind.smc || state.ind.smcSig) ? getSmc(klines) : null;
   const smc = state.ind.smc ? smcPack : null;
   const hs = state.ind.hs ? getHs(klines) : null;
@@ -65,18 +62,7 @@ export function drawChart(klines, ticker, hover) {
   const box = state.ind.box ? getBox(klines) : null;
   let lo = Infinity, hi = -Infinity;
   vis.forEach((k) => { lo = Math.min(lo, k.l); hi = Math.max(hi, k.h); });
-  if (state.ind.ema9) {
-    e9.forEach((v) => { if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } });
-  }
-  if (state.ind.ema21) {
-    e21.forEach((v) => { if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } });
-  }
-  if (state.ind.ma100) {
-    ma100.forEach((v) => { if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } });
-  }
-  if (state.ind.ema100) {
-    ema100.forEach((v) => { if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } });
-  }
+  averageSeries.forEach((line) => line.values.forEach((v) => { if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } }));
   if (state.ind.vwap) {
     view.vwap.forEach((v) => { if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } });
   }
@@ -238,6 +224,7 @@ export function drawChart(klines, ticker, hover) {
       '1h': 'var(--ink-1)',
     };
     STACK_TFS.slice().reverse().forEach((tf, tfIndex) => {
+      if (state.stackDraw[tf.id] === false) return;
       const layer = stackLayers[tf.id];
       if (!layer || !layer.ok) return;
       [
@@ -258,12 +245,16 @@ export function drawChart(klines, ticker, hover) {
   }
   const padY = (hi - lo) * 0.08 || 1;
   lo -= padY; hi += padY;
+  const priceOffset = Number(state.priceOffset) || 0;
+  lo += priceOffset;
+  hi += priceOffset;
   // 套轨是当前时点的多周期参考线，不能把历史/放大视窗的价格轴拉回当前价。
   // 仅绘制落在当前轴范围内的轨道，避免固定轨道压缩可见 K 线。
   const visibleStackLevels = priceLevelsInRange(stackLevels, lo, hi);
   const xScale = chartXScale(view, PAD.l, W - PAD.r);
   const slot = xScale.slotW;
-  const bodyW = Math.max(0.7, Math.min(slot * 0.82, Math.max(0.4, slot - 0.35)));
+  // 留出更明显的槽间距；滚轮放大后 K 线保持细长，不让实体铺满横向空间。
+  const bodyW = candleBodyWidth(slot);
   const wickW = bodyW < 1.7
     ? Math.max(0.55, bodyW * 0.9)
     : Math.min(2.1, Math.max(0.85, bodyW * 0.08));
@@ -509,11 +500,27 @@ export function drawChart(klines, ticker, hover) {
     if (id) path.setAttribute('id', id);
     svg.appendChild(path);
   }
-  if (state.ind.ema9) poly(e9, 'var(--accent)', '', 'ck-ema9');
-  if (state.ind.ema21) poly(e21, 'var(--accent-2)', '4 3', 'ck-ema21');
-  if (state.ind.ma100) poly(ma100, 'var(--warn)', '', 'ck-ma100');
-  if (state.ind.ema100) poly(ema100, 'var(--ink-1)', '7 4', 'ck-ema100');
+  const averageColors = ['var(--warn)', 'var(--accent)', 'var(--accent-2)', 'var(--ink-1)', 'var(--up)', 'var(--down)', 'var(--ink-2)'];
+  averageSeries.forEach((line, i) => {
+    poly(line.values, averageColors[i % averageColors.length], line.kind === 'ema' ? '4 2' : '', 'ck-average-' + line.id);
+  });
   if (state.ind.vwap) poly(view.vwap, 'var(--accent-2)', '6 3', 'ck-vwap');
+
+  const legend = svgEl('g', { id: 'ck-ma-legend' });
+  let legendY = PAD.t + 13;
+  const legendRows = [];
+  averageSeries.forEach((line, i) => {
+    const v = line.values[line.values.length - 1];
+    if (v != null) legendRows.push([line.label, v, averageColors[i % averageColors.length], line.id]);
+  });
+  legendRows.forEach((row) => {
+    const text = svgEl('text', { x: PAD.l + 7, y: legendY, fill: row[2], 'font-size': '11', 'font-weight': '700', 'font-family': 'var(--font-mono)', stroke: 'var(--bg)', 'stroke-width': '3', 'paint-order': 'stroke' });
+    text.setAttribute('id', 'ck-average-label-' + row[3]);
+    text.textContent = row[0] + ' ' + px(row[1]);
+    legend.appendChild(text);
+    legendY += 14;
+  });
+  if (legendRows.length) svg.appendChild(legend);
 
   if (stPack && stPack.ok) {
     const stUpVis = stPack.up.slice(i0, i0 + nBars);
@@ -521,21 +528,28 @@ export function drawChart(klines, ticker, hover) {
     function stLine(arr, stroke, id) {
       const d = lineSegD(arr, x, y);
       if (!d) return;
+      // 先绘制同色光晕，再叠加清晰主线，使趋势段不与均线混淆。
+      const glow = svgEl('path', {
+        d: d, fill: 'none', stroke: stroke, 'stroke-width': '7',
+        'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: '.24',
+      });
+      glow.setAttribute('id', id + '-glow');
+      svg.appendChild(glow);
       const path = svgEl('path', {
-        d: d, fill: 'none', stroke: stroke, 'stroke-width': '1.75',
-        'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: '.92',
+        d: d, fill: 'none', stroke: stroke, 'stroke-width': '2.1',
+        'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: '1',
       });
       path.setAttribute('id', id);
       svg.appendChild(path);
     }
-    stLine(stUpVis, 'var(--up)', 'ck-st-up');
-    stLine(stDnVis, 'var(--down)', 'ck-st-dn');
+    stLine(stUpVis, 'var(--st-up)', 'ck-st-up');
+    stLine(stDnVis, 'var(--st-down)', 'ck-st-dn');
     (stPack.flips || []).forEach((fl) => {
       if (fl.i < view.start || fl.i > view.end) return;
       const xc = vx(fl.i);
       const yy = y(fl.price);
       const upFlip = fl.dir > 0;
-      const color = upFlip ? 'var(--up)' : 'var(--down)';
+      const color = upFlip ? 'var(--st-up)' : 'var(--st-down)';
       const gFl = svgEl('g', {});
       const tip = svgEl('title', {});
       tip.textContent = (upFlip ? '超级趋势转多 ' : '超级趋势转空 ') + px(fl.price);
@@ -629,7 +643,7 @@ export function drawChart(klines, ticker, hover) {
     });
     svg.appendChild(gSig);
   }
-  if (state.ind.stack) {
+  if (state.ind.stack && state.stackDraw.signal !== false) {
     const st = getStack();
     if (st && st.dir && (st.status === 'trigger' || st.status === 'watch')) {
       const ti = stackMarkIndex(klines, st.t);
@@ -983,10 +997,6 @@ export function patchLastCandle(klines) {
   const wick = document.getElementById('ck-wick');
   const body = document.getElementById('ck-body');
   const lastLine = document.getElementById('ck-last');
-  const p9 = document.getElementById('ck-ema9');
-  const p21 = document.getElementById('ck-ema21');
-  const pMa100 = document.getElementById('ck-ma100');
-  const pEma100 = document.getElementById('ck-ema100');
   if (!wick || !body) return false;
   if (state.ind.last && !lastLine) return false;
   if (state.ind.boll) {
@@ -1048,21 +1058,26 @@ export function patchLastCandle(klines) {
   s.lastPx = k.c;
   placeLastTag(k.c);
   placeFastTags();
-  const d9 = lineD(view.e9, x, y);
-  const d21 = lineD(view.e21, x, y);
-  const dMa100 = lineD(view.ma100, x, y);
-  const dEma100 = lineD(view.ema100, x, y);
-  if (p9) p9.setAttribute('d', d9);
-  if (p21) p21.setAttribute('d', d21);
-  if (pMa100) pMa100.setAttribute('d', dMa100);
-  if (pEma100) pEma100.setAttribute('d', dEma100);
+  (view.averageSeries || []).forEach((line) => {
+    const path = document.getElementById('ck-average-' + line.id);
+    if (path) path.setAttribute('d', lineD(line.values, x, y));
+    const label = document.getElementById('ck-average-label-' + line.id);
+    const last = line.values[line.values.length - 1];
+    if (label && last != null) label.textContent = line.label + ' ' + px(last);
+  });
   if (stLive && stLive.ok) {
     const a = Math.max(0, view.start);
     const b = a + view.bars.length;
     const pStUp = document.getElementById('ck-st-up');
     const pStDn = document.getElementById('ck-st-dn');
-    if (pStUp) pStUp.setAttribute('d', lineSegD(stLive.up.slice(a, b), x, y));
-    if (pStDn) pStDn.setAttribute('d', lineSegD(stLive.dn.slice(a, b), x, y));
+    const pStUpGlow = document.getElementById('ck-st-up-glow');
+    const pStDnGlow = document.getElementById('ck-st-dn-glow');
+    const stUpD = lineSegD(stLive.up.slice(a, b), x, y);
+    const stDnD = lineSegD(stLive.dn.slice(a, b), x, y);
+    if (pStUp) pStUp.setAttribute('d', stUpD);
+    if (pStUpGlow) pStUpGlow.setAttribute('d', stUpD);
+    if (pStDn) pStDn.setAttribute('d', stDnD);
+    if (pStDnGlow) pStDnGlow.setAttribute('d', stDnD);
   }
   if (state.ind.boll) {
     const pu = document.getElementById('ck-boll-up');
@@ -1260,8 +1275,9 @@ export function showTip(e, klines) {
   if (state.ind.vwap && view.vwap[i] != null) {
     extra += '<br>日内均价 ' + px(view.vwap[i]);
   }
-  if (state.ind.ma100 && view.ma100[i] != null) extra += '<br>MA100 ' + px(view.ma100[i]);
-  if (state.ind.ema100 && view.ema100[i] != null) extra += '<br>EMA100 ' + px(view.ema100[i]);
+  (view.averageSeries || []).forEach((line) => {
+    if (line.values[i] != null) extra += '<br>' + line.label + ' ' + px(line.values[i]);
+  });
   if (state.ind.macd && view.macdHist[i] != null) {
     extra += '<br>MACD柱 ' + view.macdHist[i].toFixed(3);
     if (view.macdDif[i] != null && view.macdDea[i] != null) {

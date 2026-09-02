@@ -43,7 +43,7 @@ try {
             <button type="button" role="menuitemradio" data-layout="standard" aria-checked="false" title="左侧判断 + 多周期 + 开盘时段 + 时间信号线">标准盯盘</button>
             <button type="button" role="menuitemradio" data-layout="naked" aria-checked="false" title="收起左侧与多周期，主图只留现价与信号线">裸K专注</button>
             <button type="button" role="menuitemradio" data-layout="structure" aria-checked="false" title="打开布林、SMC、支压、企稳与现价">布林+SMC</button>
-            <button type="button" role="menuitemradio" data-layout="fast" aria-checked="false" title="打开开单、EMA9、布林主轨与时间信号线">开单跟单</button>
+            <button type="button" role="menuitemradio" data-layout="fast" aria-checked="false" title="打开开单、1分EMA9、布林主轨与时间信号线">开单跟单</button>
             <button type="button" role="menuitemradio" data-layout="custom" aria-checked="false" title="恢复你保存的自定义布局" disabled>我的布局</button>
             <button type="button" role="menuitem" id="btnLayoutSave" title="把当前指标与面板状态存为「我的布局」">保存当前</button>
           </div>
@@ -155,7 +155,7 @@ try {
         </section>
         <div class="toolbar chart-primary-toolbar">
           <span class="lab">周期</span>
-          <div class="seg" role="group" aria-label="K线周期">
+          <div class="seg chart-period-seg" role="group" aria-label="K线周期">
             <button type="button" data-tf="10s" aria-pressed="false">10秒</button>
             <button type="button" data-tf="1m" aria-pressed="true">1分</button>
             <button type="button" data-tf="5m" aria-pressed="false">5分</button>
@@ -164,13 +164,24 @@ try {
             <button type="button" data-tf="4h" aria-pressed="false">4时</button>
             <button type="button" data-tf="1d" aria-pressed="false">1日</button>
           </div>
+          <span class="lab">根数</span>
+          <div class="seg chart-count-seg" role="group" aria-label="K线根数">
+            <button type="button" data-n="180" aria-pressed="true">180</button>
+            <button type="button" data-n="360" aria-pressed="false">360</button>
+            <button type="button" data-n="480" aria-pressed="false">480</button>
+          </div>
+          <span class="hint-wide xau-usidx-factor-info" id="xauUsidxFactorInfo" hidden></span>
           <span class="toolbar-end">
             <span class="lab num" id="zoomLab">全部</span>
             <button type="button" class="btn" id="btnZoomReset" disabled>复位</button>
           </span>
         </div>
-        <details class="indicator-settings" id="indicatorSettings">
-          <summary>
+        <div class="toolbar sub-toolbar" id="usidxBar" hidden>
+          <span class="lab">USIDX</span>
+          <span class="hint-wide">Gate TradFi · 美元指数 DXY · 独立副图，不参与黄金判断</span>
+        </div>
+        <div class="indicator-settings" id="indicatorSettings">
+          <button type="button" class="indicator-settings-trigger" id="btnIndicatorSettings" aria-expanded="false" aria-haspopup="dialog" aria-controls="indicatorSettingsBody" popovertarget="indicatorSettingsBody">
             <span class="indicator-settings-title">
               <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                 <path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M6 14v6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
@@ -181,17 +192,13 @@ try {
             <svg class="indicator-settings-chevron" viewBox="0 0 12 12" width="14" height="14" aria-hidden="true">
               <path d="M2.4 4.2L6 8l3.6-3.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-          </summary>
-          <div class="indicator-settings-body">
+          </button>
+          <div class="indicator-settings-body" id="indicatorSettingsBody" role="dialog" aria-label="指标设置" popover="auto">
             <div class="toolbar indicator-toolbar">
-              <span class="lab">根数</span>
-              <div class="seg" role="group" aria-label="K线根数">
-                <button type="button" data-n="180" aria-pressed="true">180</button>
-                <button type="button" data-n="360" aria-pressed="false">360</button>
-                <button type="button" data-n="480" aria-pressed="false">480</button>
-              </div>
               <span class="lab">指标</span>
               <div class="seg" role="group" aria-label="指标">
+                <button type="button" class="sw" data-average-toggle="ma" role="menuitemcheckbox" aria-pressed="true" aria-checked="true" title="显示或隐藏已配置的 MA 均线"><i class="ma-c"></i>MA</button>
+                <button type="button" class="sw" data-average-toggle="ema" role="menuitemcheckbox" aria-pressed="true" aria-checked="true" title="显示或隐藏已配置的 EMA 均线"><i class="ema-c"></i>EMA</button>
                 <button type="button" data-ind="boll" aria-pressed="false">BOLL</button>
                 <button type="button" data-ind="smc" aria-pressed="false" title="SMC：结构突破、订单区块、未回补缺口。做多做空箭头在指标下拉的「SMC多空」里单独开关">SMC</button>
                 <button type="button" data-ind="hs" aria-pressed="false" title="头肩顶 / 头肩底：摆动点识别，收盘破颈线才算完成">头肩</button>
@@ -201,31 +208,47 @@ try {
                 <button type="button" data-ind="macd" aria-pressed="false" title="MACD 副图与布林复合信号">MACD</button>
                 <button type="button" data-ind="usidx" aria-pressed="false" title="USIDX 美元指数副图：独立请求 Gate TradFi 数据，关闭时不请求">USIDX</button>
                 <button type="button" data-ind="fast" aria-pressed="false" title="开单信号：1分/5分定方向，10秒回踩或触轨收回后给出开多/开空">开单</button>
-                <div class="ind-more" id="indMore">
-                  <button type="button" class="ind-caret" id="btnIndMore" aria-expanded="false" aria-haspopup="menu" aria-controls="indMoreMenu" aria-pressed="false" title="更多指标：高低、反弹、回踩、诱空诱多、企稳、SMC多空、套轨、高空低多、箱体震荡、斐波那契、超级趋势、EMA9、EMA21、MA100、EMA100" aria-label="更多指标">
-                    <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
-                      <path d="M2.4 4.2L6 8l3.6-3.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                  </button>
-                  <div class="ind-menu" id="indMoreMenu" role="menu" hidden>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="hl" aria-pressed="false" aria-checked="false" title="今日最高最低"><i class="hl-c"></i>高低</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="bounce" aria-pressed="false" aria-checked="false" title="超跌反弹 / 超涨回落：急跌或急涨后，收盘重新越过 EMA9 才算收回"><i class="bounce-c"></i>反弹</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="pull" aria-pressed="false" aria-checked="false" title="拉升回踩 / 杀跌反抽：先有一段冲动，再回踩均线，收盘确认才算踩住"><i class="pull-c"></i>回踩</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="trap" aria-pressed="false" aria-checked="false" title="诱空 / 诱多：影线扫过前低或前高后收回。等低/等高更有效，收盘确认才计票"><i class="trap-c"></i>诱空诱多</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="hold" aria-pressed="false" aria-checked="false" title="企稳 / 受阻：影线探到支撑、均线或前低后收盘守在这一侧才标企稳；碰到压力或前高后收盘仍在下方标受阻。正在走的那根只标预备。左侧因子仍单独勾选"><i class="hold-c"></i>企稳</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="smcSig" aria-pressed="false" aria-checked="false" title="SMC 做多/做空：转势或延续后回踩订单区块或缺口，收盘守住才标。正在走的那根不确认。只控制主图箭头，左侧 SMC 因子仍单独勾选"><i class="smcsig-c"></i>SMC多空</button>
-                <button type="button" class="sw" role="menuitemcheckbox" data-ind="stack" aria-pressed="false" aria-checked="false" title="套轨：1小时定性、15分许可、5分与1分扳机。只输出顺势回中、套轨开口、宽轨收回。正在走的1分只预备。只控制主图菱形和套轨条，左侧套轨因子仍单独勾选"><i class="stack-c"></i>套轨</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="stack" aria-pressed="false" aria-checked="false" title="套轨：1小时定性、15分许可、5分与1分扳机。只输出顺势回中、套轨开口、宽轨收回。正在走的1分只预备。开启后可分别控制主图四周期轨道和信号标记，左侧套轨因子仍单独勾选"><i class="stack-c"></i>套轨</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="hkld" aria-pressed="false" aria-checked="false" title="高空低多：15 分钟定高低结构，5 分钟细化位置。震荡里在相对高位标空、相对低位标多。15 分钟还在中部时，本图近端高低不加票。收盘越过 15 分钟前高或跌破前低，按突破反转。影线收回仍按高空低多。只画位置，不是下单指令。左侧因子仍单独勾选"><i class="hkld-c"></i>高空低多</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="box" aria-pressed="false" aria-checked="false" title="箱体震荡：摆动高低点按 ATR 容差聚类，上下沿各有两次以上触碰才画箱体。框出上沿、下沿、中轴与触碰点，收盘越过边缘一定幅度记为上破或下破。回看根数可调。只画结构，不是下单指令"><i class="box-c"></i>箱体震荡</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="fib" aria-pressed="false" aria-checked="false" title="斐波那契：可自动选择摆动，也可指定低点到高点或高点到低点；扩展可独立显示 1.272 / 1.618。左侧因子仍单独勾选"><i class="fib-c"></i>斐波那契</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="st" aria-pressed="false" aria-checked="false" title="超级趋势：以 ATR 包络做趋势跟踪。多头段线在价格下方为绿，空头段线在价格上方为红，收盘穿越才换向，换向处标转多或转空。周期与倍数可调。滞后于反转，震荡里会来回换向，只描述趋势方向，不是下单指令"><i class="st-c"></i>超级趋势</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="vwap" aria-pressed="false" aria-checked="false" title="日内均价：有成交量时按典型价格计算 VWAP；黄金无统一现货成交量时使用日内典型价格均值作为代理。价格站上偏强，跌破偏弱，不单独作为入场信号"><i class="vwap-c"></i>日内均价</button>
-                <button type="button" class="sw" role="menuitemcheckbox" data-ind="ema9" aria-pressed="false" aria-checked="false"><i class="ema9"></i>EMA9</button>
-                <button type="button" class="sw" role="menuitemcheckbox" data-ind="ema21" aria-pressed="false" aria-checked="false"><i class="ema21"></i>EMA21</button>
-                <button type="button" class="sw" role="menuitemcheckbox" data-ind="ma100" aria-pressed="false" aria-checked="false"><i class="ma100"></i>MA100</button>
-                <button type="button" class="sw" role="menuitemcheckbox" data-ind="ema100" aria-pressed="false" aria-checked="false"><i class="ema100"></i>EMA100</button>
-                  </div>
-                </div>
+              </div>
+            </div>
+            <div class="toolbar sub-toolbar average-toolbar" id="averageToolbar">
+              <span class="lab">均线</span>
+              <div class="seg" role="group" aria-label="均线类型">
+                <button type="button" data-average-kind="ma" aria-pressed="true" title="选择 MA 作为新增均线类型">MA</button>
+                <button type="button" data-average-kind="ema" aria-pressed="false" title="选择 EMA 作为新增均线类型">EMA</button>
+              </div>
+              <span class="lab">参数</span>
+              <div class="seg average-periods" role="group" aria-label="均线参数">
+                <button type="button" data-average-period="5" aria-pressed="false">5</button>
+                <button type="button" data-average-period="9" aria-pressed="false">9</button>
+                <button type="button" data-average-period="10" aria-pressed="false">10</button>
+                <button type="button" data-average-period="12" aria-pressed="false">12</button>
+                <button type="button" data-average-period="20" aria-pressed="false">20</button>
+                <button type="button" data-average-period="21" aria-pressed="false">21</button>
+                <button type="button" data-average-period="30" aria-pressed="false">30</button>
+                <button type="button" data-average-period="50" aria-pressed="false">50</button>
+                <button type="button" data-average-period="100" aria-pressed="false">100</button>
+                <button type="button" data-average-period="200" aria-pressed="false">200</button>
+              </div>
+              <span class="lab">K线周期</span>
+              <div class="seg average-timeframes" role="group" aria-label="均线K线周期">
+                <button type="button" data-average-tf="1m" aria-pressed="true">1m</button>
+                <button type="button" data-average-tf="5m" aria-pressed="false">5m</button>
+                <button type="button" data-average-tf="15m" aria-pressed="false">15m</button>
+                <button type="button" data-average-tf="1h" aria-pressed="false">1h</button>
+                <button type="button" data-average-tf="4h" aria-pressed="false">4h</button>
+                <button type="button" data-average-tf="1d" aria-pressed="false" title="1日">1日</button>
               </div>
             </div>
         <div class="toolbar sub-toolbar" id="bollBar" hidden>
@@ -325,10 +348,6 @@ try {
             </div>
           </div>
         </div>
-        <div class="toolbar sub-toolbar" id="usidxBar" hidden>
-          <span class="lab">USIDX</span>
-          <span class="hint-wide">Gate TradFi · 美元指数 DXY · 独立副图，不参与黄金判断</span>
-        </div>
         <div class="toolbar sub-toolbar" id="rsiBar" hidden>
           <span class="lab">RSI周期</span>
           <div class="seg" role="group" aria-label="RSI周期">
@@ -382,24 +401,41 @@ try {
         </div>
         <div class="subbar" id="bollStatus" hidden></div>
         <div class="subbar" id="boxStatus" hidden></div>
+        <div class="toolbar sub-toolbar" id="stackDrawBar" hidden>
+          <span class="lab">套轨绘图</span>
+          <div class="seg" role="group" aria-label="套轨主图绘图">
+            <button type="button" data-stack-draw="1m" aria-pressed="true" title="显示或隐藏主图 1 分钟套轨线和价格标签">1分轨</button>
+            <button type="button" data-stack-draw="5m" aria-pressed="true" title="显示或隐藏主图 5 分钟套轨线和价格标签">5分轨</button>
+            <button type="button" data-stack-draw="15m" aria-pressed="true" title="显示或隐藏主图 15 分钟套轨线和价格标签">15分轨</button>
+            <button type="button" data-stack-draw="1h" aria-pressed="true" title="显示或隐藏主图 1 小时套轨线和价格标签">1小时轨</button>
+            <button type="button" data-stack-draw="signal" aria-pressed="true" title="显示或隐藏主图套轨信号菱形">信号</button>
+          </div>
+        </div>
         <div class="stack-line" id="stackBar" hidden></div>
           </div>
-        </details>
+        </div>
         <div class="chart-wrap" id="chartWrap">
-          <svg id="chart" viewBox="0 0 960 400" preserveAspectRatio="none" role="img" aria-label="分钟 K 线，滚轮缩放，拖动平移"></svg>
-          <div class="crosshair" id="crosshair" aria-hidden="true">
-            <div class="cross-h" id="crossH"></div>
-            <div class="cross-price num" id="crossPrice">--</div>
+          <div class="chart-stage" id="chartStage">
+            <svg id="chart" viewBox="0 0 960 400" preserveAspectRatio="none" role="img" aria-label="分钟 K 线，滚轮调整可见根数，左侧按钮等比缩放画面，左键拖动平移时间与价格视窗"></svg>
+            <div class="crosshair" id="crosshair" aria-hidden="true">
+              <div class="cross-h" id="crossH"></div>
+              <div class="cross-price num" id="crossPrice">--</div>
+            </div>
+            <div class="open-badge" id="openBadge" hidden>等待开单</div>
+            <div class="lvl-tag entry num" id="fastEntryTag">--</div>
+            <div class="lvl-tag tp num" id="fastTpTag">--</div>
+            <div class="lvl-tag sl num" id="fastSlTag">--</div>
+            <div id="simTags" aria-hidden="true"></div>
+            <div class="last-tag num" id="lastTag">--</div>
+            <div class="tip" id="tip"></div>
+            <div class="sig-tip num" id="sigTip" hidden></div>
+            <div class="empty" id="chartEmpty">正在拉取 XAUUSD K 线</div>
           </div>
-          <div class="open-badge" id="openBadge" hidden>等待开单</div>
-          <div class="lvl-tag entry num" id="fastEntryTag">--</div>
-          <div class="lvl-tag tp num" id="fastTpTag">--</div>
-          <div class="lvl-tag sl num" id="fastSlTag">--</div>
-          <div id="simTags" aria-hidden="true"></div>
-          <div class="last-tag num" id="lastTag">--</div>
-          <div class="tip" id="tip"></div>
-          <div class="sig-tip num" id="sigTip" hidden></div>
-          <div class="empty" id="chartEmpty">正在拉取 XAUUSD K 线</div>
+          <div class="chart-magnify" role="group" aria-label="主图画面倍率">
+            <button type="button" id="btnChartMagnifyIn" title="等比放大主图画面" aria-label="等比放大主图画面">+</button>
+            <output class="num" id="chartMagnifyLab" aria-live="polite">100%</output>
+            <button type="button" id="btnChartMagnifyOut" title="等比缩小主图画面" aria-label="等比缩小主图画面">−</button>
+          </div>
         </div>
         <div class="sig-rail" id="sigRail" aria-label="时间信号线说明">
           <span class="sig-rail-lab">时间信号线</span>
@@ -434,7 +470,7 @@ try {
     <details class="foot">
       <summary>数据说明与免责声明</summary>
       <p>
-        数据都来自 Gate.io 公共接口，不经过本仓库的 MCP。黄金走 CFD / TradFi：REST <code>/api/v4/tradfi</code>，推送 <code>wss://fx-ws.gateio.ws/v4/ws/tradfi</code>。ETH、BTC 走 USDT 永续：REST <code>/api/v4/futures/usdt</code>，推送 <code>wss://fx-ws.gateio.ws/v4/ws/usdt</code>。1 分、5 分、15 分、1 小时、4 小时、1 日 K 线与报价走实时推送（约 250 毫秒），历史根用 REST 补齐。黄金 10 秒线接口有历史，但推送通道不更新，所以用报价按 10 秒归桶合成正在走的那根；永续 10 秒线推送通道会更新。黄金 K 线没有成交量，永续 K 线有量，主图仍按价格结构画，没有另开量能副图。BOLL 默认 20 周期、2 倍标准差，可改周期和倍数，并可叠加 1σ / 3σ。每条轨道可改实线或虚线、线条颜色和背景颜色。带宽是（上轨−下轨）/中轨，%B 是收盘在主轨里的相对位置。MACD 为 12/26/9，柱状图为 2×(DIF−DEA)。布林配 MACD 的复合信号只描述近端结构是否对齐，不是下单指令。套轨用固定的 1 分、5 分、15 分、1 小时布林分层：1 小时定性、15 分钟许可、5 分与 1 分给扳机，只输出顺势回中、套轨开口、宽轨收回；正在走的 1 分钟只预备。四层对打、1 小时走轨时下层反手收回、或 1 分仍在轨外延伸时不加方向票。高空低多优先用 15 分钟定结构高低、5 分钟细化位置：低多带和高空带来自 15 分钟 21/34 区间与布林，不再用本图近端三四美元的波幅。5 分钟重心、%B 或 RSI 回头才给方向票；15 分钟还在中部时，本图近端高低不加票。收盘越过 15 分钟前高或跌破前低，且不是已经贴轨走单边，则按突破反转。15 分钟或 5 分钟样本不足时才退回本图 21/34。连续贴着外轨且没有收回时只标顺势，不给方向票。黄金没有 A 股筹码函数，没有套用 WINNER。RSI 用 Wilder 平滑，默认 14，可改 6 或 9；副图固定 0–100，30/70 为超买超卖带，可与 MACD 叠放。主条仍只留 8 项，RSI 在主条，今日高低收到指标下拉。判断因子清单可单独勾选，RSI 因子的周期跟副图一致。SMC 只画近端结构突破、订单区块和未回补缺口。做多做空不在突破当根追价，要等转势或延续之后回踩订单区块或缺口，收盘守住才标信号；正在走的那根只观察。主图箭头由指标下拉的「SMC多空」单独开关，和结构图层分开；左侧 SMC 因子仍单独勾选。头肩用摆动高低点找左肩、头部、右肩，连接两个回落/反弹点作为颈线；右肩出现后仍只是形成中，收盘价穿过颈线才算完成，价格重新越过头部则视为失效。量度目标等于头部到颈线的高度，从破位处向外量一倍，只作结构参照。箱体在横向上下沿之外，只在箱体内外两侧各有至少三组摆动锚点、斜率方向一致且累计位移经过 ATR 门槛时画斜向通道；没有足够证据时不画斜线。箱体收盘破位后按箱体高度向外投影一倍量度目标，只作结构参考，不增加判断票。支撑压力把已确认摆动高低点按 ATR 容差聚成价格区域，整数位、昨收和今开只作补充，永续不伪造会话位；BOLL20 上下轨和中轨单独作为动态参照，不与静态区域共用触碰和强度。相邻 K 线连续接触合并计数，近期性取最后一次独立触碰。现价上方为压力、下方为支撑；只有收盘越过整个区域和 ATR 缓冲才确认破位，破位后持续记录支撑与压力角色互换。斐波那契用近端足够大的摆动自动画回撤：0、0.236、0.382、0.5、0.618、0.786、1，靠近延伸目标时再加上 1.272 / 1.618。0% 在冲动终点，100% 在起点。涨势回踩 0.5 / 0.618 / 0.786 后收盘收回才给多头票，跌势反抽对称；收盘穿过 100% 算原段失效。正在走的那根只观察。主条仍保持 8 项，斐波那契放在指标下拉。超跌反弹看急跌后收盘重新站上 EMA9，超涨回落相反；拉升回踩要先有一段冲动、再回踩均线并收盘确认，杀跌反抽相反。诱空是影线扫过前低（尤其是等低）后收盘回到该位上方，诱多是影线扫过前高（尤其是等高）后收盘回到该位下方；正在走的那根只标扫位，收盘收回才给方向票。企稳看影线探到支撑、均线或前低后收盘守在这一侧，受阻对称；正在走的那根只标预备。开关在指标下拉，主条仍保持 8 项。和反弹、回踩、诱空诱多、支压或斐波那契同向时不重复计票。判断因子由左侧栏标题旁的下拉单独勾选，和主图指标开关分开：可以只画不计入判断，也可以只判断不画。确认中的反弹/回踩/诱空诱多/企稳在对应因子启用时也算核心，避免和均线对打时硬判方向。近端 SMC 突破随后收回时，方向票交给诱空诱多，避免把假突破再计成真突破。RSI 超买超卖、轨外延伸、日内高低附近不加方向票。核心因子对打或只有外围凑票时，即使票数够也不报偏多偏空。这是结构对照，不预测涨跌，也不构成投资建议。开单信号用 1 分和 5 分定方向，10 秒回踩均线或触轨收回后给出开多/开空；正在走的那根只显示预备，收盘才开仓。纸面持仓大约 180 秒。止盈止损按 1 分钟波动放大；黄金仍用原先的美元距离上下限，永续按现价百分比夹紧。点差过大时暂停开单。模拟交易可同时记下多笔订单，按品种分开存在本机。开仓和平仓都按点击那一刻的最新价，盈亏按报价价差加减，不设止盈止损。快单触发后会把开仓价、平仓价和盈亏价差记入模拟订单。数据只留在本机，用来统计胜率，不会向交易所发单。盯盘时最新一根 K 线默认放在画面中间偏左，右侧留空。报价条下的时段只显示状态，不弹提醒：未开盘、开盘中、午盘中、夜盘中。未开盘给出下一盘北京时间区间，开盘中给出剩余时间。沪金按上期所黄金期货 09:00–10:15 / 10:30–11:30 / 13:30–15:00 与夜盘 21:00–02:30；上金所按 09:00–15:30 与夜盘 20:00–02:30；日本按 JPX 日盘 08:45–15:45、夜盘 17:00–06:00（东京时间）；欧亚盘为 COMEX Globex 美东 18:00 至次日 17:00；欧盘为伦敦 08:00–16:30；美盘为 COMEX 场内 08:20–13:30 美东；美股为纽交所、纳斯达克常规交易 09:30–16:00 美东。中国节假日按 2026 年上期所、上金所公告；美股节假日按纽交所、纳斯达克 2026 年日历，感恩节次日和圣诞前夕 13:00 美东提早收盘；COMEX、英、日节假日未计入。请先运行 <code>node serve.js</code>，再打开本页服务地址。
+        数据都来自 Gate.io 公共接口，不经过本仓库的 MCP。黄金走 CFD / TradFi：REST <code>/api/v4/tradfi</code>，推送 <code>wss://fx-ws.gateio.ws/v4/ws/tradfi</code>。ETH、BTC 走 USDT 永续：REST <code>/api/v4/futures/usdt</code>，推送 <code>wss://fx-ws.gateio.ws/v4/ws/usdt</code>。1 分、5 分、15 分、1 小时、4 小时、1 日 K 线与报价走实时推送（约 250 毫秒），历史根用 REST 补齐。黄金 10 秒线接口有历史，但推送通道不更新，所以用报价按 10 秒归桶合成正在走的那根；永续 10 秒线推送通道会更新。黄金 K 线没有成交量，永续 K 线有量，主图仍按价格结构画，没有另开量能副图。BOLL 默认 20 周期、2 倍标准差，可改周期和倍数，并可叠加 1σ / 3σ。每条轨道可改实线或虚线、线条颜色和背景颜色。带宽是（上轨−下轨）/中轨，%B 是收盘在主轨里的相对位置。MACD 为 12/26/9，柱状图为 2×(DIF−DEA)。布林配 MACD 的复合信号只描述近端结构是否对齐，不是下单指令。套轨用固定的 1 分、5 分、15 分、1 小时布林分层：1 小时定性、15 分钟许可、5 分与 1 分给扳机，只输出顺势回中、套轨开口、宽轨收回；正在走的 1 分钟只预备。四层对打、1 小时走轨时下层反手收回、或 1 分仍在轨外延伸时不加方向票。高空低多优先用 15 分钟定结构高低、5 分钟细化位置：低多带和高空带来自 15 分钟 21/34 区间与布林，不再用本图近端三四美元的波幅。5 分钟重心、%B 或 RSI 回头才给方向票；15 分钟还在中部时，本图近端高低不加票。收盘越过 15 分钟前高或跌破前低，且不是已经贴轨走单边，则按突破反转。15 分钟或 5 分钟样本不足时才退回本图 21/34。连续贴着外轨且没有收回时只标顺势，不给方向票。黄金没有 A 股筹码函数，没有套用 WINNER。RSI 用 Wilder 平滑，默认 14，可改 6 或 9；副图固定 0–100，30/70 为超买超卖带，可与 MACD 叠放。主条仍只留 8 项，RSI 在主条，今日高低收到指标下拉。判断因子清单可单独勾选，RSI 因子的周期跟副图一致。SMC 只画近端结构突破、订单区块和未回补缺口。做多做空不在突破当根追价，要等转势或延续之后回踩订单区块或缺口，收盘守住才标信号；正在走的那根只观察。主图箭头由指标下拉的「SMC多空」单独开关，和结构图层分开；左侧 SMC 因子仍单独勾选。头肩用摆动高低点找左肩、头部、右肩，连接两个回落/反弹点作为颈线；右肩出现后仍只是形成中，收盘价穿过颈线才算完成，价格重新越过头部则视为失效。量度目标等于头部到颈线的高度，从破位处向外量一倍，只作结构参照。箱体在横向上下沿之外，只在箱体内外两侧各有至少三组摆动锚点、斜率方向一致且累计位移经过 ATR 门槛时画斜向通道；没有足够证据时不画斜线。箱体收盘破位后按箱体高度向外投影一倍量度目标，只作结构参考，不增加判断票。支撑压力把已确认摆动高低点按 ATR 容差聚成价格区域，整数位、昨收和今开只作补充，永续不伪造会话位；BOLL20 上下轨和中轨单独作为动态参照，不与静态区域共用触碰和强度。相邻 K 线连续接触合并计数，近期性取最后一次独立触碰。现价上方为压力、下方为支撑；只有收盘越过整个区域和 ATR 缓冲才确认破位，破位后持续记录支撑与压力角色互换。斐波那契用近端足够大的摆动自动画回撤：0、0.236、0.382、0.5、0.618、0.786、1，靠近延伸目标时再加上 1.272 / 1.618。0% 在冲动终点，100% 在起点。涨势回踩 0.5 / 0.618 / 0.786 后收盘收回才给多头票，跌势反抽对称；收盘穿过 100% 算原段失效。正在走的那根只观察。主条仍保持 8 项，斐波那契放在指标下拉。超跌反弹看急跌后收盘重新站上 EMA9，超涨回落相反；拉升回踩要先有一段冲动、再回踩均线并收盘确认，杀跌反抽相反。诱空是影线扫过前低（尤其是等低）后收盘回到该位上方，诱多是影线扫过前高（尤其是等高）后收盘回到该位下方；正在走的那根只标扫位，收盘收回才给方向票。企稳看影线探到支撑、均线或前低后收盘守在这一侧，受阻对称；正在走的那根只标预备。开关在指标下拉，主条仍保持 8 项。和反弹、回踩、诱空诱多、支压或斐波那契同向时不重复计票。判断因子由左侧栏标题旁的下拉单独勾选，和主图指标开关分开：可以只画不计入判断，也可以只判断不画。确认中的反弹/回踩/诱空诱多/企稳在对应因子启用时也算核心，避免和均线对打时硬判方向。近端 SMC 突破随后收回时，方向票交给诱空诱多，避免把假突破再计成真突破。RSI 超买超卖、轨外延伸、日内高低附近不加方向票。核心因子对打或只有外围凑票时，即使票数够也不报偏多偏空。这是结构对照，不预测涨跌，也不构成投资建议。开单信号用 1 分和 5 分定方向，10 秒回踩均线或触轨收回后给出开多/开空；正在走的那根只显示预备，收盘才开仓。纸面持仓大约 180 秒。止盈止损按 1 分钟波动放大；黄金仍用原先的美元距离上下限，永续按现价百分比夹紧。点差过大时暂停开单。模拟交易可同时记下多笔订单，按品种分开存在本机。开仓和平仓都按点击那一刻的最新价，盈亏按报价价差加减，不设止盈止损。快单触发后会把开仓价、平仓价和盈亏价差记入模拟订单。数据只留在本机，用来统计胜率，不会向交易所发单。盯盘时最新一根 K 线默认放在画面中间偏左，右侧留空。报价条下的时段只显示状态，不弹提醒：未开盘、开盘中、午盘中、夜盘中。未开盘给出下一盘北京时间区间，开盘中给出剩余时间。沪金按上期所黄金期货 09:00–10:15 / 10:30–11:30 / 13:30–15:00 与夜盘 21:00–02:30；上金所按 09:00–11:30 / 13:30–15:30 与夜盘 20:00–02:30；日本按 JPX 日盘 08:45–15:45、夜盘 17:00–06:00（东京时间）；欧亚盘为 COMEX Globex 美东 18:00 至次日 17:00；欧盘为伦敦金银 08:00–17:00；美盘为 COMEX 场内 08:20–13:30 美东；美股为纽交所、纳斯达克常规交易 09:30–16:00 美东。中国节假日按 2026 年上期所、上金所公告；美股节假日按纽交所、纳斯达克 2026 年日历，感恩节次日和圣诞前夕 13:00 美东提早收盘；COMEX、英、日节假日未计入。请先运行 <code>node serve.js</code>，再打开本页服务地址。
       </p>
     </details>
   </div>
