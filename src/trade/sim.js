@@ -96,6 +96,7 @@ export function loadSim() {
   state.simAuto = false;
   state.simAutoParams = Object.assign({}, SIM_AUTO_DEFAULTS);
   state.simJudge = null;
+  state._closingAll = false;
   try {
     let stored = localStorage.getItem(simKey());
     if (!stored && mkt().id === 'xau') stored = localStorage.getItem('gold-minute-sim');
@@ -242,108 +243,115 @@ export function simLastPrice() {
 export function renderSimKpis() {
   const el = $('simKpis');
   if (!el) return;
-  const s = simStats();
-  const parts = [];
-  if (s.openN) {
-    const fCls = s.floating > 0 ? 'up' : s.floating < 0 ? 'dn' : '';
-    parts.push('持仓 <b>' + s.openN + '</b> 浮 <b class="' + fCls + '">' + fmtUsd(s.floating) + '</b>');
-  }
-  if (!s.n) {
-    parts.push(s.openN ? '还没有已平仓' : '还没有订单');
+  try {
+    const s = simStats();
+    const parts = [];
+    if (s.openN) {
+      const fCls = s.floating > 0 ? 'up' : s.floating < 0 ? 'dn' : '';
+      parts.push('持仓 <b>' + s.openN + '</b> 浮 <b class="' + fCls + '">' + fmtUsd(s.floating) + '</b>');
+    }
+    if (!s.n) {
+      parts.push(s.openN ? '还没有已平仓' : '还没有订单');
+      el.innerHTML = parts.join('  ');
+      return;
+    }
+    const rateCls = s.rate >= 50 ? 'up' : 'dn';
+    const sumCls = s.sum > 0 ? 'up' : s.sum < 0 ? 'dn' : '';
+    const fastN = simClosedOrders().filter((o) => o.source === 'fast').length;
+    parts.push(
+      '胜率 <b class="' + rateCls + '">' + s.rate.toFixed(0) + '%</b>',
+      '已平 <b>' + s.n + '</b>',
+      '胜 <b class="up">' + s.wins + '</b>',
+      '负 <b class="dn">' + s.losses + '</b>',
+      '合计 <b class="' + sumCls + '">' + fmtUsd(s.sum) + '</b>'
+    );
+    if (fastN) parts.push('开单 <b>' + fastN + '</b>');
     el.innerHTML = parts.join('  ');
-    return;
+  } catch (e) {
+    el.innerHTML = '统计加载中...';
   }
-  const rateCls = s.rate >= 50 ? 'up' : 'dn';
-  const sumCls = s.sum > 0 ? 'up' : s.sum < 0 ? 'dn' : '';
-  const fastN = simClosedOrders().filter((o) => o.source === 'fast').length;
-  parts.push(
-    '胜率 <b class="' + rateCls + '">' + s.rate.toFixed(0) + '%</b>',
-    '已平 <b>' + s.n + '</b>',
-    '胜 <b class="up">' + s.wins + '</b>',
-    '负 <b class="dn">' + s.losses + '</b>',
-    '合计 <b class="' + sumCls + '">' + fmtUsd(s.sum) + '</b>'
-  );
-  if (fastN) parts.push('开单 <b>' + fastN + '</b>');
-  el.innerHTML = parts.join('  ');
 }
 
 export function renderSimOrders() {
   const box = $('simHistBox');
   if (!box) return;
-  const opens = simOpenOrders().slice().reverse();
-  const closed = simClosedOrders().slice().reverse();
-  let html = '';
-  html += '<h3 class="sim-sec">持仓 ' + opens.length + '</h3>';
-  if (!opens.length) {
-    html += '<p class="sim-empty">当前没有持仓。点开仓会按现价记一笔，开单信号触发后也会出现在这里。</p>';
-  } else {
-    html += opens.map((o) => {
-      const pnl = simOpenPnl(o);
-      const cls = pnl > 0 ? 'up' : pnl < 0 ? 'dn' : '';
-      const src = o.source === 'fast' ? '<span class="sim-src">开单</span>' : '';
-      return '<div class="sim-order">' +
-        '<span class="dir ' + (o.dir > 0 ? 'up' : 'dn') + '">' + (o.dir > 0 ? '多' : '空') + src + '</span>' +
-        '<span class="num">开 ' + px(o.entry) + '</span>' +
-        '<span class="num ' + cls + '" data-sim-pnl="' + o.id + '">' + fmtUsd(pnl) + '</span>' +
-        '<button type="button" class="btn" data-sim-close="' + o.id + '">平仓</button>' +
-        '</div>';
-    }).join('');
+  try {
+    const opens = simOpenOrders().slice().reverse();
+    const closed = simClosedOrders().slice().reverse();
+    let html = '';
+    html += '<h3 class="sim-sec">持仓 ' + opens.length + '</h3>';
+    if (!opens.length) {
+      html += '<p class="sim-empty">当前没有持仓。点开仓会按现价记一笔，开单信号触发后也会出现在这里。</p>';
+    } else {
+      html += opens.map((o) => {
+        const pnl = simOpenPnl(o);
+        const cls = pnl > 0 ? 'up' : pnl < 0 ? 'dn' : '';
+        const src = o.source === 'fast' ? '<span class="sim-src">开单</span>' : '';
+        return '<div class="sim-order">' +
+          '<span class="dir ' + (o.dir > 0 ? 'up' : 'dn') + '">' + (o.dir > 0 ? '多' : '空') + src + '</span>' +
+          '<span class="num">开 ' + px(o.entry) + '</span>' +
+          '<span class="num ' + cls + '" data-sim-pnl="' + o.id + '">' + fmtUsd(pnl) + '</span>' +
+          '<button type="button" class="btn" data-sim-close="' + o.id + '">平仓</button>' +
+          '</div>';
+      }).join('');
+    }
+    html += '<h3 class="sim-sec">已平 ' + closed.length + '</h3>';
+    if (!closed.length) {
+      html += '<p class="sim-empty">平仓后出现在这里，记下开仓价、平仓价和盈亏价差，用来统计胜率。</p>';
+    } else {
+      html += '<table><thead><tr><th>时间</th><th>向</th><th>开仓</th><th>平仓</th><th>盈亏</th><th>说明</th></tr></thead><tbody>' +
+        closed.map((h) => {
+          const cls = h.pnl > 0 ? 'up' : h.pnl < 0 ? 'dn' : '';
+          const t = h.closeAt ? fmtHms(Math.floor(h.closeAt / 1000)) : '--';
+          return '<tr>' +
+            '<td>' + t + '</td>' +
+            '<td>' + (h.dir > 0 ? '多' : '空') + '</td>' +
+            '<td>' + px(h.entry) + '</td>' +
+            '<td>' + px(h.exit) + '</td>' +
+            '<td class="' + cls + '">' + fmtUsd(h.pnl) + '</td>' +
+            '<td>' + simSourceLabel(h) + '</td>' +
+            '</tr>';
+        }).join('') +
+        '</tbody></table>';
+    }
+    box.innerHTML = html;
+  } catch (e) {
+    box.innerHTML = '<p class="sim-empty">订单加载中...</p>';
   }
-  html += '<h3 class="sim-sec">已平 ' + closed.length + '</h3>';
-  if (!closed.length) {
-    html += '<p class="sim-empty">平仓后出现在这里，记下开仓价、平仓价和盈亏价差，用来统计胜率。</p>';
-  } else {
-    html += '<table><thead><tr><th>时间</th><th>向</th><th>开仓</th><th>平仓</th><th>盈亏</th><th>说明</th></tr></thead><tbody>' +
-      closed.map((h) => {
-        const cls = h.pnl > 0 ? 'up' : h.pnl < 0 ? 'dn' : '';
-        const t = h.closeAt ? fmtHms(Math.floor(h.closeAt / 1000)) : '--';
-        return '<tr>' +
-          '<td>' + t + '</td>' +
-          '<td>' + (h.dir > 0 ? '多' : '空') + '</td>' +
-          '<td>' + px(h.entry) + '</td>' +
-          '<td>' + px(h.exit) + '</td>' +
-          '<td class="' + cls + '">' + fmtUsd(h.pnl) + '</td>' +
-          '<td>' + simSourceLabel(h) + '</td>' +
-          '</tr>';
-      }).join('') +
-      '</tbody></table>';
-  }
-  box.innerHTML = html;
 }
 
 export function renderSimLiveBtn() {
   const btn = $('btnSim');
   const live = $('simLive');
   if (!btn || !live) return;
-  const opens = simOpenOrders();
-  if (opens.length) {
-    const parts = opens.map((o) => simOpenPnl(o));
-    const pnl = parts.every((p) => p == null) ? null : parts.reduce((a, p) => a + (p || 0), 0);
-    btn.classList.add('holding');
-    live.hidden = false;
-    live.textContent = opens.length + '笔 ' + (pnl == null ? '持仓' : fmtUsd(pnl));
-    live.style.color = pnl > 0 ? 'var(--up)' : pnl < 0 ? 'var(--down)' : '';
-    return;
-  }
-  const lastClose = state.simLastClose;
-  if (lastClose && lastClose.closeAt && Date.now() - lastClose.closeAt < 8000) {
+  try {
+    const opens = simOpenOrders();
+    if (opens.length) {
+      const parts = opens.map((o) => simOpenPnl(o));
+      const pnl = parts.every((p) => p == null) ? null : parts.reduce((a, p) => a + (p || 0), 0);
+      btn.classList.add('holding');
+      live.hidden = false;
+      live.textContent = opens.length + '笔 ' + (pnl == null ? '持仓' : fmtUsd(pnl));
+      live.style.color = pnl > 0 ? 'var(--up)' : pnl < 0 ? 'var(--down)' : '';
+      return;
+    }
+    if (state.simAuto) {
+      btn.classList.remove('holding');
+      live.hidden = false;
+      live.textContent = '自动';
+      live.style.color = 'var(--accent)';
+      return;
+    }
     btn.classList.remove('holding');
-    live.hidden = false;
-    live.textContent = '平 ' + fmtUsd(lastClose.pnl);
-    live.style.color = lastClose.pnl > 0 ? 'var(--up)' : lastClose.pnl < 0 ? 'var(--down)' : '';
-    return;
-  }
-  if (state.simAuto) {
+    live.hidden = true;
+    live.textContent = '';
+    live.style.color = '';
+  } catch (e) {
     btn.classList.remove('holding');
-    live.hidden = false;
-    live.textContent = '自动';
-    live.style.color = 'var(--accent)';
-    return;
+    live.hidden = true;
+    live.textContent = '';
+    live.style.color = '';
   }
-  btn.classList.remove('holding');
-  live.hidden = true;
-  live.textContent = '';
-  live.style.color = '';
 }
 
 export function setSimMsg(text, kind) {
@@ -351,6 +359,16 @@ export function setSimMsg(text, kind) {
   if (!el) return;
   el.textContent = text || '';
   el.className = 'sim-msg' + (kind ? ' ' + kind : '');
+  // 5秒后自动清除消息，防止残留导致卡住
+  if (text) {
+    clearTimeout(el._msgTimer);
+    el._msgTimer = setTimeout(() => {
+      if (el && el.textContent === text) {
+        el.textContent = '';
+        el.className = 'sim-msg';
+      }
+    }, 5000);
+  }
 }
 
 export function syncSimDirButtons() {
@@ -500,22 +518,33 @@ export function patchSimFloat(price) {
 }
 
 export function renderSimDialog() {
-  const closeAll = $('btnSimCloseAll');
-  if (closeAll) closeAll.disabled = !simOpenOrders().length;
-  syncSimDirButtons();
-  syncSimAutoUi();
-  renderSimJudge();
-  syncSimNow(simLastPrice());
-  renderSimKpis();
-  renderSimOrders();
-  renderSimLiveBtn();
+  try {
+    const closeAll = $('btnSimCloseAll');
+    const opens = simOpenOrders();
+    if (closeAll) {
+      closeAll.disabled = !opens.length || !!state._closingAll;
+      closeAll.textContent = opens.length ? '全部平仓' : '无持仓';
+    }
+    syncSimDirButtons();
+    syncSimAutoUi();
+    renderSimJudge();
+    syncSimNow(simLastPrice());
+    renderSimKpis();
+    renderSimOrders();
+    renderSimLiveBtn();
+  } catch (e) {
+    const box = $('simHistBox');
+    if (box) box.innerHTML = '<p class="sim-empty">渲染异常，请关闭对话框重新打开</p>';
+  }
 }
 
 export function openSimDialog() {
   const dlg = $('simDlg');
   const btn = $('btnSim');
   if (!dlg) return;
+  // 清除残留消息
   setSimMsg('');
+  state._closingAll = false;
   renderSimDialog();
   if (dlg.open) return;
   if (typeof dlg.showModal === 'function') dlg.showModal();
@@ -528,6 +557,9 @@ export function openSimDialog() {
 export function closeSimDialog() {
   const dlg = $('simDlg');
   const btn = $('btnSim');
+  // 清除残留消息
+  setSimMsg('');
+  state._closingAll = false;
   if (dlg && dlg.open) dlg.close();
   if (btn) {
     btn.setAttribute('aria-expanded', 'false');
@@ -570,27 +602,37 @@ export function closeSimTrade(id) {
     setSimMsg('找不到这笔持仓', 'err');
     return false;
   }
+  
+  if (o.source === 'fast' && state.fastTrade && state.fastTrade.status === 'open' && state.fastTrade.simId === o.id) {
+    const exitPx = simMarkExit(o);
+    if (exitPx == null) {
+      setSimMsg('还没有最新价，等行情到了再平仓', 'err');
+      return false;
+    }
+    closeFastTrade('manual', exitPx, Date.now());
+    const updated = (state.simOrders || []).find((x) => x.id === id);
+    if (updated) {
+      setSimMsg('已平仓开单 ' + (updated.dir > 0 ? '多' : '空') + '  开 ' + px(updated.entry) + '  平 ' + px(updated.exit) + '  ' + fmtUsd(updated.pnl), updated.pnl > 0 ? 'ok' : updated.pnl < 0 ? 'err' : '');
+    }
+    renderSimDialog();
+    return true;
+  }
+  
   const exitPx = simMarkExit(o);
   if (exitPx == null) {
     setSimMsg('还没有最新价，等行情到了再平仓', 'err');
     return false;
   }
-  if (o.source === 'fast' && state.fastTrade && state.fastTrade.status === 'open' && state.fastTrade.simId === o.id) {
-    closeFastTrade('manual', exitPx, Date.now());
-    setSimMsg('已平仓开单 ' + (o.dir > 0 ? '多' : '空') + '  开 ' + px(o.entry) + '  平 ' + px(o.exit) + '  ' + fmtUsd(o.pnl), o.pnl > 0 ? 'ok' : o.pnl < 0 ? 'err' : '');
-    renderSimDialog();
-    return true;
-  }
-  // 手工单开平已走买卖价时，点差已含在成交价里，不再二次扣除
+  
   const cost = o.source === 'fast' ? simOrderSpread(o) : null;
   o.exit = exitPx;
   o.pnl = simPnl(o.entry, exitPx, o.dir, cost);
   o.status = 'closed';
   o.closeAt = Date.now();
   if (o.source === 'fast' && !o.kind) o.kind = 'manual';
-  state.simLastClose = o;
   saveSim();
-  setSimMsg('已平仓 ' + (o.dir > 0 ? '多' : '空') + '  ' + fmtUsd(o.pnl), o.pnl > 0 ? 'ok' : o.pnl < 0 ? 'err' : '');
+  // 平仓成功后只显示简短消息，并自动清除
+  setSimMsg('已平仓', 'ok');
   renderSimDialog();
   state.chartScale = null;
   scheduleChart();
@@ -598,37 +640,108 @@ export function closeSimTrade(id) {
 }
 
 export function closeAllSimTrades() {
+  if (state._closingAll) {
+    setSimMsg('正在平仓中，请稍候...', '');
+    return;
+  }
+  
   const opens = simOpenOrders();
   if (!opens.length) {
     setSimMsg('当前没有持仓');
     return;
   }
+  
   if (opens.some((o) => simMarkExit(o) == null)) {
     setSimMsg('还没有最新价，等行情到了再平仓', 'err');
     return;
   }
-  const ids = opens.map((o) => o.id);
-  if (state.fastTrade && state.fastTrade.status === 'open') {
-    const fastExit = markPrice(state.fastTrade.dir, state.ticker) || simLastPrice();
-    closeFastTrade('manual', fastExit, Date.now());
+
+  state._closingAll = true;
+  const closeAllBtn = $('btnSimCloseAll');
+  if (closeAllBtn) closeAllBtn.disabled = true;
+  
+  try {
+    const openIds = opens.map(o => o.id);
+    
+    const fastOrder = opens.find(o => 
+      o.source === 'fast' && 
+      state.fastTrade && 
+      state.fastTrade.status === 'open' && 
+      state.fastTrade.simId === o.id
+    );
+    
+    if (fastOrder) {
+      const exitPx = markPrice(state.fastTrade.dir, state.ticker) || simLastPrice();
+      const tr = state.fastTrade;
+      if (tr && tr.status === 'open') {
+        const done = {
+          dir: tr.dir,
+          entry: tr.entry,
+          tp: tr.tp,
+          sl: tr.sl,
+          t: tr.t,
+          entryAt: tr.entryAt,
+          reason: tr.reason,
+          setup: tr.setup,
+          status: 'manual',
+          exit: exitPx,
+          exitAt: Date.now(),
+          spread: tr.spread,
+          pnl: simPnl(tr.entry, exitPx, tr.dir, tr.spread),
+        };
+        state.fastLast = done;
+        state.fastHist = state.fastHist.concat([done]).slice(-6);
+        state.fastMarks = state.fastMarks.concat([{ t: tr.t, dir: tr.dir }]).slice(-12);
+        state.fastTrade = null;
+        state.fastWatch = null;
+        state.fastCoolUntil = Date.now() + fastCoolMs();
+        
+        const order = state.simOrders.find(o => o.id === fastOrder.id && o.status === 'open');
+        if (order) {
+          order.exit = done.exit;
+          order.pnl = done.pnl;
+          order.status = 'closed';
+          order.closeAt = done.exitAt;
+          order.kind = 'manual';
+        }
+      }
+    }
+    
+    const remaining = simOpenOrders();
+    const toCloseManual = remaining.filter(o => openIds.includes(o.id) && o.id !== (fastOrder ? fastOrder.id : null));
+    
+    toCloseManual.forEach((o) => {
+      const exitPx = simMarkExit(o);
+      const cost = o.source === 'fast' ? simOrderSpread(o) : null;
+      o.exit = exitPx;
+      o.pnl = simPnl(o.entry, exitPx, o.dir, cost);
+      o.status = 'closed';
+      o.closeAt = Date.now();
+      if (o.source === 'fast' && !o.kind) o.kind = 'manual';
+    });
+    
+    saveSim();
+    
+    const allClosed = (state.simOrders || []).filter(o => 
+      openIds.includes(o.id) && o.status === 'closed'
+    );
+    const sum = allClosed.reduce((a, o) => a + (o.pnl || 0), 0);
+    
+    renderSimDialog();
+    state.chartScale = null;
+    scheduleChart();
+    renderFastPanel();
+    
+    // 只显示简洁消息，不显示具体盈亏数字
+    setSimMsg('已平 ' + allClosed.length + ' 笔', 'ok');
+    
+  } catch (e) {
+    setSimMsg('平仓异常，请重试', 'err');
+    console.error('closeAllSimTrades error:', e);
+  } finally {
+    state._closingAll = false;
+    if (closeAllBtn) closeAllBtn.disabled = !simOpenOrders().length;
   }
-  simOpenOrders().forEach((o) => {
-    const exitPx = simMarkExit(o);
-    const cost = o.source === 'fast' ? simOrderSpread(o) : null;
-    o.exit = exitPx;
-    o.pnl = simPnl(o.entry, exitPx, o.dir, cost);
-    o.status = 'closed';
-    o.closeAt = Date.now();
-    if (o.source === 'fast' && !o.kind) o.kind = 'manual';
-  });
-  const just = (state.simOrders || []).filter((o) => ids.indexOf(o.id) >= 0);
-  const sum = just.reduce((a, o) => a + (o.pnl || 0), 0);
-  state.simLastClose = just[just.length - 1] || opens[opens.length - 1];
-  saveSim();
-  setSimMsg('已平 ' + just.length + ' 笔  合计 ' + fmtUsd(sum), sum > 0 ? 'ok' : sum < 0 ? 'err' : '');
-  renderSimDialog();
-  state.chartScale = null;
-  scheduleChart();
 }
 
 export function tickSimTrade(price) {
