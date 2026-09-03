@@ -30,7 +30,8 @@ import { normalizeFibMode } from './indicators/fib.js';
 import { averageLineId, normalizeAverageLines } from './indicators/moving-average.js';
 import { bindLayoutPreset, closeLayoutMenu } from './ui/layout-preset.js';
 import { bindSessRail, tickSess } from './ui/session-rail.js';
-import { drawChart, hideCrosshair, showTip, wrap } from './view/chart.js';
+import { drawChart, hideCrosshair, positionUsidxResizer, showTip, wrap } from './view/chart.js';
+import { normalizeUsidxPaneHeight } from './view/osc.js';
 import { oscLayout } from './view/osc.js';
 import { banner, remainText, render, renderHeavy, renderQuote, renderStackBar } from './view/panels.js';
 import { bindSignalRail, collectSignalEvents } from './view/signal-rail.js';
@@ -412,6 +413,54 @@ if (chartMagnifyControls) {
     e.preventDefault();
     e.stopPropagation();
   }, { passive: false });
+}
+
+const usidxResizer = $('usidxResizer');
+if (usidxResizer) {
+  usidxResizer.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const pane = state.chartScale && (state.chartScale.panes || []).find((p) => p.key === 'usidx');
+    if (!pane) return;
+    state.usidxDrag = {
+      id: e.pointerId,
+      startY: e.clientY,
+      startHeight: normalizeUsidxPaneHeight(state.usidxPaneHeight || pane.h),
+    };
+    usidxResizer.classList.add('is-drag');
+    try { usidxResizer.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  usidxResizer.addEventListener('pointermove', (e) => {
+    const drag = state.usidxDrag;
+    if (!drag || e.pointerId !== drag.id) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = $('chart').getBoundingClientRect();
+    if (!rect.height) return;
+    const deltaSvg = (e.clientY - drag.startY) / rect.height * H;
+    state.usidxPaneHeight = normalizeUsidxPaneHeight(drag.startHeight - deltaSvg);
+    try { localStorage.setItem('gold-minute-usidx-pane-height', String(state.usidxPaneHeight)); } catch (err) {}
+    drawChart(barsForChart(), state.ticker, state.hover);
+  });
+  const finishUsidxResize = (e) => {
+    if (!state.usidxDrag || (e && e.pointerId !== state.usidxDrag.id)) return;
+    try { usidxResizer.releasePointerCapture(state.usidxDrag.id); } catch (err) {}
+    state.usidxDrag = null;
+    usidxResizer.classList.remove('is-drag');
+    positionUsidxResizer();
+  };
+  usidxResizer.addEventListener('pointerup', finishUsidxResize);
+  usidxResizer.addEventListener('pointercancel', finishUsidxResize);
+  usidxResizer.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    e.preventDefault();
+    const step = e.shiftKey ? 10 : 2;
+    state.usidxPaneHeight = normalizeUsidxPaneHeight(
+      state.usidxPaneHeight + (e.key === 'ArrowUp' ? step : -step),
+    );
+    try { localStorage.setItem('gold-minute-usidx-pane-height', String(state.usidxPaneHeight)); } catch (err) {}
+    drawChart(barsForChart(), state.ticker, state.hover);
+  });
 }
 $('btnChartMagnifyIn').addEventListener('click', () => stepChartMagnify(1));
 $('btnChartMagnifyOut').addEventListener('click', () => stepChartMagnify(-1));

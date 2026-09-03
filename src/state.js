@@ -84,8 +84,16 @@ export const state = {
   pingTimer: 0,
   barClosed: false,
   chartScale: null,
+  // 价格轴倍率：大于 1 时收窄价格范围，让蜡烛变高；小于 1 时拉宽价格范围。
   chartMagnify: 1,
   priceOffset: 0,
+  usidxPaneHeight: (() => {
+    try {
+      const n = Number(localStorage.getItem('gold-minute-usidx-pane-height'));
+      return Number.isFinite(n) ? n : 62;
+    } catch (e) { return 62; }
+  })(),
+  usidxDrag: null,
   quoteRaf: 0,
   chartRaf: 0,
   heavyAt: 0,

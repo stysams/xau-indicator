@@ -32,35 +32,61 @@ export function dxyVote(gold, dxy) {
   return { vote: 0, why: '黄金与 DXY 同向，传统负相关暂时失效，不加方向票' };
 }
 
-// 用同步收盘收益的滚动相关性确认黄金与美元指数的传统负相关关系。
-// 相关性只作关系过滤，方向仍由黄金自身的近端收益决定。
+// 用同步收盘收益的双窗口相关性确认黄金与美元指数的近期负相关。
+// 短窗负责识别当前关系，扩展窗防止单个短样本偶然反向；方向必须由
+// 黄金与 USIDX 的近端累计收益同时确认，避免把相关性本身当成方向。
 export function xauUsidxVote(gold, usidx) {
-  if (!gold || !usidx || gold.length < 8 || usidx.length < 8) return { vote: 0, corr: null, why: 'XAU-USIDX 相关性样本不足' };
+  if (!gold || !usidx || gold.length < 9 || usidx.length < 9) return { vote: 0, corr: null, why: 'XAU-USIDX 相关性样本不足' };
   const dMap = new Map(usidx.map((b) => [Number(b.t), b.c]));
   const pairs = [];
   gold.forEach((b) => {
     const d = dMap.get(Number(b.t));
     if (Number.isFinite(b.c) && Number.isFinite(d)) pairs.push([b.c, d]);
   });
-  const src = pairs.length >= 8 ? pairs.slice(-32) : [];
-  if (src.length < 8) return { vote: 0, corr: null, why: 'XAU-USIDX 没有足够同步 K 线' };
+  const src = pairs.length >= 9 ? pairs.slice(-36) : [];
+  if (src.length < 9) return { vote: 0, corr: null, why: 'XAU-USIDX 没有足够同步 K 线' };
   const gr = [], dr = [];
   for (let i = 1; i < src.length; i++) {
     const [gp, dp] = src[i - 1], [gc, dc] = src[i];
     if (!gp || !dp || !Number.isFinite(gc) || !Number.isFinite(dc)) continue;
     gr.push((gc - gp) / gp); dr.push((dc - dp) / dp);
   }
-  if (gr.length < 7) return { vote: 0, corr: null, why: 'XAU-USIDX 收益样本不足' };
-  const mg = gr.reduce((a, v) => a + v, 0) / gr.length;
-  const md = dr.reduce((a, v) => a + v, 0) / dr.length;
-  let cov = 0, vg = 0, vd = 0;
-  for (let i = 0; i < gr.length; i++) { const a = gr[i] - mg, b = dr[i] - md; cov += a * b; vg += a * a; vd += b * b; }
-  const corr = cov / Math.sqrt(vg * vd);
-  const gMove = gr[gr.length - 1];
-  if (!Number.isFinite(corr) || Math.abs(corr) < 0.25) return { vote: 0, corr, why: 'XAU-USIDX 近期相关性弱，暂不计票' };
-  if (corr > -0.25) return { vote: 0, corr, why: 'XAU 与 USIDX 未呈稳定负相关，暂不计票' };
-  if (Math.abs(gMove) < 0.00015) return { vote: 0, corr, why: '黄金最新变化太小，相关性暂不转为方向票' };
-  return { vote: gMove > 0 ? 1 : -1, corr, why: 'XAU-USIDX 近期负相关（r=' + corr.toFixed(2) + '），黄金' + (gMove > 0 ? '走强' : '走弱') };
+  if (gr.length < 8) return { vote: 0, corr: null, why: 'XAU-USIDX 收益样本不足' };
+  const correlation = (a, b) => {
+    const ma = a.reduce((sum, v) => sum + v, 0) / a.length;
+    const mb = b.reduce((sum, v) => sum + v, 0) / b.length;
+    let cov = 0, va = 0, vb = 0;
+    for (let i = 0; i < a.length; i++) {
+      const da = a[i] - ma, db = b[i] - mb;
+      cov += da * db; va += da * da; vb += db * db;
+    }
+    return cov / Math.sqrt(va * vb);
+  };
+  const shortN = Math.min(12, gr.length);
+  const corr = correlation(gr.slice(-shortN), dr.slice(-shortN));
+  const longCorr = correlation(gr, dr);
+  const lookback = Math.min(3, gr.length);
+  const gMove = src[src.length - 1][0] / src[src.length - 1 - lookback][0] - 1;
+  const dMove = src[src.length - 1][1] / src[src.length - 1 - lookback][1] - 1;
+  if (!Number.isFinite(corr) || !Number.isFinite(longCorr)) return { vote: 0, corr, longCorr, why: 'XAU-USIDX 相关性无法计算' };
+  if (corr > -0.45 || (gr.length >= 16 && longCorr > -0.25)) {
+    return { vote: 0, corr, longCorr, why: 'XAU-USIDX 近期负相关未确认（短窗 r=' + corr.toFixed(2) + '，扩展窗 r=' + longCorr.toFixed(2) + '）' };
+  }
+  const threshold = 0.00015;
+  if (Math.abs(gMove) < threshold || Math.abs(dMove) < threshold) {
+    return { vote: 0, corr, longCorr, why: 'XAU-USIDX 近期负相关已确认，但双边近端变化不足' };
+  }
+  if (gMove * dMove >= 0) {
+    return { vote: 0, corr, longCorr, why: 'XAU-USIDX 近期负相关已确认，但当前同向，暂停宏观方向票' };
+  }
+  const vote = gMove > 0 ? 1 : -1;
+  return {
+    vote: vote,
+    corr: corr,
+    longCorr: longCorr,
+    active: true,
+    why: 'XAU-USIDX 近期负相关确认（短窗 r=' + corr.toFixed(2) + '，扩展窗 r=' + longCorr.toFixed(2) + '），黄金' + (vote > 0 ? '走强、USIDX走弱' : '走弱、USIDX走强'),
+  };
 }
 
 export function tape(klines) {

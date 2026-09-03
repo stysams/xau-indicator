@@ -14,6 +14,17 @@ export function normalizeChartMagnify(value) {
   return Math.round(Math.min(CHART_MAGNIFY_MAX, Math.max(CHART_MAGNIFY_MIN, safe)) * 10) / 10;
 }
 
+// Apply the MT5-style vertical price zoom around the current visible range.
+// Keeping this pure makes the scaling rule easy to verify outside the browser.
+export function priceRangeForMagnify(lo, hi, magnify) {
+  const low = Number(lo), high = Number(hi);
+  if (!Number.isFinite(low) || !Number.isFinite(high) || high <= low) return { lo: low, hi: high };
+  const factor = normalizeChartMagnify(magnify);
+  const center = (low + high) / 2;
+  const span = (high - low) / factor;
+  return { lo: center - span / 2, hi: center + span / 2 };
+}
+
 export function priceOffsetForDrag(startOffset, deltaY, plotHeight, priceSpan) {
   const base = Number.isFinite(Number(startOffset)) ? Number(startOffset) : 0;
   const dy = Number(deltaY);

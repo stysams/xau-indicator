@@ -45,7 +45,9 @@ export const JUDGE_NET_RATIO = 0.35;
 
 export const CORE_FAMILIES = { mom: true, struct: true };
 
-export const FAC_PICK_PRI = { stack: 5, smc: 4, mtf: 3, ema: 2, sig: 1 };
+// XAU-USIDX 是 DXY 的关系确认版；同属宏观族时优先使用已确认的关系票，
+// 避免同一段美元驱动被两次计票。
+export const FAC_PICK_PRI = { stack: 5, smc: 4, xauUsidx: 4, mtf: 3, ema: 2, sig: 1, dxy: 0 };
 
 export const FAC_KEY = 'gold-minute-fac';
 

@@ -10,6 +10,15 @@ export const OSC_PANES = [
   { key: 'usidx', height: 62, digits: 3, title: 'USIDX DXY', lo: 0, hi: 1 },
 ];
 
+export const USIDX_PANE_MIN = 48;
+export const USIDX_PANE_MAX = 160;
+
+export function normalizeUsidxPaneHeight(value) {
+  const n = Number(value);
+  const safe = Number.isFinite(n) ? n : 62;
+  return Math.round(Math.min(USIDX_PANE_MAX, Math.max(USIDX_PANE_MIN, safe)));
+}
+
 export function oscLayout() {
   const defs = OSC_PANES.filter((d) => !!state.ind[d.key]);
   const n = defs.length;
@@ -17,7 +26,9 @@ export function oscLayout() {
   const shrink = n >= 2;
   const panes = defs.map((d) => ({
     key: d.key,
-    h: shrink ? 56 : d.height,
+    h: d.key === 'usidx'
+      ? normalizeUsidxPaneHeight(state.usidxPaneHeight)
+      : (shrink ? 56 : d.height),
     digits: d.digits || 2,
     title: typeof d.title === 'function' ? d.title() : (d.title || d.key.toUpperCase()),
     lo: d.lo,

@@ -20,7 +20,7 @@ import { drawBox, drawFib, drawHkld, drawHold, drawPbSetup, drawTrapSetup } from
 import { drawSignalRail } from './signal-rail.js';
 import { bollAreaD, lineD, lineSegD, svgEl } from './svg.js';
 import { drawFastOverlay, drawSimOverlay, openFastTrade, placeFastTags } from './trade-overlay.js';
-import { candleBodyWidth, chartSlice, chartXScale, priceLevelsInRange, updateZoomLabel } from './viewport.js';
+import { candleBodyWidth, chartSlice, chartXScale, priceLevelsInRange, priceRangeForMagnify, updateZoomLabel } from './viewport.js';
 
 function stackLevelSignature(pack) {
   const layers = (pack && pack.layers) || {};
@@ -34,6 +34,8 @@ function stackLevelSignature(pack) {
 export function drawChart(klines, ticker, hover) {
   const svg = $('chart');
   svg.replaceChildren();
+  const usidxResizer = $('usidxResizer');
+  if (usidxResizer) usidxResizer.hidden = true;
   $('chartEmpty').style.display = klines.length ? 'none' : 'grid';
   if (!klines.length) {
     hideCrosshair();
@@ -248,6 +250,11 @@ export function drawChart(klines, ticker, hover) {
   const priceOffset = Number(state.priceOffset) || 0;
   lo += priceOffset;
   hi += priceOffset;
+  // The left +/- controls change only the vertical price scale. Unlike a CSS
+  // transform this keeps candles, labels and overlays at a stable pixel size.
+  const scaledRange = priceRangeForMagnify(lo, hi, state.chartMagnify);
+  lo = scaledRange.lo;
+  hi = scaledRange.hi;
   // 套轨是当前时点的多周期参考线，不能把历史/放大视窗的价格轴拉回当前价。
   // 仅绘制落在当前轴范围内的轨道，避免固定轨道压缩可见 K 线。
   const visibleStackLevels = priceLevelsInRange(stackLevels, lo, hi);
@@ -948,6 +955,7 @@ export function drawChart(klines, ticker, hover) {
     boxSig: box ? box.sig : '', stDir: stPack ? stPack.lastDir : 0,
     stackSig: stackSig,
   };
+  positionUsidxResizer();
   drawFastOverlay(svg, vis, view, x, y);
   drawSimOverlay(svg, y);
   if (state.ind.last && lastPx != null) {
@@ -1142,6 +1150,23 @@ export function patchLastCandle(klines) {
 export function paintChart(klines) {
   if (state.barClosed || !patchLastCandle(klines)) drawChart(klines, state.ticker, state.hover);
   updateZoomLabel();
+}
+
+export function positionUsidxResizer() {
+  const handle = $('usidxResizer');
+  const wrap = $('chartWrap');
+  const s = state.chartScale;
+  if (!handle || !wrap || !s) return;
+  const pane = (s.panes || []).find((p) => p.key === 'usidx');
+  if (!pane || !wrap.clientHeight) {
+    handle.hidden = true;
+    return;
+  }
+  handle.hidden = false;
+  handle.style.top = (pane.top / H * wrap.clientHeight - 4) + 'px';
+  handle.style.left = (PAD.l / W * 100) + '%';
+  handle.style.right = (PAD.r / W * 100) + '%';
+  handle.setAttribute('aria-valuenow', String(Math.round(pane.h)));
 }
 
 export function hideCrosshair() {

@@ -4,6 +4,7 @@ import { stackLayer } from '../src/indicators/stack.js';
 import { state } from '../src/state.js';
 import { assert, approx, assertNull } from './_lib/assert.mjs';
 import { xauUsidxVote } from '../src/judge/votes.js';
+import { matchSignalsToFactors } from '../src/view/signal-rail.js';
 
 function bar(t, o, h, l, c) {
   return { t: t, o: o, h: h, l: l, c: c };
@@ -23,8 +24,15 @@ function bar(t, o, h, l, c) {
   }
   const out = xauUsidxVote(gold, dxy);
   assert(out.vote === 1, 'xau-usidx negative correlation bullish vote');
-  assert(out.corr < -0.25, 'xau-usidx negative correlation');
+  assert(out.active && out.corr < -0.45, 'xau-usidx recent negative correlation confirmed');
   assert(xauUsidxVote(gold.slice(0, 4), dxy.slice(0, 4)).vote === 0, 'xau-usidx short sample neutral');
+
+  const matched = matchSignalsToFactors([
+    { i: gold.length - 1, dir: 1, kind: 'st', lab: '趋势转多' },
+    { i: gold.length - 1, dir: -1, kind: 'st', lab: '趋势转空' },
+  ], gold, dxy, true);
+  assert(matched.length === 1 && matched[0].dir === 1, 'signal rail keeps only event aligned with confirmed xau-usidx relation');
+  assert(/USD同向/.test(matched[0].lab), 'matched signal records macro alignment');
 }
 
 // --- ema：首值种子，k=2/(period+1) ---

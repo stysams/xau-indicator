@@ -170,7 +170,7 @@ try {
             <button type="button" data-n="360" aria-pressed="false">360</button>
             <button type="button" data-n="480" aria-pressed="false">480</button>
           </div>
-          <span class="hint-wide xau-usidx-factor-info" id="xauUsidxFactorInfo" hidden></span>
+          <span class="xau-usidx-factor-info" id="xauUsidxFactorInfo" hidden></span>
           <span class="toolbar-end">
             <span class="lab num" id="zoomLab">全部</span>
             <button type="button" class="btn" id="btnZoomReset" disabled>复位</button>
@@ -416,7 +416,7 @@ try {
         </div>
         <div class="chart-wrap" id="chartWrap">
           <div class="chart-stage" id="chartStage">
-            <svg id="chart" viewBox="0 0 960 400" preserveAspectRatio="none" role="img" aria-label="分钟 K 线，滚轮调整可见根数，左侧按钮等比缩放画面，左键拖动平移时间与价格视窗"></svg>
+            <svg id="chart" viewBox="0 0 960 400" preserveAspectRatio="none" role="img" aria-label="分钟 K 线，滚轮调整可见根数，左侧按钮调整蜡烛高度，左键拖动平移时间与价格视窗"></svg>
             <div class="crosshair" id="crosshair" aria-hidden="true">
               <div class="cross-h" id="crossH"></div>
               <div class="cross-price num" id="crossPrice">--</div>
@@ -430,11 +430,14 @@ try {
             <div class="tip" id="tip"></div>
             <div class="sig-tip num" id="sigTip" hidden></div>
             <div class="empty" id="chartEmpty">正在拉取 XAUUSD K 线</div>
+            <div class="usidx-resizer" id="usidxResizer" role="separator" aria-orientation="horizontal" aria-valuemin="48" aria-valuemax="160" aria-valuenow="62" aria-label="拖动调整 USIDX 副图高度" title="拖动调整 USIDX 副图高度" hidden>
+              <span aria-hidden="true"></span>
+            </div>
           </div>
-          <div class="chart-magnify" role="group" aria-label="主图画面倍率">
-            <button type="button" id="btnChartMagnifyIn" title="等比放大主图画面" aria-label="等比放大主图画面">+</button>
+          <div class="chart-magnify" role="group" aria-label="蜡烛高度">
+            <button type="button" id="btnChartMagnifyIn" title="增加蜡烛高度" aria-label="增加蜡烛高度">+</button>
             <output class="num" id="chartMagnifyLab" aria-live="polite">100%</output>
-            <button type="button" id="btnChartMagnifyOut" title="等比缩小主图画面" aria-label="等比缩小主图画面">−</button>
+            <button type="button" id="btnChartMagnifyOut" title="减少蜡烛高度" aria-label="减少蜡烛高度">−</button>
           </div>
         </div>
         <div class="sig-rail" id="sigRail" aria-label="时间信号线说明">

@@ -28,7 +28,7 @@ export function syncMarketChrome() {
     $('chartEmpty').textContent = '正在拉取 ' + m.symbol + ' K 线';
   }
   const svg = $('chart');
-  if (svg) svg.setAttribute('aria-label', m.name + ' K 线，滚轮调整可见根数，左侧按钮等比缩放画面，左键拖动平移时间与价格视窗');
+  if (svg) svg.setAttribute('aria-label', m.name + ' K 线，滚轮调整可见根数，左侧按钮调整蜡烛高度，左键拖动平移时间与价格视窗');
 }
 
 export function clearMarketData() {
@@ -122,16 +122,16 @@ export function zoomAt(clientX, factor) {
 export function setChartMagnify(value) {
   const next = normalizeChartMagnify(value);
   state.chartMagnify = next;
-  const stage = $('chartStage');
   const lab = $('chartMagnifyLab');
   const zoomIn = $('btnChartMagnifyIn');
   const zoomOut = $('btnChartMagnifyOut');
-  if (stage) stage.style.setProperty('--chart-magnify', String(next));
   if (lab) lab.textContent = Math.round(next * 100) + '%';
   if (zoomIn) zoomIn.disabled = next >= CHART_MAGNIFY_MAX;
   if (zoomOut) zoomOut.disabled = next <= CHART_MAGNIFY_MIN;
   if ($('tip')) $('tip').classList.remove('show');
   hideCrosshair();
+  const klines = barsForChart();
+  if (klines.length) drawChart(klines, state.ticker, state.hover);
   requestAnimationFrame(refreshCrosshair);
 }
 

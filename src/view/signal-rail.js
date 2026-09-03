@@ -9,6 +9,8 @@ import { getSr } from '../indicators/sr.js';
 import { getStack, stackMarkIndex } from '../indicators/stack.js';
 import { getSuperTrend } from '../indicators/supertrend.js';
 import { getTrap } from '../indicators/trap.js';
+import { factorOn } from '../judge/factors.js';
+import { xauUsidxVote } from '../judge/votes.js';
 import { $, H, PAD, W, state } from '../state.js';
 import { svgEl } from './svg.js';
 
@@ -30,6 +32,30 @@ function dedupeSigs(list) {
   });
   out.sort((a, b) => a.i - b.i || String(a.kind).localeCompare(String(b.kind)));
   return out.slice(-SIG_MAX);
+}
+
+const SIGNAL_FACTOR = {
+  hold: 'hold', trap: 'trap', bounce: 'bounce', pull: 'pull', smc: 'smc', bos: 'smc',
+  stack: 'stack', hkld: 'hkld', fib: 'fib', sr: 'sr',
+};
+
+// 技术事件只在其对应判断因子启用时进入时间线。关系因子可用时，以事件
+// 当时可见的数据复核 XAU-USIDX；关系已确认但方向相反的事件不展示。
+export function matchSignalsToFactors(events, klines, usidx, useXauUsidx) {
+  const macroOn = useXauUsidx == null ? factorOn('xauUsidx') : useXauUsidx;
+  return (events || []).filter((event) => {
+    const factor = SIGNAL_FACTOR[event.kind];
+    if (factor && !factorOn(factor)) return false;
+    if (!macroOn || !event.dir || event.i == null || !klines || !usidx || !usidx.length) return true;
+    const at = klines[event.i];
+    if (!at) return true;
+    const relation = xauUsidxVote(klines.slice(0, event.i + 1), usidx.filter((bar) => Number(bar.t) <= Number(at.t)));
+    if (!relation.active) return true;
+    if (relation.vote !== event.dir) return false;
+    event.macro = relation;
+    event.lab = (event.lab || event.kind || '信号') + ' · USD同向';
+    return true;
+  });
 }
 
 export function collectSignalEvents(klines) {
@@ -203,7 +229,7 @@ export function collectSignalEvents(klines) {
     });
   });
 
-  return dedupeSigs(out);
+  return matchSignalsToFactors(dedupeSigs(out), klines, state.usidxBars);
 }
 
 export function drawSignalRail(svg, klines, vis, view, xForIndex) {
