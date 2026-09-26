@@ -2,7 +2,7 @@ import { n } from '../core/format.js';
 import { bollCore, bwRankWindow, macdOf, percentileRank } from '../core/math.js';
 import { state } from '../state.js';
 
-export function analyzeBoll(klines) {
+export function analyzeBoll(klines, tf) {
   const period = state.bollN || 20;
   const kMul = state.bollK || 2;
   if (!klines || klines.length < period + 2) return { ok: false, period: period, kMul: kMul };
@@ -29,7 +29,8 @@ export function analyzeBoll(klines) {
   let shape = '走平';
   if (uSlope > 0 && dSlope < 0) shape = '开口';
   else if (uSlope < 0 && dSlope > 0) shape = '收口';
-  const bwWinN = bwRankWindow(state.tf);
+  // 带宽分位窗口按被分析序列自身周期取；套轨跨周期调用时不随当前图周期漂移
+  const bwWinN = bwRankWindow(tf || state.tf);
   const bwWin = bw.slice(Math.max(0, last - (bwWinN - 1)), last + 1);
   const bwValid = bwWin.filter((v) => v != null).length;
   const bwRank = bwValid >= Math.min(bwWinN, 30) ? percentileRank(bwWin, bw[last]) : null;

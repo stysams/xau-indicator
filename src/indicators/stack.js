@@ -65,7 +65,8 @@ export function stackLayer(klines, meta) {
     squeeze: false, wide: false, reclaimUp: false, reclaimDn: false,
     expandingFromSqueeze: false, shape: '', t: null, n: klines ? klines.length : 0,
   };
-  const b = analyzeBoll(klines);
+  // 层自带的周期决定带宽分位窗口，不能用当前图周期，否则切图会漂移
+  const b = analyzeBoll(klines, meta.id);
   if (!b.ok) return empty;
   const n = klines.length;
   const last = n - 1;

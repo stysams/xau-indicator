@@ -1,3 +1,4 @@
+import { pbClosedEnd } from '../core/bars.js';
 import { atrFallback, n, px } from '../core/format.js';
 import { atr, pivotPoints, significantPivots } from '../core/math.js';
 import { state } from '../state.js';
@@ -32,8 +33,9 @@ export function hsPriorMove(klines, ls, head, kind) {
 }
 
 export function hsScanBreak(klines, t1, t2, rs, head, kind) {
-  const end = Math.max(rs.i + 1, klines.length - 1);
-  for (let i = rs.i + 1; i < end; i++) {
+  // 破颈线/失效只认已收盘 K；已收盘序列必须包含最新收盘，否则确认晚一根
+  const end = pbClosedEnd(klines);
+  for (let i = rs.i + 1; i <= end; i++) {
     const neck = hsNeckAt(t1, t2, i);
     const c = klines[i].c;
     const fail = kind === 'top' ? c > head.price : c < head.price;

@@ -1,3 +1,4 @@
+import { pbClosedEnd } from '../core/bars.js';
 import { px } from '../core/format.js';
 import { state } from '../state.js';
 
@@ -68,29 +69,37 @@ export function computeSuperTrend(klines) {
   const up = new Array(n).fill(null);
   const dn = new Array(n).fill(null);
   const flips = [];
+  // 方向与翻转只认已收盘 K（README 口径：收盘穿越才换向）；
+  // st/up/dn 序列仍全量输出供画线，未收盘那根的穿越只在 why 里标预备。
+  const end = Math.max(period, pbClosedEnd(klines));
   for (let i = 0; i < n; i++) {
     if (dir[i] > 0) up[i] = st[i];
     else if (dir[i] < 0) dn[i] = st[i];
-    if (i > period && dir[i] && dir[i - 1] && dir[i] !== dir[i - 1]) {
+    if (i > period && i <= end && dir[i] && dir[i - 1] && dir[i] !== dir[i - 1]) {
       flips.push({ i: i, dir: dir[i], price: st[i], close: klines[i].c });
     }
   }
-  const lastDir = dir[n - 1];
-  const last = st[n - 1];
+  const lastDir = dir[end];
+  const last = st[end];
   const lastFlip = flips.length ? flips[flips.length - 1] : null;
+  const liveFlip = end < n - 1 && dir[n - 1] && dir[n - 1] !== dir[end];
+  let why = lastDir > 0
+    ? ('ST' + period + '×' + mult + ' 在价格下方运行，趋势偏多；收盘跌破 ' + px(last) + ' 才转空。只描述结构，不是下单指令。')
+    : lastDir < 0
+      ? ('ST' + period + '×' + mult + ' 在价格上方运行，趋势偏空；收盘站上 ' + px(last) + ' 才转多。只描述结构，不是下单指令。')
+      : '超级趋势样本不足。';
+  if (liveFlip) {
+    why += '未收盘 K 已越过换向位，等收盘确认才换向。';
+  }
   return {
     ok: true, period: period, mult: mult, st: st, dir: dir, up: up, dn: dn,
     flips: flips.slice(-6), flipAt: lastFlip ? lastFlip.i : -1,
-    barsSinceFlip: lastFlip ? (n - 1 - lastFlip.i) : null,
+    barsSinceFlip: lastFlip ? (end - lastFlip.i) : null,
     last: last, lastDir: lastDir,
     status: lastDir > 0 ? 'up' : (lastDir < 0 ? 'down' : 'none'),
     label: lastDir > 0 ? '超级趋势 · 多' : (lastDir < 0 ? '超级趋势 · 空' : '超级趋势'),
     title: '超级趋势',
-    why: lastDir > 0
-      ? ('ST' + period + '×' + mult + ' 在价格下方运行，趋势偏多；收盘跌破 ' + px(last) + ' 才转空。只描述结构，不是下单指令。')
-      : lastDir < 0
-        ? ('ST' + period + '×' + mult + ' 在价格上方运行，趋势偏空；收盘站上 ' + px(last) + ' 才转多。只描述结构，不是下单指令。')
-        : '超级趋势样本不足。',
+    why: why,
   };
 }
 

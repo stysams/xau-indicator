@@ -21,8 +21,17 @@ export function vwapVote(klines) {
 
 export function dxyVote(gold, dxy) {
   if (!gold || !dxy || gold.length < 6 || dxy.length < 6) return { vote: 0, why: 'DXY 对照样本不足' };
-  const g0 = gold[gold.length - 6].c, g1 = gold[gold.length - 1].c;
-  const d0 = dxy[dxy.length - 6].c, d1 = dxy[dxy.length - 1].c;
+  // 按时间戳对齐后再取窗口：一边停更或错峰时，不能拿两段不同时间窗的收盘比方向
+  const dMap = new Map(dxy.map((b) => [Number(b.t), b.c]));
+  const pairs = [];
+  gold.forEach((b) => {
+    const d = dMap.get(Number(b.t));
+    if (Number.isFinite(b.c) && Number.isFinite(d)) pairs.push([b.c, d]);
+  });
+  if (pairs.length < 6) return { vote: 0, why: 'DXY 对照没有足够同步 K 线' };
+  const win = pairs.slice(-6);
+  const g0 = win[0][0], g1 = win[5][0];
+  const d0 = win[0][1], d1 = win[5][1];
   if (![g0, g1, d0, d1].every(Number.isFinite) || !d0 || !g0) return { vote: 0, why: 'DXY 对照数据无效' };
   const gr = (g1 - g0) / g0, dr = (d1 - d0) / d0;
   const threshold = 0.00015;

@@ -1,3 +1,4 @@
+import { pbClosedEnd } from '../core/bars.js';
 import { px } from '../core/format.js';
 import { atr } from '../core/math.js';
 import { state } from '../state.js';
@@ -94,7 +95,10 @@ export function computeBox(klines) {
   const lookback = Math.min(len, n);
   const start = n - lookback;
   const last = klines[n - 1];
-  const atrv = atr(klines, 14) || Math.max(last.c * 0.0005, 1e-6);
+  // 状态口径只认已收盘 K：ATR 与破位判定都不吃未收盘那根的瞬时影线
+  const closedEnd = Math.max(0, pbClosedEnd(klines));
+  const closedBar = klines[closedEnd] || last;
+  const atrv = atr(klines.slice(0, closedEnd + 1), 14) || Math.max(closedBar.c * 0.0005, 1e-6);
   const floor = Math.max(atrv, last.c * 0.0005);
   const radius = Math.max(floor * 0.6, last.c * 0.00018);
   const minH = Math.max(floor * 1.1, last.c * 0.0005);
@@ -176,7 +180,7 @@ export function computeBox(klines) {
   }
   let topTouch = 0, botTouch = 0, lastTopAt = -1, lastBotAt = -1;
   const touches = [];
-  for (let i = boxStart; i < n; i++) {
+  for (let i = boxStart; i <= closedEnd; i++) {
     const k = klines[i];
     if (k.h >= topPx - radius && k.h <= topPx + radius) {
       topTouch += 1;
@@ -190,12 +194,12 @@ export function computeBox(klines) {
     }
   }
   const mid = (topPx + botPx) / 2;
-  const close = last.c;
+  const close = closedBar.c;
   const breakout = Math.max(atrv * 0.4, best.h * 0.06);
 
-  // 破位起点：从末根往前找连续留在边缘之外的第一根，避免指向中途扫一下又收回的那根
+  // 破位起点：从最近已收盘 K 往前找连续留在边缘之外的第一根，避免指向中途扫一下又收回的那根
   function breakFrom(side) {
-    let i = n - 1;
+    let i = closedEnd;
     while (i > boxStart) {
       const c = klines[i - 1].c;
       if (side > 0 ? c > topPx + breakout : c < botPx - breakout) i -= 1;
@@ -241,9 +245,17 @@ export function computeBox(klines) {
     status = 'range'; dir = 0; statusLab = '震荡中';
     pos = (close - botPx) / best.h;
     posLab = pos <= 0.2 ? '贴近下沿' : pos >= 0.8 ? '贴近上沿' : '中轴附近';
+    // 未收盘 K 越过边缘只作预备提示，不算破位
+    let liveNote = '';
+    if (n - 1 > closedEnd) {
+      const liveBar = klines[n - 1];
+      if (liveBar.c > topPx + breakout) liveNote = '；未收盘 K 已越过上沿，等收盘确认是否破位';
+      else if (liveBar.c < botPx - breakout) liveNote = '；未收盘 K 已跌破下沿，等收盘确认是否破位';
+    }
     why = '现价在箱体 ' + px(botPx) + '–' + px(topPx) + ' 之间' +
       (posLab === '中轴附近' ? '' : ('，' + posLab)) +
-      '，上下沿各有触碰。区间内来回，等边缘出现收回迹象再按信号开枪。只描述结构，不是下单指令。';
+      '，上下沿各有触碰。区间内来回，等边缘出现收回迹象再按信号开枪' +
+      liveNote + '。只描述结构，不是下单指令。';
   }
 
   return Object.assign(base, {

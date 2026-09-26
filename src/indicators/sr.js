@@ -1,3 +1,4 @@
+import { pbClosedEnd } from '../core/bars.js';
 import { atrFallback, n, px } from '../core/format.js';
 import { atr, bollCore, pivotPoints, significantPivots } from '../core/math.js';
 import { mkt, state } from '../state.js';
@@ -97,7 +98,9 @@ export function srTouchMeta(klines, cluster, zone, debounce) {
   const gap = debounce == null ? 2 : Math.max(0, debounce);
   const bandLo = zone.lo;
   const bandHi = zone.hi;
-  for (let i = 0; i < klines.length; i++) {
+  // 触碰与破位同口径：未收盘 K 的触碰不算数，避免随实时价闪现又消失
+  const end = Math.max(0, pbClosedEnd(klines));
+  for (let i = 0; i <= end; i++) {
     const bar = klines[i];
     if (bar.h < bandLo || bar.l > bandHi) continue;
     const bounceSup = bar.o > bandHi && bar.c > bandHi && bar.l <= bandHi;
@@ -118,10 +121,12 @@ export function srTouchMeta(klines, cluster, zone, debounce) {
 }
 
 export function srBreakMeta(klines, cluster, zone, thresh) {
-  const end = Math.max(0, klines.length - 1);
+  // 破位只认已收盘 K：传入含 forming bar 的完整序列时排除末根；
+  // 传入已收盘序列（judge 计票路径）时必须包含最新收盘，否则票晚一根
+  const end = Math.max(0, pbClosedEnd(klines));
   let role = cluster.lastRole || cluster.orig;
   const events = [];
-  for (let i = cluster.lastI + 1; i < end; i++) {
+  for (let i = cluster.lastI + 1; i <= end; i++) {
     if (role === 'sup' && klines[i].c < zone.lo - thresh) {
       events.push({ i: i, dir: -1, from: 'sup', to: 'res' });
       role = 'res';
