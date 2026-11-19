@@ -11,7 +11,7 @@ export function trapLook(tf) {
   if (tf === '1m') {
     return { minAge: 4, maxAge: 40, recency: 12, minSweepAtr: 0.14, maxSweepAtr: 0.95, reclaimAtr: 0.12, clusterAtr: 0.35, pinWick: 1.3, multiMax: 4 };
   }
-  if (tf === '5m' || tf === '15m') {
+  if (tf === '3m' || tf === '5m' || tf === '15m') {
     return { minAge: 3, maxAge: 32, recency: 10, minSweepAtr: 0.13, maxSweepAtr: 0.9, reclaimAtr: 0.12, clusterAtr: 0.38, pinWick: 1.25, multiMax: 4 };
   }
   return { minAge: 3, maxAge: 24, recency: 8, minSweepAtr: 0.12, maxSweepAtr: 0.85, reclaimAtr: 0.1, clusterAtr: 0.4, pinWick: 1.2, multiMax: 3 };

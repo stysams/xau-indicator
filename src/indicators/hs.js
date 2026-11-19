@@ -5,7 +5,7 @@ import { state } from '../state.js';
 
 export function hsPivotK(tf) {
   if (tf === '10s') return 5;
-  if (tf === '1m' || tf === '5m') return 4;
+  if (tf === '1m' || tf === '3m' || tf === '5m') return 4;
   return 2;
 }
 

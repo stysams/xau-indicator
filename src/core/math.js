@@ -120,6 +120,7 @@ export function percentileRank(arr, value) {
 
 export function bwRankWindow(tf) {
   if (tf === '10s' || tf === '1m') return 120;
+  if (tf === '3m') return 108;
   if (tf === '5m') return 96;
   if (tf === '15m') return 80;
   return 64;

@@ -165,6 +165,7 @@ try {
           <div class="seg chart-period-seg" role="group" aria-label="K线周期">
             <button type="button" data-tf="10s" aria-pressed="false">10秒</button>
             <button type="button" data-tf="1m" aria-pressed="true">1分</button>
+            <button type="button" data-tf="3m" aria-pressed="false">3分</button>
             <button type="button" data-tf="5m" aria-pressed="false">5分</button>
             <button type="button" data-tf="15m" aria-pressed="false">15分</button>
             <button type="button" data-tf="1h" aria-pressed="false">1时</button>
@@ -259,6 +260,7 @@ try {
               <span class="lab">K线周期</span>
               <div class="seg average-timeframes" role="group" aria-label="均线K线周期">
                 <button type="button" data-average-tf="1m" aria-pressed="true">1m</button>
+                <button type="button" data-average-tf="3m" aria-pressed="false">3m</button>
                 <button type="button" data-average-tf="5m" aria-pressed="false">5m</button>
                 <button type="button" data-average-tf="15m" aria-pressed="false">15m</button>
                 <button type="button" data-average-tf="1h" aria-pressed="false">1h</button>
@@ -510,6 +512,16 @@ try {
         </div>
       </div>
       <div class="pat-body" id="patternBody">
+        <div class="pat-row pat-mode-row">
+          <div class="pat-key">信号档位</div>
+          <div class="pat-val pat-mode-val">
+            <div class="pat-mode-seg" role="group" aria-label="形态开单信号档位">
+              <button type="button" data-pattern-mode="classic" aria-pressed="true" title="经典波段内核（原版逻辑）：顺 RF 或强反转穿 EMA9 即触发，完整捕捉高低拐点">经典</button>
+              <button type="button" data-pattern-mode="safe" aria-pressed="false" title="经典逻辑 + 双顶压力墙/布林极值防追顶过滤">防追顶</button>
+              <button type="button" data-pattern-mode="strict" aria-pressed="false" title="严格顺势回踩 + 反震荡过滤 + TP1 移动保本：单少但稳">稳健</button>
+            </div>
+          </div>
+        </div>
         <div class="pat-row">
           <div class="pat-key">当前订单</div>
           <div class="pat-val is-muted" id="patOrder"><i class="pat-dot flat" aria-hidden="true"></i>观望中</div>
@@ -545,6 +557,10 @@ try {
         <div class="pat-row">
           <div class="pat-key">盈亏</div>
           <div class="pat-val num is-muted" id="patPnl">0%</div>
+        </div>
+        <div class="pat-row">
+          <div class="pat-key">近端胜率</div>
+          <div class="pat-val num is-muted" id="patWinRate">--</div>
         </div>
         <div class="pat-row">
           <div class="pat-key">RF 信号</div>

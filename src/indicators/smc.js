@@ -6,7 +6,7 @@ import { state } from '../state.js';
 export function smcSigLook(tf) {
   if (tf === '10s') return { recency: 18, maxWait: 52, doneAtr: 0.85 };
   if (tf === '1m') return { recency: 12, maxWait: 36, doneAtr: 0.85 };
-  if (tf === '5m' || tf === '15m') return { recency: 10, maxWait: 28, doneAtr: 0.8 };
+  if (tf === '3m' || tf === '5m' || tf === '15m') return { recency: 10, maxWait: 28, doneAtr: 0.8 };
   return { recency: 8, maxWait: 20, doneAtr: 0.75 };
 }
 
@@ -202,7 +202,7 @@ export function smcLiveOf(signals, n, recency) {
 
 export function smcPivotK(tf) {
   if (tf === '10s') return 3;
-  if (tf === '1m' || tf === '5m') return 3;
+  if (tf === '1m' || tf === '3m' || tf === '5m') return 3;
   return 2;
 }
 

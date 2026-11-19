@@ -3,7 +3,7 @@ import { tfSpanMs } from '../core/bars.js';
 
 export const AVERAGE_KINDS = ['ma', 'ema'];
 export const AVERAGE_PERIODS = [5, 9, 10, 12, 20, 21, 30, 50, 100, 200];
-export const AVERAGE_TFS = ['1m', '5m', '15m', '1h', '4h', '1d'];
+export const AVERAGE_TFS = ['1m', '3m', '5m', '15m', '1h', '4h', '1d'];
 
 export function averageLineId(line) {
   return line.kind + '-' + line.tf + '-' + line.period;

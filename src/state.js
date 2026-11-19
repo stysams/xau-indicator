@@ -22,7 +22,7 @@ export const MARKETS = {
     roundMerge: 1, roundStand: { '1h': 10, '4h': 10, '1d': 10, default: 5 },
     // 地板按安静市 ATR 量级设定，避免常态下 tpAtr/slAtr 滑杆被恒定钳死
     fast: { tpAtr: 1.2, slAtr: 0.95, tpMin: 0.55, slMin: 0.4, tpMax: 3.2, slMax: 2.6 },
-    stream: ['1m', '5m', '15m', '1h', '4h', '1d'],
+    stream: ['1m', '3m', '5m', '15m', '1h', '4h', '1d'],
   },
   eth: {
     id: 'eth', kind: 'perp', symbol: 'ETH_USDT', settle: 'usdt',
@@ -30,7 +30,7 @@ export const MARKETS = {
     digits: 2, tick: 0.01, atrFloor: 0.4, hasSession: false, ws10s: true,
     roundMerge: 1, roundStand: { '1h': 50, '4h': 50, '1d': 50, default: 10 },
     fast: { tpAtr: 1.2, slAtr: 0.95, pctMin: 0.00045, pctMax: 0.0016 },
-    stream: ['10s', '1m', '5m', '15m', '1h', '4h', '1d'],
+    stream: ['10s', '1m', '3m', '5m', '15m', '1h', '4h', '1d'],
   },
   btc: {
     id: 'btc', kind: 'perp', symbol: 'BTC_USDT', settle: 'usdt',
@@ -38,7 +38,7 @@ export const MARKETS = {
     digits: 1, tick: 0.1, atrFloor: 4, hasSession: false, ws10s: true,
     roundMerge: 10, roundStand: { '1h': 100, '4h': 100, '1d': 100, default: 50 },
     fast: { tpAtr: 1.2, slAtr: 0.95, pctMin: 0.0004, pctMax: 0.0015 },
-    stream: ['10s', '1m', '5m', '15m', '1h', '4h', '1d'],
+    stream: ['10s', '1m', '3m', '5m', '15m', '1h', '4h', '1d'],
   },
 };
 
@@ -163,6 +163,7 @@ export const state = {
   _hold: null,
   _patternKey: '',
   _pattern: null,
+  patternMode: 'classic',
   patternPos: null,
   patternDrag: null,
   patternCollapsed: false,

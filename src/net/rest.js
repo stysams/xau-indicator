@@ -119,7 +119,7 @@ export function isLiveFollow(end, n, count) {
 
 export function parseStreamName(name) {
   const raw = String(name || '');
-  const known = ['10s', '1m', '5m', '15m', '30m', '1h', '4h', '8h', '1d', '7d'];
+  const known = ['10s', '1m', '3m', '5m', '15m', '30m', '1h', '4h', '8h', '1d', '7d'];
   for (let i = 0; i < known.length; i++) {
     const iv = known[i];
     if (raw.startsWith(iv + '_')) return { interval: iv, symbol: raw.slice(iv.length + 1) };

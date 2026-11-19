@@ -2195,6 +2195,34 @@ html[data-color="cn"] .pat-panel {
   filter: brightness(1.18);
 }
 .pat-tp-sep { color: rgba(243, 245, 248, .45); }
+.pat-mode-val { padding: 4px 8px; }
+.pat-mode-seg {
+  display: inline-grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  gap: 4px;
+}
+.pat-mode-seg button {
+  appearance: none;
+  border: 1px solid rgba(226, 198, 55, .36);
+  background: rgba(255, 255, 255, .05);
+  color: var(--pat-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  line-height: 1.25;
+}
+.pat-mode-seg button:hover {
+  color: var(--pat-ink);
+  border-color: rgba(226, 198, 55, .65);
+}
+.pat-mode-seg button[aria-pressed="true"] {
+  background: var(--pat-gold);
+  border-color: var(--pat-gold);
+  color: #121418;
+}
 .ohlc {
   margin-top: auto;
   border: 0;

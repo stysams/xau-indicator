@@ -671,7 +671,12 @@ export function drawPatternPlan(svg, pack, vis, view, x, vx, y, xRight, plotTop,
 
     const lines = [
       { key: 'entry', price: active.entry, yy: yEntry, color: '#0ea5e9', dash: '', w: '1.4', lab: '开仓 ' + px(active.entry) },
-      { key: 'sl', price: active.sl, yy: ySl, color: 'var(--down)', dash: '5 3', w: '1.25', lab: '止损 ' + px(active.sl) },
+      {
+        key: 'sl', price: active.sl, yy: ySl,
+        color: active.breakeven ? 'var(--up)' : 'var(--down)',
+        dash: '5 3', w: '1.25',
+        lab: (active.breakeven ? '保本止损 ' : '止损 ') + px(active.sl),
+      },
       { key: 'tp1', price: active.tp1, yy: yTp1, color: 'var(--up)', dash: '5 3', w: '1.25', lab: (active.hitTp1 ? 'TP1✓ ' : 'TP1 ') + px(active.tp1) },
       { key: 'tp2', price: active.tp2, yy: yTp2, color: 'var(--up)', dash: '2 3', w: '1.15', lab: 'TP2 ' + px(active.tp2) },
     ];

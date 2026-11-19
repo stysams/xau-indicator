@@ -1,8 +1,14 @@
 import { pbClosedEnd } from '../core/bars.js';
 import { px } from '../core/format.js';
-import { ema } from '../core/math.js';
+import { bollCore, ema, rsiSeries } from '../core/math.js';
 import { tzParts } from '../core/session.js';
 import { mkt, state } from '../state.js';
+
+export const PATTERN_MODES = ['classic', 'safe', 'strict'];
+
+export function normalizePatternMode(v) {
+  return PATTERN_MODES.indexOf(v) >= 0 ? v : 'classic';
+}
 
 export const SESSION_PROFILES = {
   asia: { id: 'asia', name: '亚盘', slMult: 1.8, tp1Mult: 1.8, tp2Mult: 3.0 },
@@ -10,6 +16,9 @@ export const SESSION_PROFILES = {
   overlap: { id: 'overlap', name: '欧美重叠', slMult: 2.2, tp1Mult: 2.5, tp2Mult: 4.0 },
   us: { id: 'us', name: '美盘', slMult: 2.0, tp1Mult: 2.2, tp2Mult: 3.5 },
 };
+
+// 稳健档 TP1 触达后移动保本止损的缓冲幅度（ATR 倍数）
+export const BE_CUSHION_ATR = 0.15;
 
 export function sessionProfileForTs(tsMs) {
   const t = Number.isFinite(tsMs) ? tsMs : Date.now();
@@ -49,6 +58,18 @@ function wilderAtrSeries(klines, period) {
     out[i] = a;
   }
   return out;
+}
+
+// Kaufman 趋势效率比 ER(len)：用于稳健档过滤窄幅锯齿震荡
+export function efficiencyRatio(closes, i, len) {
+  len = len || 14;
+  if (!closes || i < len || i >= closes.length) return 0;
+  const change = Math.abs(closes[i] - closes[i - len]);
+  let vol = 0;
+  for (let j = i - len + 1; j <= i; j++) {
+    vol += Math.abs(closes[j] - closes[j - 1]);
+  }
+  return vol > 0 ? change / vol : 0;
 }
 
 export function computeRangeFilter(closes, period, mult) {
@@ -93,21 +114,27 @@ function candleMetrics(k) {
     hi: hi, lo: lo, range: range, body: body,
     upWick: upWick, dnWick: dnWick,
     bull: k.c > k.o, bear: k.c < k.o,
+    closePos: range > 0 ? (k.c - k.l) / range : 0.5,
   };
 }
 
-// K线形态识别：返回 { dir, name, code, weight, bars } 或 null
-export function detectBarPattern(klines, i, atrArr) {
+// 经典 K 线形态识别（与 2ec7e90 保持完全一致的经典口径；strict 档附加收盘强度过滤）
+export function detectBarPattern(klines, i, atrArr, mode) {
   if (!klines || i < 2 || i >= klines.length) return null;
+  const strict = mode === 'strict';
   const at = Math.max(Number(atrArr && atrArr[i]) || 0, (mkt && mkt().atrFloor) || 0.4);
   const m0 = candleMetrics(klines[i]);
   const m1 = candleMetrics(klines[i - 1]);
   const m2 = candleMetrics(klines[i - 2]);
 
-  if (m0.range < at * 0.38) return null;
+  if (m0.range < at * (strict ? 0.45 : 0.38)) return null;
+  if (strict && m0.range > at * 3.0) return null;
+
+  const bullCloseOk = !strict || m0.closePos >= 0.62;
+  const bearCloseOk = !strict || m0.closePos <= 0.38;
 
   // 1. 启明星 (Morning Star) / 黄昏之星 (Evening Star) - 3根反转形态
-  if (m2.bear && m2.body >= at * 0.55 && m0.bull && m0.body >= at * 0.45) {
+  if (bullCloseOk && m2.bear && m2.body >= at * 0.55 && m0.bull && m0.body >= at * 0.45) {
     const starSmall = m1.body <= Math.max(m2.body * 0.42, at * 0.35);
     const starLow = m1.hi <= m2.o - m2.body * 0.35 && m1.l <= Math.min(m2.l, m0.l) + at * 0.15;
     const mid2 = (m2.o + m2.c) / 2;
@@ -115,7 +142,7 @@ export function detectBarPattern(klines, i, atrArr) {
       return { dir: 1, name: '启明星', code: 'morning_star', weight: 3, bars: 3 };
     }
   }
-  if (m2.bull && m2.body >= at * 0.55 && m0.bear && m0.body >= at * 0.45) {
+  if (bearCloseOk && m2.bull && m2.body >= at * 0.55 && m0.bear && m0.body >= at * 0.45) {
     const starSmall = m1.body <= Math.max(m2.body * 0.42, at * 0.35);
     const starHigh = m1.lo >= m2.o + m2.body * 0.35 && m1.h >= Math.max(m2.h, m0.h) - at * 0.15;
     const mid2 = (m2.o + m2.c) / 2;
@@ -125,14 +152,14 @@ export function detectBarPattern(klines, i, atrArr) {
   }
 
   // 2. 红三兵 / 三只乌鸦 - 3根强动能延续形态
-  if (m2.bull && m1.bull && m0.bull && m2.c < m1.c && m1.c < m0.c) {
+  if (bullCloseOk && m2.bull && m1.bull && m0.bull && m2.c < m1.c && m1.c < m0.c) {
     const bodiesOk = m2.body >= at * 0.35 && m1.body >= at * 0.35 && m0.body >= at * 0.40;
     const wicksOk = m0.upWick <= m0.body * 0.65 && m1.upWick <= m1.body * 0.75;
     if (bodiesOk && wicksOk) {
       return { dir: 1, name: '红三兵', code: 'three_soldiers', weight: 3, bars: 3 };
     }
   }
-  if (m2.bear && m1.bear && m0.bear && m2.c > m1.c && m1.c > m0.c) {
+  if (bearCloseOk && m2.bear && m1.bear && m0.bear && m2.c > m1.c && m1.c > m0.c) {
     const bodiesOk = m2.body >= at * 0.35 && m1.body >= at * 0.35 && m0.body >= at * 0.40;
     const wicksOk = m0.dnWick <= m0.body * 0.65 && m1.dnWick <= m1.body * 0.75;
     if (bodiesOk && wicksOk) {
@@ -140,26 +167,26 @@ export function detectBarPattern(klines, i, atrArr) {
     }
   }
 
-  // 3. 看涨吞没 / 看跌吞没 - 2根强反转形态
-  if (m1.bear && m0.bull && m0.body >= at * 0.45 && m0.body > m1.body * 1.08) {
+  // 3. 看涨吞没 / 看跌吞没 - 2根强反转形态（保持 1.08 实体倍比，避免假反抽洗单）
+  if (bullCloseOk && m1.bear && m0.bull && m0.body >= at * 0.45 && m0.body > m1.body * 1.08) {
     if (m0.c >= m1.o && m0.o <= m1.c + at * 0.10) {
       return { dir: 1, name: '看涨吞没', code: 'bull_engulf', weight: 2, bars: 2 };
     }
   }
-  if (m1.bull && m0.bear && m0.body >= at * 0.45 && m0.body > m1.body * 1.08) {
+  if (bearCloseOk && m1.bull && m0.bear && m0.body >= at * 0.45 && m0.body > m1.body * 1.08) {
     if (m0.c <= m1.o && m0.o >= m1.c - at * 0.10) {
       return { dir: -1, name: '看跌吞没', code: 'bear_engulf', weight: 2, bars: 2 };
     }
   }
 
   // 4. 刺透形态 / 乌云盖顶 - 2根反转形态
-  if (m1.bear && m1.body >= at * 0.55 && m0.bull && m0.body >= at * 0.40) {
+  if (bullCloseOk && m1.bear && m1.body >= at * 0.55 && m0.bull && m0.body >= at * 0.40) {
     const mid1 = (m1.o + m1.c) / 2;
     if (m0.o <= m1.c + at * 0.08 && m0.c > mid1 && m0.c < m1.o) {
       return { dir: 1, name: '刺透形态', code: 'piercing', weight: 2, bars: 2 };
     }
   }
-  if (m1.bull && m1.body >= at * 0.55 && m0.bear && m0.body >= at * 0.40) {
+  if (bearCloseOk && m1.bull && m1.body >= at * 0.55 && m0.bear && m0.body >= at * 0.40) {
     const mid1 = (m1.o + m1.c) / 2;
     if (m0.o >= m1.c - at * 0.08 && m0.c < mid1 && m0.c > m1.o) {
       return { dir: -1, name: '乌云盖顶', code: 'dark_cloud', weight: 2, bars: 2 };
@@ -169,10 +196,10 @@ export function detectBarPattern(klines, i, atrArr) {
   // 5. 孕线突破 (Inside Bar Breakout) - 3根蓄势破位
   const inside = m1.h <= m2.h + at * 0.04 && m1.l >= m2.l - at * 0.04 && m2.range >= at * 0.6;
   if (inside && m0.body >= at * 0.42) {
-    if (m0.bull && m0.c > m2.h) {
+    if (bullCloseOk && m0.bull && m0.c > m2.h) {
       return { dir: 1, name: '孕线上破', code: 'inside_up', weight: 2, bars: 3 };
     }
-    if (m0.bear && m0.c < m2.l) {
+    if (bearCloseOk && m0.bear && m0.c < m2.l) {
       return { dir: -1, name: '孕线下破', code: 'inside_dn', weight: 2, bars: 3 };
     }
   }
@@ -189,12 +216,12 @@ export function detectBarPattern(klines, i, atrArr) {
   if (m0.range >= at * 0.65) {
     const minBody = Math.max(m0.body, at * 0.10);
     if (m0.dnWick >= minBody * 2.0 && m0.dnWick >= m0.range * 0.56 && m0.upWick <= m0.range * 0.25) {
-      if (m0.l <= recentLo + at * 0.18) {
+      if (m0.l <= recentLo + at * 0.18 && (!strict || m0.closePos >= 0.65)) {
         return { dir: 1, name: '锤子线', code: 'hammer', weight: 1, bars: 1 };
       }
     }
     if (m0.upWick >= minBody * 2.0 && m0.upWick >= m0.range * 0.56 && m0.dnWick <= m0.range * 0.25) {
-      if (m0.h >= recentHi - at * 0.18) {
+      if (m0.h >= recentHi - at * 0.18 && (!strict || m0.closePos <= 0.35)) {
         return { dir: -1, name: '流星线', code: 'shooting_star', weight: 1, bars: 1 };
       }
     }
@@ -203,22 +230,74 @@ export function detectBarPattern(klines, i, atrArr) {
   return null;
 }
 
-function emptyPlan(nowMs, why) {
+// 判断是否撞在「多重受阻压力天花板 / 支撑地板」或布林极端外沿（防追顶/防砸底档与稳健档使用）
+export function isBlockedByWall(klines, i, dir, at, boll) {
+  if (!klines || i < 4 || !at) return false;
+  const k = klines[i];
+  if (boll && boll.mid[i] != null && boll.sd[i] > 0) {
+    const up = boll.mid[i] + 2 * boll.sd[i];
+    const dn = boll.mid[i] - 2 * boll.sd[i];
+    const pb = (k.c - dn) / Math.max(1e-9, up - dn);
+    if (dir > 0 && pb > 0.92) return true;
+    if (dir < 0 && pb < 0.08) return true;
+  }
+  const from = Math.max(0, i - 40);
+  const to = i - 3;
+  if (to <= from + 4) return false;
+  let hi = -Infinity;
+  let lo = Infinity;
+  for (let j = from; j <= to; j++) {
+    if (klines[j].h > hi) hi = klines[j].h;
+    if (klines[j].l < lo) lo = klines[j].l;
+  }
+  if (dir > 0 && k.c <= hi + at * 0.10 && (hi - k.c) < at * 0.90) {
+    let touches = 0;
+    let lastT = -99;
+    for (let j = from; j <= to; j++) {
+      if (klines[j].h >= hi - at * 0.45 && j - lastT >= 3) {
+        touches++;
+        lastT = j;
+      }
+    }
+    if (touches >= 2) return true;
+  }
+  if (dir < 0 && k.c >= lo - at * 0.10 && (k.c - lo) < at * 0.90) {
+    let touches = 0;
+    let lastT = -99;
+    for (let j = from; j <= to; j++) {
+      if (klines[j].l <= lo + at * 0.45 && j - lastT >= 3) {
+        touches++;
+        lastT = j;
+      }
+    }
+    if (touches >= 2) return true;
+  }
+  return false;
+}
+
+function emptyPlan(nowMs, mode, why) {
   const sess = sessionProfileForTs(nowMs);
   return {
     ok: false,
-    sig: 'empty',
+    mode: mode,
+    sig: 'empty:' + mode,
     trendDir: 0,
     trendLab: '观望',
     session: sess,
+    orderSession: sess,
     multText: formatSessionMults(sess),
     active: null,
     lastClosed: null,
     forming: null,
+    watch: null,
     rfDir: 0,
     rfSignal: '等待数据',
     rfFilt: [],
+    er: 0,
+    chopFiltered: false,
     marks: [],
+    history: [],
+    stats: { total: 0, wins: 0, tp1Hits: 0, tp2Hits: 0, losses: 0, winRate: null },
     pnlPct: null,
     pnlPts: null,
     lastPx: null,
@@ -232,7 +311,7 @@ function buildOrder(klines, i, dir, pattern, atrVal, sess) {
   const entry = k.c;
   const floor = (mkt && mkt().atrFloor) || 0.4;
   const unit = Math.max(Number(atrVal) || 0, floor);
-  const sl = dir > 0 ? entry - unit * sess.slMult : entry + unit * sess.slMult;
+  const origSl = dir > 0 ? entry - unit * sess.slMult : entry + unit * sess.slMult;
   const tp1 = dir > 0 ? entry + unit * sess.tp1Mult : entry - unit * sess.tp1Mult;
   const tp2 = dir > 0 ? entry + unit * sess.tp2Mult : entry - unit * sess.tp2Mult;
   return {
@@ -241,7 +320,8 @@ function buildOrder(klines, i, dir, pattern, atrVal, sess) {
     t: k.t,
     dir: dir,
     entry: entry,
-    sl: sl,
+    origSl: origSl,
+    sl: origSl,
     tp1: tp1,
     tp2: tp2,
     atr: unit,
@@ -249,14 +329,16 @@ function buildOrder(klines, i, dir, pattern, atrVal, sess) {
     session: sess,
     status: 'open',
     hitTp1: false,
+    breakeven: false,
     exitI: -1,
     exitPx: null,
   };
 }
 
-export function computePatternPlan(klines, ticker, nowMs) {
+export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
   const now = Number.isFinite(nowMs) ? nowMs : Date.now();
-  if (!klines || klines.length < 24) return emptyPlan(now);
+  const mode = normalizePatternMode(modeOverride != null ? modeOverride : state.patternMode);
+  if (!klines || klines.length < 24) return emptyPlan(now, mode);
 
   const n = klines.length;
   const closes = klines.map((k) => k.c);
@@ -264,18 +346,25 @@ export function computePatternPlan(klines, ticker, nowMs) {
   const e9 = ema(closes, 9);
   const e20 = ema(closes, 20);
   const e50 = ema(closes, 50);
+  const rsi14 = rsiSeries(closes, 14);
+  const boll = bollCore(closes, 20);
   const rf = computeRangeFilter(closes, 20, 2.0);
   const end = Math.max(14, pbClosedEnd(klines));
   const hasForming = end < n - 1;
+  const floor = (mkt && mkt().atrFloor) || 0.4;
+  const isStrict = mode === 'strict';
+  const useWall = mode === 'safe' || mode === 'strict';
 
-  // 逐根回放已收盘 K 线，维护信号与当前订单状态，避免未来函数与重绘
   let active = null;
   let lastClosed = null;
+  let coolUntil = -1;
   const marks = [];
+  const history = [];
 
   for (let i = 15; i <= end; i++) {
     const k = klines[i];
     const at = atrArr[i] || atrArr[i - 1] || 0;
+    const effAt = Math.max(at, floor);
     const rfD = rf.dir[i];
     const prevRfD = rf.dir[i - 1];
     const rfFlipped = rfD !== 0 && prevRfD !== 0 && rfD !== prevRfD;
@@ -283,45 +372,68 @@ export function computePatternPlan(klines, ticker, nowMs) {
     // 1. 先检查当前持仓是否触发止损 / TP1 / TP2
     if (active) {
       if (active.dir > 0) {
-        if (k.h >= active.tp1) active.hitTp1 = true;
         if (k.l <= active.sl) {
-          active.status = 'sl';
+          active.status = (isStrict && active.hitTp1) ? 'be' : 'sl';
           active.exitI = i;
           active.exitPx = active.sl;
           lastClosed = active;
+          history.push(active);
+          if (isStrict && !active.hitTp1) coolUntil = i + 2;
           active = null;
-        } else if (k.h >= active.tp2) {
-          active.status = 'tp2';
-          active.exitI = i;
-          active.exitPx = active.tp2;
-          lastClosed = active;
-          active = null;
+        } else {
+          if (!active.hitTp1 && k.h >= active.tp1) {
+            active.hitTp1 = true;
+            if (isStrict) {
+              active.breakeven = true;
+              active.sl = active.entry - active.atr * BE_CUSHION_ATR;
+            }
+          }
+          if (k.h >= active.tp2) {
+            active.status = 'tp2';
+            active.exitI = i;
+            active.exitPx = active.tp2;
+            lastClosed = active;
+            history.push(active);
+            active = null;
+          }
         }
       } else {
-        if (k.l <= active.tp1) active.hitTp1 = true;
         if (k.h >= active.sl) {
-          active.status = 'sl';
+          active.status = (isStrict && active.hitTp1) ? 'be' : 'sl';
           active.exitI = i;
           active.exitPx = active.sl;
           lastClosed = active;
+          history.push(active);
+          if (isStrict && !active.hitTp1) coolUntil = i + 2;
           active = null;
-        } else if (k.l <= active.tp2) {
-          active.status = 'tp2';
-          active.exitI = i;
-          active.exitPx = active.tp2;
-          lastClosed = active;
-          active = null;
+        } else {
+          if (!active.hitTp1 && k.l <= active.tp1) {
+            active.hitTp1 = true;
+            if (isStrict) {
+              active.breakeven = true;
+              active.sl = active.entry + active.atr * BE_CUSHION_ATR;
+            }
+          }
+          if (k.l <= active.tp2) {
+            active.status = 'tp2';
+            active.exitI = i;
+            active.exitPx = active.tp2;
+            lastClosed = active;
+            history.push(active);
+            active = null;
+          }
         }
       }
     }
 
-    // 2. 检测本根已收盘 K 线的形态信号
-    let pat = detectBarPattern(klines, i, atrArr);
+    if (isStrict && (active || i <= coolUntil || i < 20)) continue;
 
-    // 若未识别到经典形态，但 RF 方向翻转且当根为强劲实体突破 K 线，也视作形态突破
-    if (!pat && rfFlipped) {
+    // 2. 检测本根已收盘 K 线的形态信号
+    let pat = detectBarPattern(klines, i, atrArr, mode);
+
+    // 经典/防追顶档保留 RF 翻转强实体突破（强势阳破 / 强势阴破）
+    if (!pat && !isStrict && rfFlipped) {
       const m0 = candleMetrics(k);
-      const effAt = Math.max(at, (mkt && mkt().atrFloor) || 0.4);
       if (m0.range >= effAt * 0.7 && m0.body >= m0.range * 0.6 && ((rfD > 0 && m0.bull) || (rfD < 0 && m0.bear))) {
         pat = {
           dir: rfD,
@@ -335,14 +447,35 @@ export function computePatternPlan(klines, ticker, nowMs) {
 
     if (!pat) continue;
 
-    // 3. 结合趋势与 RF 过滤，避免逆势弱形态乱开单
+    // 3. 过滤条件
     const alignedRf = rfD === 0 || pat.dir === rfD;
     const onEmaSide = pat.dir > 0 ? k.c >= e9[i] : k.c <= e9[i];
-    const qualified = alignedRf || (pat.weight >= 2 && onEmaSide);
+    if (useWall && isBlockedByWall(klines, i, pat.dir, effAt, boll)) continue;
+
+    let qualified = false;
+    if (!isStrict) {
+      // 经典 / 防追顶档：与 2ec7e90 完全一致的波段拐点 + RF 顺势口径
+      qualified = alignedRf || (pat.weight >= 2 && onEmaSide);
+    } else {
+      // 稳健档：严格顺势回踩 + 反震荡效率过滤
+      const prev20 = e20[Math.max(0, i - 3)];
+      const slopeOk = pat.dir > 0 ? (e20[i] >= prev20) : (e20[i] <= prev20);
+      const onE20 = pat.dir > 0 ? k.c > e20[i] : k.c < e20[i];
+      const er = efficiencyRatio(closes, i, 14);
+      const distE20 = pat.dir > 0 ? (k.c - e20[i]) / effAt : (e20[i] - k.c) / effAt;
+      const r = rsi14[i] != null ? rsi14[i] : 50;
+      let touched = false;
+      for (let j = Math.max(0, i - 2); j <= i; j++) {
+        if (pat.dir > 0 && klines[j].l <= Math.max(e9[j], e20[j]) + effAt) touched = true;
+        if (pat.dir < 0 && klines[j].h >= Math.min(e9[j], e20[j]) - effAt) touched = true;
+      }
+      qualified = rfD === pat.dir && slopeOk && onE20 && er >= 0.14 && touched && distE20 <= 2.0 &&
+        (pat.dir > 0 ? r <= 72 : r >= 28);
+    }
+
     if (!qualified) continue;
 
     const sess = sessionProfileForTs(k.t * 1000);
-
     if (!active) {
       active = buildOrder(klines, i, pat.dir, pat, at, sess);
       marks.push({
@@ -350,25 +483,25 @@ export function computePatternPlan(klines, ticker, nowMs) {
         t: k.t,
         dir: pat.dir,
         entry: active.entry,
-        sl: active.sl,
+        sl: active.origSl,
         tp1: active.tp1,
         tp2: active.tp2,
         pattern: pat,
         session: sess,
       });
-    } else if (active.dir !== pat.dir && (pat.weight >= 2 || alignedRf)) {
-      // 反向强形态或顺 RF 翻转时平掉旧单并反手开新单
+    } else if (!isStrict && active.dir !== pat.dir && (pat.weight >= 2 || alignedRf)) {
       active.status = 'flip';
       active.exitI = i;
       active.exitPx = k.c;
       lastClosed = active;
+      history.push(active);
       active = buildOrder(klines, i, pat.dir, pat, at, sess);
       marks.push({
         i: i,
         t: k.t,
         dir: pat.dir,
         entry: active.entry,
-        sl: active.sl,
+        sl: active.origSl,
         tp1: active.tp1,
         tp2: active.tp2,
         pattern: pat,
@@ -377,10 +510,10 @@ export function computePatternPlan(klines, ticker, nowMs) {
     }
   }
 
-  // 未收盘 K 线只作预备提示，不直接确认开仓
+  // 未收盘 K 线只作预备提示，不提前确认开仓
   let forming = null;
   if (hasForming) {
-    const fPat = detectBarPattern(klines, n - 1, atrArr);
+    const fPat = detectBarPattern(klines, n - 1, atrArr, mode);
     if (fPat && (!active || active.dir !== fPat.dir)) {
       forming = fPat;
     }
@@ -388,9 +521,12 @@ export function computePatternPlan(klines, ticker, nowMs) {
 
   // 趋势方向判定（结合 RF 与 EMA20/EMA50）
   const rfDirNow = rf.dir[end] || 0;
+  const erNow = efficiencyRatio(closes, end, 14);
   const emaDir = e20[end] > e50[end] ? 1 : (e20[end] < e50[end] ? -1 : 0);
   const cEnd = klines[end].c;
   const fEnd = rf.filt[end];
+  const chopFiltered = isStrict && erNow < 0.14;
+
   let trendDir = 0;
   if (rfDirNow > 0 && (emaDir >= 0 || cEnd >= fEnd)) trendDir = 1;
   else if (rfDirNow < 0 && (emaDir <= 0 || cEnd <= fEnd)) trendDir = -1;
@@ -398,9 +534,40 @@ export function computePatternPlan(klines, ticker, nowMs) {
 
   const trendLab = trendDir > 0 ? '多头趋势' : (trendDir < 0 ? '空头趋势' : '震荡整理');
 
-  // 最新价格用于计算实时盈亏
   const lastBar = klines[n - 1];
   const livePx = (ticker && Number.isFinite(ticker.last) && ticker.last > 0) ? ticker.last : lastBar.c;
+  const liveSess = sessionProfileForTs(now);
+  const atEnd = Math.max(atrArr[end] || 0, floor);
+
+  // 空仓时给出参考建议（趋势回踩或压力/支撑反转观察）
+  let watch = null;
+  if (!active && livePx != null && trendDir !== 0 && !chopFiltered) {
+    let wDir = trendDir;
+    let wKind = 'trend';
+    if (useWall && isBlockedByWall(klines, end, wDir, atEnd, boll)) {
+      if (mode === 'safe') { wDir = -wDir; wKind = 'rev'; }
+      else wDir = 0;
+    }
+    if (wDir !== 0) {
+      let refEntry = livePx;
+      if (wKind === 'trend') {
+        const anchor = wDir > 0
+          ? Math.min(livePx, Math.max(e20[end], e9[end]))
+          : Math.max(livePx, Math.min(e20[end], e9[end]));
+        const maxPull = atEnd * 0.85;
+        refEntry = wDir > 0 ? Math.max(livePx - maxPull, anchor) : Math.min(livePx + maxPull, anchor);
+      }
+      watch = {
+        dir: wDir,
+        kind: wKind,
+        entry: refEntry,
+        sl: wDir > 0 ? refEntry - atEnd * liveSess.slMult : refEntry + atEnd * liveSess.slMult,
+        tp1: wDir > 0 ? refEntry + atEnd * liveSess.tp1Mult : refEntry - atEnd * liveSess.tp1Mult,
+        tp2: wDir > 0 ? refEntry + atEnd * liveSess.tp2Mult : refEntry - atEnd * liveSess.tp2Mult,
+        session: liveSess,
+      };
+    }
+  }
 
   let pnlPts = null;
   let pnlPct = null;
@@ -409,46 +576,87 @@ export function computePatternPlan(klines, ticker, nowMs) {
     pnlPct = (pnlPts / active.entry) * 100;
   }
 
-  // 当前时段：有持仓时展示当前实际时段，同时在时段倍数行反映持仓锁定倍数（无持仓则用当前时段）
-  const liveSess = sessionProfileForTs(now);
   const usedSess = active ? active.session : liveSess;
   const multText = formatSessionMults(usedSess);
 
-  // RF / 形态信号状态文案
-  let rfSignal = '观望等待';
+  // 窗口内已平仓订单统计（触达 TP1 或平仓盈利均计为胜）
+  let wins = 0;
+  let tp1Hits = 0;
+  let tp2Hits = 0;
+  let losses = 0;
+  for (let i = 0; i < history.length; i++) {
+    const tr = history[i];
+    if (tr.hitTp1) tp1Hits++;
+    if (tr.status === 'tp2') { tp2Hits++; wins++; }
+    else if (tr.status === 'be') wins++;
+    else if (tr.status === 'flip') {
+      const rem = tr.dir > 0 ? (tr.exitPx - tr.entry) : (tr.entry - tr.exitPx);
+      if (tr.hitTp1 || rem > 0) wins++;
+      else losses++;
+    } else if (tr.hitTp1) {
+      // 经典/防追顶档：先触达 TP1 后才回落止损的，分批策略下视为 TP1 达标
+      wins++;
+    } else {
+      losses++;
+    }
+  }
+  const totalClosed = history.length;
+  const stats = {
+    total: totalClosed,
+    wins: wins,
+    tp1Hits: tp1Hits,
+    tp2Hits: tp2Hits,
+    losses: losses,
+    winRate: totalClosed > 0 ? (wins / totalClosed) : null,
+  };
+
+  let rfSignal = chopFiltered ? '震荡过滤 · 观望' : '观望等待';
   if (active) {
     const barsHeld = end - active.i;
     if (barsHeld === 0) rfSignal = active.dir > 0 ? '新触发做多' : '新触发做空';
-    else if (active.hitTp1) rfSignal = '已触TP1 · 持有';
+    else if (active.hitTp1) rfSignal = active.breakeven ? '已触TP1 · 移动保本' : '已触TP1 · 持有';
     else if (forming && forming.dir !== active.dir) rfSignal = '持有 · 警惕' + forming.name;
     else rfSignal = '持有';
   } else if (forming) {
     rfSignal = '预备 · ' + forming.name;
+  } else if (watch) {
+    rfSignal = watch.kind === 'rev'
+      ? (watch.dir > 0 ? '支撑低多观察' : '压力高空观察')
+      : (watch.dir > 0 ? '待回踩均线做多' : '待反抽均线做空');
   } else if (lastClosed && end - lastClosed.exitI <= 2) {
-    rfSignal = lastClosed.status === 'tp2' ? '已达TP2止盈' : (lastClosed.status === 'sl' ? '已触发止损' : '已平仓观望');
+    rfSignal = lastClosed.status === 'tp2'
+      ? '已达TP2止盈'
+      : (lastClosed.status === 'sl' ? '已触发止损' : '已平仓观望');
   }
 
   const label = active
     ? ((active.dir > 0 ? '多头' : '空头') + ' · ' + active.pattern.name + ' · 开 ' + px(active.entry))
-    : (forming ? ('预备' + (forming.dir > 0 ? '多' : '空') + ' · ' + forming.name) : ('形态观望 · ' + trendLab));
+    : (forming
+      ? ('预备' + (forming.dir > 0 ? '多' : '空') + ' · ' + forming.name)
+      : (watch ? ((watch.dir > 0 ? '待回踩多' : '待反抽空') + ' · 参考 ' + px(watch.entry)) : ('形态观望 · ' + trendLab)));
 
   const why = active
     ? (active.pattern.name + '触发' + (active.dir > 0 ? '多单' : '空单') + '，开仓 ' + px(active.entry) +
-      '，止损 ' + px(active.sl) + '，TP1 ' + px(active.tp1) + '，TP2 ' + px(active.tp2) + '。')
+      '，' + (active.breakeven ? '保本止损 ' : '止损 ') + px(active.sl) +
+      '，TP1 ' + px(active.tp1) + '，TP2 ' + px(active.tp2) + '。')
     : '等待已收盘 K 线出现有效形态后给出开仓与止盈止损点位。';
 
   const sig = [
+    mode,
     end,
-    active ? active.id : 'none',
+    active ? active.id : (watch ? ('w:' + watch.dir + ':' + watch.kind) : 'none'),
     active ? (active.hitTp1 ? 1 : 0) : 0,
     forming ? forming.code : 'none',
     trendDir,
     marks.length,
+    totalClosed,
+    wins,
     usedSess.id,
   ].join('|');
 
   return {
     ok: true,
+    mode: mode,
     sig: sig,
     trendDir: trendDir,
     trendLab: trendLab,
@@ -458,10 +666,15 @@ export function computePatternPlan(klines, ticker, nowMs) {
     active: active,
     lastClosed: lastClosed,
     forming: forming,
+    watch: watch,
     rfDir: rfDirNow,
     rfSignal: rfSignal,
     rfFilt: rf.filt,
+    er: erNow,
+    chopFiltered: chopFiltered,
     marks: marks.slice(-12),
+    history: history,
+    stats: stats,
     pnlPct: pnlPct,
     pnlPts: pnlPts,
     lastPx: livePx,
@@ -473,7 +686,9 @@ export function computePatternPlan(klines, ticker, nowMs) {
 export function getPatternPlan(klines, ticker) {
   const last = klines && klines[klines.length - 1];
   const live = ticker && Number.isFinite(ticker.last) ? ticker.last : (last && last.c);
+  const mode = normalizePatternMode(state.patternMode);
   const key = [
+    mode,
     klines && klines.length,
     last && last.t,
     last && last.o,
@@ -485,7 +700,7 @@ export function getPatternPlan(klines, ticker) {
     state.mkt,
   ].join(':');
   if (state._patternKey === key && state._pattern) return state._pattern;
-  const pack = computePatternPlan(klines, ticker);
+  const pack = computePatternPlan(klines, ticker, undefined, mode);
   state._patternKey = key;
   state._pattern = pack;
   return pack;

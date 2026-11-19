@@ -51,6 +51,7 @@ export function closedFastBars(nowMs) {
 export function tfSpanMs(tf) {
   if (tf === '10s') return 10000;
   if (tf === '1m') return 60000;
+  if (tf === '3m') return 3 * 60000;
   if (tf === '5m') return 5 * 60000;
   if (tf === '15m') return 15 * 60000;
   if (tf === '1h') return 60 * 60000;

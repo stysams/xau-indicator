@@ -18,7 +18,7 @@ export function normalizeFibMode(v) {
 export function fibLook(tf) {
   if (tf === '10s') return { k: 6, minAtr: 1.7, minBars: 8, look: 90, pxFloor: 0.00012 };
   if (tf === '1m') return { k: 4, minAtr: 1.5, minBars: 6, look: 80, pxFloor: 0.00018 };
-  if (tf === '5m' || tf === '15m') return { k: 3, minAtr: 1.4, minBars: 5, look: 64, pxFloor: 0.00025 };
+  if (tf === '3m' || tf === '5m' || tf === '15m') return { k: 3, minAtr: 1.4, minBars: 5, look: 64, pxFloor: 0.00025 };
   return { k: 2, minAtr: 1.3, minBars: 4, look: 48, pxFloor: 0.00035 };
 }
 

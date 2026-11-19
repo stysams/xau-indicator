@@ -1,10 +1,10 @@
 import { px } from '../core/format.js';
-import { getPatternPlan } from '../indicators/pattern.js';
+import { getPatternPlan, normalizePatternMode } from '../indicators/pattern.js';
 import { loadMain } from '../net/loader.js';
 import { barsForChart } from '../net/rest.js';
 import { $, state } from '../state.js';
 import { drawChart } from '../view/chart.js';
-import { refreshAfterInd } from './indicator-menu.js';
+import { refreshAfterInd, saveInd } from './indicator-menu.js';
 
 export const PATTERN_POS_KEY = 'gold-minute-pattern-pos';
 
@@ -116,6 +116,11 @@ export function renderPatternPanel(klines, ticker) {
 
   const pack = getPatternPlan(klines || state.klines || [], ticker !== undefined ? ticker : state.ticker);
   const active = pack.active;
+  const watch = !active ? pack.watch : null;
+  const curMode = normalizePatternMode(state.patternMode);
+  document.querySelectorAll('button[data-pattern-mode]').forEach((b) => {
+    b.setAttribute('aria-pressed', String(b.dataset.patternMode === curMode));
+  });
   const orderEl = $('patOrder');
   const sessEl = $('patSession');
   const trendEl = $('patTrend');
@@ -125,6 +130,7 @@ export function renderPatternPanel(klines, ticker) {
   const tpEl = $('patTp');
   const multEl = $('patMult');
   const pnlEl = $('patPnl');
+  const winRateEl = $('patWinRate');
   const rfEl = $('patRf');
 
   box.classList.remove('is-long', 'is-short', 'is-flat');
@@ -142,6 +148,13 @@ export function renderPatternPanel(klines, ticker) {
       orderEl.className = 'pat-val is-warn';
       orderEl.innerHTML = '<i class="pat-dot warn" aria-hidden="true"></i>' +
         (isLong ? '预备多单' : '预备空单');
+    } else if (watch) {
+      const isLong = watch.dir > 0;
+      const lab = watch.kind === 'rev'
+        ? (isLong ? '极值低多参考' : '极值高空参考')
+        : (isLong ? '待回踩做多' : '待反抽做空');
+      orderEl.className = 'pat-val is-warn';
+      orderEl.innerHTML = '<i class="pat-dot warn" aria-hidden="true"></i>' + lab;
     } else {
       orderEl.className = 'pat-val is-muted';
       orderEl.innerHTML = '<i class="pat-dot flat" aria-hidden="true"></i>观望中';
@@ -170,21 +183,31 @@ export function renderPatternPanel(klines, ticker) {
     }
   }
 
+  const planLv = active || watch;
   if (entryEl) {
-    entryEl.textContent = active ? px(active.entry) : '--';
+    entryEl.textContent = planLv ? ((watch ? '参考 ' : '') + px(planLv.entry)) : '--';
   }
 
   if (slEl) {
-    slEl.textContent = active ? px(active.sl) : '--';
+    if (active) {
+      slEl.textContent = px(active.sl) + (active.breakeven ? '（已保本）' : '');
+      slEl.className = 'pat-val num ' + (active.breakeven ? 'is-up' : 'is-dn');
+    } else if (watch) {
+      slEl.textContent = px(watch.sl);
+      slEl.className = 'pat-val num is-dn';
+    } else {
+      slEl.textContent = '--';
+      slEl.className = 'pat-val num is-dn';
+    }
   }
 
   if (tpEl) {
-    if (active) {
-      const tp1Cls = active.hitTp1 ? 'pat-tp-hit' : '';
+    if (planLv) {
+      const tp1Cls = active && active.hitTp1 ? 'pat-tp-hit' : '';
       tpEl.innerHTML =
-        '<span class="pat-tp-item ' + tp1Cls + '">🎯 TP1: ' + px(active.tp1) + '</span>' +
+        '<span class="pat-tp-item ' + tp1Cls + '">🎯 TP1: ' + px(planLv.tp1) + '</span>' +
         '<span class="pat-tp-sep">|</span>' +
-        '<span class="pat-tp-item">🎯 TP2: ' + px(active.tp2) + '</span>';
+        '<span class="pat-tp-item">🎯 TP2: ' + px(planLv.tp2) + '</span>';
     } else {
       tpEl.textContent = '--';
     }
@@ -192,6 +215,18 @@ export function renderPatternPanel(klines, ticker) {
 
   if (multEl) {
     multEl.textContent = pack.multText || 'SL×1.8 | TP1×1.8 | TP2×3';
+  }
+
+  if (winRateEl) {
+    const st = pack.stats;
+    if (st && st.total > 0 && st.winRate != null) {
+      const pct = Math.round(st.winRate * 100);
+      winRateEl.textContent = pct + '% (' + st.wins + '/' + st.total + ')';
+      winRateEl.className = 'pat-val num ' + (pct >= 55 ? 'is-up' : (pct < 45 ? 'is-dn' : 'is-amber'));
+    } else {
+      winRateEl.textContent = '暂无已平';
+      winRateEl.className = 'pat-val num is-muted';
+    }
   }
 
   if (pnlEl) {
@@ -280,6 +315,16 @@ export function bindPatternFloat() {
       recalcPatternPlan({ fetch: true });
     });
   }
+
+  document.querySelectorAll('button[data-pattern-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const next = normalizePatternMode(btn.dataset.patternMode);
+      if (state.patternMode === next) return;
+      state.patternMode = next;
+      saveInd();
+      recalcPatternPlan({ fetch: false });
+    });
+  });
 
   if (foldBtn) {
     foldBtn.addEventListener('click', () => {

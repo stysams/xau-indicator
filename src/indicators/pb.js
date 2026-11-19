@@ -9,7 +9,7 @@ import { state } from '../state.js';
 export function pbLook(tf) {
   if (tf === '10s') return { minSpan: 8, maxSpan: 40, minAtr: 1.7, hold: 0.46, recency: 16, rsiLo: 36, rsiHi: 64 };
   if (tf === '1m') return { minSpan: 5, maxSpan: 24, minAtr: 1.5, hold: 0.4, recency: 12, rsiLo: 34, rsiHi: 66 };
-  if (tf === '5m' || tf === '15m') return { minSpan: 4, maxSpan: 18, minAtr: 1.4, hold: 0.38, recency: 10, rsiLo: 32, rsiHi: 68 };
+  if (tf === '3m' || tf === '5m' || tf === '15m') return { minSpan: 4, maxSpan: 18, minAtr: 1.4, hold: 0.38, recency: 10, rsiLo: 32, rsiHi: 68 };
   return { minSpan: 3, maxSpan: 14, minAtr: 1.3, hold: 0.36, recency: 8, rsiLo: 30, rsiHi: 70 };
 }
 

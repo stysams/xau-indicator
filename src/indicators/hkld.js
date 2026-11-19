@@ -278,6 +278,7 @@ export function hkldClosedEnd(klines, tf) {
 export function hkldTfName(tf) {
   if (tf === '15m') return '15分';
   if (tf === '5m') return '5分';
+  if (tf === '3m') return '3分';
   if (tf === '1m') return '1分';
   if (tf === '1h') return '1小时';
   if (tf === '10s') return '10秒';

@@ -69,14 +69,14 @@ const TOOLS = [
   {
     name: 'gate_cfd_get_klines',
     description:
-      '获取 Gate.io CFD 品种的 K 线(OHLCV)数据。kline_type: 1m/5m/15m/30m/1h/4h/1d。默认返回最近 limit 根；也可用 begin_time/end_time(Unix 秒)指定时间范围。每根 K 线含 o(开)/c(收)/h(高)/l(低)/t(时间)和成交量。',
+      '获取 Gate.io CFD 品种的 K 线(OHLCV)数据。kline_type: 1m/3m/5m/15m/30m/1h/4h/1d。默认返回最近 limit 根；也可用 begin_time/end_time(Unix 秒)指定时间范围。每根 K 线含 o(开)/c(收)/h(高)/l(低)/t(时间)和成交量。',
     inputSchema: {
       type: 'object',
       properties: {
         symbol: { type: 'string', description: '品种代码，如 XAUUSD' },
         kline_type: {
           type: 'string',
-          description: 'K线周期: 1m/5m/15m/30m/1h/4h/1d，默认 1m',
+          description: 'K线周期: 1m/3m/5m/15m/30m/1h/4h/1d，默认 1m',
         },
         limit: { type: 'number', description: '返回最近 N 根 K 线，默认 100' },
         begin_time: { type: 'number', description: '开始时间(Unix 秒)' },

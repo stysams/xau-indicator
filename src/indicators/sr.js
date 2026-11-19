@@ -6,7 +6,7 @@ import { mkt, state } from '../state.js';
 export function srPivotK(tf) {
   if (tf === '10s') return 6;
   if (tf === '1m') return 4;
-  if (tf === '5m') return 3;
+  if (tf === '3m' || tf === '5m') return 3;
   return 2;
 }
 

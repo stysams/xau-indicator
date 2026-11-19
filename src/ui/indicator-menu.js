@@ -2,6 +2,7 @@ import { n } from '../core/format.js';
 import { rsi } from '../core/math.js';
 import { barsForChart } from '../net/rest.js';
 import { normalizeFibMode } from '../indicators/fib.js';
+import { normalizePatternMode } from '../indicators/pattern.js';
 import { AVERAGE_KINDS, AVERAGE_TFS, averageLineId, normalizeAverageLines } from '../indicators/moving-average.js';
 import { formatManualSr, getManualSr, parseManualSr } from '../indicators/sr.js';
 import { $, state } from '../state.js';
@@ -236,6 +237,7 @@ export function loadInd() {
     }
     if (typeof raw.fibMode === 'string') state.fibMode = normalizeFibMode(raw.fibMode);
     if (typeof raw.fibExt === 'boolean') state.fibExt = raw.fibExt;
+    if (typeof raw.patternMode === 'string') state.patternMode = normalizePatternMode(raw.patternMode);
     if (typeof raw.fastBeep === 'boolean') state.fastBeep = raw.fastBeep;
     state.bollStyle = readBollStyle(raw.bollStyle);
   } catch (e) { /* 沿用默认 */ }
@@ -252,6 +254,7 @@ export function saveInd() {
       stackCollapsed: !!state.stackCollapsed,
       stackDraw: Object.assign({}, state.stackDraw),
       fibMode: normalizeFibMode(state.fibMode), fibExt: !!state.fibExt,
+      patternMode: normalizePatternMode(state.patternMode),
       srMode: state.srMode,
       manualSrText: formatManualSr(state.manualSr),
       manualSrByMkt: Object.assign({}, state.manualSrByMkt || {}, {
@@ -362,6 +365,10 @@ export function syncIndButtons() {
     if (!state.ind.pattern) patternBox.classList.remove('is-placed');
     else if (!state.patternDrag) applyPatternPos(false);
   }
+  const patMode = normalizePatternMode(state.patternMode);
+  document.querySelectorAll('button[data-pattern-mode]').forEach((b) => {
+    b.setAttribute('aria-pressed', String(b.dataset.patternMode === patMode));
+  });
   const caret = $('btnIndMore');
   if (caret) {
     const opened = IND_MORE.filter((x) => !!state.ind[x.k]).map((x) => x.lab);
