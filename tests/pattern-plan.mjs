@@ -257,4 +257,44 @@ function bar(t, o, h, l, c) {
   assert(isBlockedByWall(kl, 29, -1, 2.0, null) === false, '压力天花板下方不应拦截做空');
 }
 
+// 8. xaudz 按收盘判定多空，止盈为初始止损距离的 1、2 倍。
+{
+  state.mkt = 'xau';
+  state.tf = '1m';
+  assert(normalizePatternMode('xaudz') === 'xaudz', '第四档应保留在设置中');
+  const baseT = 1795017600;
+  const warmup = Array.from({ length: 100 }, (_, i) => bar(baseT + i * 60, 3700, 3700.5, 3699.5, 3700));
+  const t = baseT + 100 * 60;
+  for (const dir of [1, -1]) {
+    const bars = warmup.concat(bar(t, 3700, dir > 0 ? 3703.2 : 3700.2, dir > 0 ? 3699.8 : 3696.8, 3700 + dir * 3));
+    const forming = computePatternPlan(bars, null, (t + 60) * 1000 - 1, 'xaudz');
+    assert(forming.ok && forming.marks.length === 0, '未收盘的突破不得触发 xaudz');
+
+    const closed = computePatternPlan(bars, null, (t + 60) * 1000, 'xaudz');
+    assert(closed.active?.dir === dir && closed.marks.length === 1, '收盘后应输出同方向信号');
+    const { entry, sl, tp1, tp2 } = closed.active;
+    const risk = dir * (entry - sl);
+    assert(risk > 0, '止损应在反方向');
+    approx(dir * (tp1 - entry), risk, { label: 'xaudz 第一止盈 1R' });
+    approx(dir * (tp2 - entry), 2 * risk, { label: 'xaudz 第二止盈 2R' });
+
+    const firstTarget = bar(t + 60, entry, Math.max(entry, tp1), Math.min(entry, tp1), tp1);
+    const first = computePatternPlan(bars.concat(firstTarget), null, (t + 120) * 1000, 'xaudz');
+    assert(first.active?.hitTp1 && !first.lastClosed, '达到 TP1 后继续跟踪');
+
+    const secondTarget = bar(t + 120, tp1, Math.max(tp1, tp2), Math.min(tp1, tp2), tp2);
+    const final = computePatternPlan(bars.concat(firstTarget, secondTarget), null, (t + 180) * 1000, 'xaudz');
+    assert(!final.active && final.lastClosed?.status === 'tp2', '达到 TP2 后结算');
+    approx(final.lastClosed.exitPx, tp2, { label: 'xaudz 按 TP2 价格结算' });
+    assert(final.stats.tp2Hits === 1 && final.stats.wins === 1, '统计已结算的 TP2');
+  }
+
+  state.tf = '5m';
+  assert(!computePatternPlan(warmup, null, undefined, 'xaudz').ok, 'xaudz 仅支持一分钟');
+  state.tf = '1m';
+  state.mkt = 'eth';
+  assert(!computePatternPlan(warmup, null, undefined, 'xaudz').ok, 'xaudz 仅支持黄金');
+  state.mkt = 'xau';
+}
+
 console.log('PASS pattern-plan');

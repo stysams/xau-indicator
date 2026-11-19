@@ -3,8 +3,9 @@ import { px } from '../core/format.js';
 import { bollCore, ema, rsiSeries } from '../core/math.js';
 import { tzParts } from '../core/session.js';
 import { mkt, state } from '../state.js';
+import { findXaudzSetups, XAUDZ_MIN_BARS } from './xaudz.js';
 
-export const PATTERN_MODES = ['classic', 'safe', 'strict'];
+export const PATTERN_MODES = ['classic', 'safe', 'strict', 'xaudz'];
 
 export function normalizePatternMode(v) {
   return PATTERN_MODES.indexOf(v) >= 0 ? v : 'classic';
@@ -335,9 +336,97 @@ function buildOrder(klines, i, dir, pattern, atrVal, sess) {
   };
 }
 
+function xaudzClosedEnd(klines, now) {
+  const end = (klines?.length || 0) - 1;
+  if (end < 0 || (klines[end].t + 60) * 1000 <= now) return end;
+  return end - 1;
+}
+
+function computeXaudzPlan(klines, ticker, now) {
+  const why = '反推版在一分钟 K 线收盘后判断多空。图上的止损、止盈和结果按分钟台行情计算。';
+  const pack = emptyPlan(now, 'xaudz', why);
+  pack.multText = 'TP1 1R · TP2 2R';
+  if (state.mkt !== 'xau' || state.tf !== '1m') {
+    pack.label = '仅支持黄金 1 分钟';
+    pack.rfSignal = pack.label;
+    return pack;
+  }
+
+  const end = xaudzClosedEnd(klines, now);
+  if (end + 1 < XAUDZ_MIN_BARS) {
+    pack.label = '样本不足';
+    pack.rfSignal = '需要至少 ' + XAUDZ_MIN_BARS + ' 根已收盘 K 线';
+    return pack;
+  }
+
+  const setups = findXaudzSetups(klines, end);
+  const marks = setups.map((setup) => {
+    const t = klines[setup.i].t;
+    return {
+      ...setup, t,
+      id: t + ':' + setup.dir + ':xaudz',
+      pattern: { name: 'xaudz 反推版', code: 'xaudz' },
+      session: sessionProfileForTs(t * 1000),
+    };
+  });
+  const history = [];
+  let active = null;
+  for (let j = 0; j < marks.length; j++) {
+    const mark = marks[j];
+    const next = marks[j + 1];
+    const order = { ...mark, origSl: mark.sl, status: 'open', hitTp1: false };
+    const last = next ? next.i : end;
+    for (let i = mark.i + 1; i <= last; i++) {
+      const bar = klines[i];
+      const stopHit = order.dir > 0 ? bar.l <= order.sl : bar.h >= order.sl;
+      if (stopHit) {
+        Object.assign(order, { status: 'sl', exitI: i, exitPx: order.sl });
+        break;
+      }
+      const favorable = order.dir > 0 ? bar.h : bar.l;
+      order.hitTp1 ||= order.dir * (favorable - order.tp1) >= 0;
+      if (order.dir * (favorable - order.tp2) >= 0) {
+        Object.assign(order, { status: 'tp2', exitI: i, exitPx: order.tp2 });
+        break;
+      }
+    }
+    // 新信号接管面板。逐根回放时，同一根同时触达止损与目标按止损处理。
+    if (order.status === 'open' && next) {
+      Object.assign(order, { status: 'flip', exitI: next.i, exitPx: next.entry });
+    }
+    if (order.status === 'open') active = order;
+    else history.push(order);
+  }
+
+  const lastClosed = history.at(-1) || null;
+  const lastPx = ticker?.last > 0 && Number.isFinite(ticker.last) ? ticker.last : klines.at(-1).c;
+  const pnlPts = active ? active.dir * (lastPx - active.entry) : null;
+  const wins = history.filter((order) => order.hitTp1).length;
+  const label = active
+    ? (active.dir > 0 ? '做多' : '做空') + ' · 开 ' + px(active.entry)
+    : '等待信号';
+  let rfSignal = active?.hitTp1 ? '已触及 TP1' : label;
+  if (!active && lastClosed?.exitI === end && lastClosed.status === 'tp2') rfSignal = '已达 TP2 止盈';
+  return {
+    ...pack,
+    ok: true,
+    sig: ['xaudz', klines[end].t, active?.id, active?.hitTp1, lastClosed?.status].join('|'),
+    label, rfSignal, active, lastClosed, history, pnlPts, lastPx,
+    pnlPct: active ? (pnlPts / active.entry) * 100 : null,
+    orderSession: active?.session || pack.session,
+    marks: marks.slice(-5),
+    stats: {
+      total: history.length, wins, tp1Hits: wins, losses: history.length - wins,
+      tp2Hits: history.filter((order) => order.status === 'tp2').length,
+      winRate: history.length ? wins / history.length : null,
+    },
+  };
+}
+
 export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
   const now = Number.isFinite(nowMs) ? nowMs : Date.now();
   const mode = normalizePatternMode(modeOverride != null ? modeOverride : state.patternMode);
+  if (mode === 'xaudz') return computeXaudzPlan(klines, ticker, now);
   if (!klines || klines.length < 24) return emptyPlan(now, mode);
 
   const n = klines.length;
@@ -687,6 +776,7 @@ export function getPatternPlan(klines, ticker) {
   const last = klines && klines[klines.length - 1];
   const live = ticker && Number.isFinite(ticker.last) ? ticker.last : (last && last.c);
   const mode = normalizePatternMode(state.patternMode);
+  const now = Date.now();
   const key = [
     mode,
     klines && klines.length,
@@ -698,9 +788,10 @@ export function getPatternPlan(klines, ticker) {
     live,
     state.tf,
     state.mkt,
+    mode === 'xaudz' ? xaudzClosedEnd(klines, now) : '',
   ].join(':');
   if (state._patternKey === key && state._pattern) return state._pattern;
-  const pack = computePatternPlan(klines, ticker, undefined, mode);
+  const pack = computePatternPlan(klines, ticker, now, mode);
   state._patternKey = key;
   state._pattern = pack;
   return pack;

@@ -118,6 +118,7 @@ export function renderPatternPanel(klines, ticker) {
   const active = pack.active;
   const watch = !active ? pack.watch : null;
   const curMode = normalizePatternMode(state.patternMode);
+  const isXaudz = curMode === 'xaudz';
   document.querySelectorAll('button[data-pattern-mode]').forEach((b) => {
     b.setAttribute('aria-pressed', String(b.dataset.patternMode === curMode));
   });
@@ -131,7 +132,9 @@ export function renderPatternPanel(klines, ticker) {
   const multEl = $('patMult');
   const pnlEl = $('patPnl');
   const winRateEl = $('patWinRate');
+  const winRateLabelEl = $('patWinRateLabel');
   const rfEl = $('patRf');
+  const rfLabelEl = $('patRfLabel');
 
   box.classList.remove('is-long', 'is-short', 'is-flat');
   if (active) box.classList.add(active.dir > 0 ? 'is-long' : 'is-short');
@@ -166,7 +169,7 @@ export function renderPatternPanel(klines, ticker) {
   }
 
   if (trendEl) {
-    trendEl.textContent = pack.trendLab || '震荡整理';
+    trendEl.textContent = pack.trendLab || (isXaudz ? '--' : '震荡整理');
     trendEl.className = 'pat-val ' + (pack.trendDir > 0 ? 'is-up' : (pack.trendDir < 0 ? 'is-dn' : 'is-muted'));
   }
 
@@ -214,9 +217,10 @@ export function renderPatternPanel(klines, ticker) {
   }
 
   if (multEl) {
-    multEl.textContent = pack.multText || 'SL×1.8 | TP1×1.8 | TP2×3';
+    multEl.textContent = pack.multText || (isXaudz ? '--' : 'SL×1.8 | TP1×1.8 | TP2×3');
   }
 
+  if (winRateLabelEl) winRateLabelEl.textContent = isXaudz ? '近端 TP1 达标率' : '近端胜率';
   if (winRateEl) {
     const st = pack.stats;
     if (st && st.total > 0 && st.winRate != null) {
@@ -248,8 +252,12 @@ export function renderPatternPanel(klines, ticker) {
     }
   }
 
+  if (rfLabelEl) {
+    rfLabelEl.textContent = isXaudz ? '反推版状态' : 'RF 信号';
+  }
   if (rfEl) {
-    rfEl.textContent = pack.rfSignal || '观望等待';
+    rfEl.textContent = isXaudz ? (pack.rfSignal || pack.label || '观望等待') : (pack.rfSignal || '观望等待');
+    rfEl.title = isXaudz ? (pack.why || '') : '';
     rfEl.className = 'pat-val ' + (
       active && active.hitTp1 ? 'is-up'
         : (pack.forming ? 'is-warn' : 'is-muted')

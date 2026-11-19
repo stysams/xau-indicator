@@ -2198,7 +2198,7 @@ html[data-color="cn"] .pat-panel {
 .pat-mode-val { padding: 4px 8px; }
 .pat-mode-seg {
   display: inline-grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   width: 100%;
   gap: 4px;
 }
@@ -2213,6 +2213,9 @@ html[data-color="cn"] .pat-panel {
   border-radius: 3px;
   cursor: pointer;
   line-height: 1.25;
+}
+@media (max-width: 360px) {
+  .pat-mode-seg button { padding-inline: 3px; }
 }
 .pat-mode-seg button:hover {
   color: var(--pat-ink);
