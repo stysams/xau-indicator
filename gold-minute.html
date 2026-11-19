@@ -34,6 +34,13 @@ try {
       </div>
       <span class="chip" id="sessChip"><i class="live" id="liveDot"></i><span id="sessText">连接中</span></span>
       <div class="top-actions">
+        <label class="api-source" for="apiSource">K线域名
+          <select id="apiSource" class="btn" title="切换后重新加载历史K线和REST报价，仅在当前浏览器保存；实时推送域名不变">
+            <option value="default">服务默认</option>
+            <option value="api.gateio.ws">api.gateio.ws</option>
+            <option value="www.gatenode.cash">www.gatenode.cash（备用）</option>
+          </select>
+        </label>
         <button type="button" class="btn" id="btnSim" aria-haspopup="dialog" aria-expanded="false" title="纸面模拟交易，只记在本机">模拟交易<span class="sim-live" id="simLive" hidden></span></button>
         <button type="button" class="btn" id="btnSess" aria-pressed="true" title="显示或隐藏各交易所开盘时间">开盘时间</button>
         <button type="button" class="btn" id="btnSigRail" aria-pressed="true" title="主图底部时间信号线：企稳、开单、破位等">信号线</button>

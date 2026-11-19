@@ -189,6 +189,16 @@ WITH_BROWSER=1 node tests/run-all.mjs   # 追加基线回归（需要本机 Chro
 - `/ws/tradfi` → `fx-ws.gateio.ws/v4/ws/tradfi`
 - `/ws/futures` → `fx-ws.gateio.ws/v4/ws/usdt`
 
+本地服务和 MCP 均支持通过 `GATE_API_HOST` 切换 REST 域名，默认 `api.gateio.ws`。例如使用国内备用网站域名：
+
+```bash
+GATE_API_HOST=www.gatenode.cash node serve.js
+```
+
+页面顶部的「K线域名」可选择服务默认、`api.gateio.ws` 或 `www.gatenode.cash`。选择按浏览器保存在本地，不影响其他用户或 MCP；切换后页面重新加载，历史 K 线、REST 报价和其他 REST 行情统一使用该域名，实时 WebSocket 推送地址不变。「服务默认」使用服务端 `GATE_API_HOST`。请求仍由本地服务转发，因此可用性取决于运行该服务的网络。备用域名若返回网站验证页，页面会明确报错，可手动切回默认地址。
+
+该变量只接受主机名，不包含 `https://`、端口或路径；请求固定使用 HTTPS。修改后需重启服务，不会自动切换域名，也不改变 WebSocket 地址。实测 `www.gatenode.cash` 的 API 路径返回网站验证脚本，尚未确认能提供有效行情 JSON 或在中国网络可用；遇到此情况会报告非 JSON 错误，可取消该变量恢复默认域名。
+
 1 分、5 分、15 分、1 小时、4 小时、1 日的 K 线和报价走实时推送，大约 250 毫秒更新一次，历史根用 REST 补齐。黄金 10 秒线有 REST 历史，但 TradFi 推送通道不更新 10 秒，正在走的那根用报价按 10 秒归桶。永续 10 秒线推送通道会更新。
 
 黄金 K 线没有成交量。永续 K 线有量，主图仍按价格结构画，没有另开量能副图。
@@ -211,13 +221,16 @@ WITH_BROWSER=1 node tests/run-all.mjs   # 追加基线回归（需要本机 Chro
   "mcpServers": {
     "gate-cfd": {
       "command": "node",
-      "args": ["D:/project/ai/xauusd/server.js"]
+      "args": ["D:/project/ai/xauusd/server.js"],
+      "env": { "GATE_API_HOST": "www.gatenode.cash" }
     }
   }
 }
 ```
 
 MCP 只覆盖 CFD / TradFi。ETH、BTC 永续请用分钟台或 `serve.js` 的 futures 转发。
+
+上述 `env` 用于选择备用域名；删除它即可使用默认域名。也可直接运行 `GATE_API_HOST=www.gatenode.cash node server.js`。
 
 ## 本机记住什么
 

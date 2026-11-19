@@ -20,6 +20,7 @@ import { loadMain, loadMtf, loadSession } from './net/loader.js';
 import { barsForChart, parseKlines, parseStreamName, parseTicker } from './net/rest.js';
 import { clearUsidx, loadUsidx } from './net/usidx.js';
 import { connectWs, startPing, stopPing } from './net/ws.js';
+import { bindApiSource } from './net/source.js';
 import { $, H, LIVE_ANCHOR, PAD, W, mkt, state } from './state.js';
 import { evalFastSetup, loadFast, refresh10sTail, spreadTooWide, stepFastTrade } from './trade/fast.js';
 import { bindSimUi, loadSim, renderSimLiveBtn, simLastPrice, tickSimTrade } from './trade/sim.js';
@@ -40,6 +41,8 @@ import { banner, remainText, render, renderHeavy, renderQuote, renderStackBar } 
 import { bindSignalRail, collectSignalEvents } from './view/signal-rail.js';
 import { openSignalView, renderFastPanel } from './view/trade-overlay.js';
 import { applyView, chartSlice, priceOffsetForDrag, resetZoom, updateZoomLabel } from './view/viewport.js';
+
+bindApiSource($('apiSource'), (message) => banner(message, true));
 
 FAC_ITEMS.forEach((x) => { state.fac[x.k] = true; });
 loadFac();

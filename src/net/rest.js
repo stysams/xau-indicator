@@ -1,5 +1,6 @@
 import { n } from '../core/format.js';
 import { LIVE_ANCHOR, mkt, state, streamTfs } from '../state.js';
+import { apiSourceHeaders } from './source.js';
 
 export async function getJson(path) {
   const now = Date.now();
@@ -7,7 +8,7 @@ export async function getJson(path) {
     const wait = Math.ceil((state.apiRetryAt - now) / 1000);
     throw new Error('接口限流，' + wait + ' 秒后重试');
   }
-  const res = await fetch(path, { headers: { Accept: 'application/json' } });
+  const res = await fetch(path, { headers: { Accept: 'application/json', ...apiSourceHeaders() } });
   if (res.status === 429) {
     state.apiRetryAt = Date.now() + 8000;
     throw new Error('接口限流，请 8 秒后重试');

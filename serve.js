@@ -4,7 +4,7 @@
 /**
  * 分钟台本地服务
  * 1. 提供 gold-minute.html
- * 2. 把 /api/v4/tradfi/*、/api/v4/futures/* 转发到 api.gateio.ws
+ * 2. 把 /api/v4/tradfi/*、/api/v4/futures/* 转发到 GATE_API_HOST（默认 api.gateio.ws）
  * 3. 把 /ws/tradfi 转到 fx-ws.gateio.ws/v4/ws/tradfi
  * 4. 把 /ws/futures 转到 fx-ws.gateio.ws/v4/ws/usdt（USDT 永续）
  */
@@ -18,7 +18,7 @@ const crypto = require('crypto');
 
 const PORT = Number(process.env.PORT) || 8787;
 const ROOT = path.resolve(__dirname);
-const API_HOST = 'api.gateio.ws';
+const { pageApiHost, parseJson } = require('./gate-api');
 const API_ALLOW = [/^\/api\/v4\/tradfi(\/|$)/, /^\/api\/v4\/futures(\/|$)/];
 const WS_HOST = 'fx-ws.gateio.ws';
 const WS_MAP = {
@@ -50,9 +50,17 @@ function proxyApi(req, res) {
     return;
   }
 
+  let apiHost;
+  try {
+    apiHost = pageApiHost(req.headers && req.headers['x-gate-api-host']);
+  } catch (err) {
+    send(res, 400, JSON.stringify({ label: 'INVALID_API_HOST', message: err.message }), 'application/json; charset=utf-8');
+    return;
+  }
+
   const up = https.get(
     {
-      host: API_HOST,
+      host: apiHost,
       path: incoming.pathname + incoming.search,
       headers: { Accept: 'application/json' },
       timeout: 15000,
@@ -61,11 +69,18 @@ function proxyApi(req, res) {
       const chunks = [];
       upRes.on('data', (c) => chunks.push(c));
       upRes.on('end', () => {
+        const body = Buffer.concat(chunks);
+        try {
+          parseJson(body.toString('utf8'), apiHost);
+        } catch (err) {
+          send(res, 502, JSON.stringify({ label: 'UPSTREAM', message: err.message }), 'application/json; charset=utf-8');
+          return;
+        }
         res.writeHead(upRes.statusCode || 502, {
           'Content-Type': 'application/json; charset=utf-8',
           'Cache-Control': 'no-store',
         });
-        res.end(Buffer.concat(chunks));
+        res.end(body);
       });
     }
   );

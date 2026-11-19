@@ -196,6 +196,8 @@ a { color: var(--accent); }
 }
 .mkt-seg { flex: 0 0 auto; }
 .top-actions { margin-left: auto; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.api-source { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
+.api-source select { max-width: 220px; font: inherit; }
 .top .btn, .top .seg button {
   min-height: 26px;
   font-size: 12px;

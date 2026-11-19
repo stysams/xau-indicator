@@ -16,7 +16,7 @@
 const https = require('https');
 const readline = require('readline');
 
-const API_HOST = 'api.gateio.ws';
+const { API_HOST, parseJson } = require('./gate-api');
 const API_PATH = '/api/v4/tradfi';
 
 const SERVER_INFO = { name: 'gate-cfd', version: '1.0.0' };
@@ -96,9 +96,9 @@ function httpGetJson(path) {
         res.on('data', (c) => (data += c));
         res.on('end', () => {
           try {
-            resolve(JSON.parse(data));
+            resolve(parseJson(data));
           } catch (e) {
-            reject(new Error('上游返回非 JSON: ' + data.slice(0, 200)));
+            reject(e);
           }
         });
       }
