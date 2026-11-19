@@ -2,21 +2,23 @@ import { fmtAxis, fmtBarTime, px } from '../core/format.js';
 import { rsi } from '../core/math.js';
 import { getBollMacd } from '../indicators/boll.js';
 import { getBox } from '../indicators/box.js';
+import { getDiv3 } from '../indicators/div3.js';
 import { fibRatioText, getFib } from '../indicators/fib.js';
 import { getHkld } from '../indicators/hkld.js';
 import { getHold } from '../indicators/hold.js';
 import { getHs, hsNeckAt } from '../indicators/hs.js';
+import { getPatternPlan } from '../indicators/pattern.js';
 import { getPb } from '../indicators/pb.js';
 import { getSmc } from '../indicators/smc.js';
-import { getSr, srTitle } from '../indicators/sr.js';
+import { getManualSr, getSr, manualSrSignature, srTitle } from '../indicators/sr.js';
 import { getStack, STACK_TFS, stackMarkIndex } from '../indicators/stack.js';
 import { getSuperTrend } from '../indicators/supertrend.js';
 import { getTrap } from '../indicators/trap.js';
 import { $, H, PAD, W, state } from '../state.js';
 import { simOpenOrders } from '../trade/sim.js';
-import { bollDash, bollSt } from '../ui/indicator-menu.js';
+import { bollDash, bollSt, syncManualSrUi } from '../ui/indicator-menu.js';
 import { drawOscPanes, findPane, oscLayout, paneY } from './osc.js';
-import { drawBox, drawFib, drawHkld, drawHold, drawPbSetup, drawTrapSetup } from './overlays.js';
+import { drawBox, drawDiv3, drawFib, drawHkld, drawHold, drawPatternPlan, drawPbSetup, drawTrapSetup } from './overlays.js';
 import { drawSignalRail } from './signal-rail.js';
 import { bollAreaD, lineD, lineSegD, svgEl } from './svg.js';
 import { drawFastOverlay, drawSimOverlay, openFastTrade, placeFastTags } from './trade-overlay.js';
@@ -53,6 +55,9 @@ export function drawChart(klines, ticker, hover) {
   const sr = state.ind.sr ? getSr(klines) : null;
   const srMode = state.srMode || 'normal';
   const swing = (sr && srMode === 'swing') ? sr.swing : null;
+  const manualSr = getManualSr(klines, ticker);
+  const manualLevels = manualSr.levels;
+  syncManualSrUi(klines, ticker);
   const pbPack = (state.ind.bounce || state.ind.pull) ? getPb(klines) : null;
   const bounce = (state.ind.bounce && pbPack) ? pbPack.bounce : null;
   const pull = (state.ind.pull && pbPack) ? pbPack.pull : null;
@@ -62,6 +67,8 @@ export function drawChart(klines, ticker, hover) {
   const fib = state.ind.fib ? getFib(klines) : null;
   const stPack = state.ind.st ? getSuperTrend(klines) : null;
   const box = state.ind.box ? getBox(klines) : null;
+  const div3 = state.ind.div3 ? getDiv3(klines) : null;
+  const pattern = state.ind.pattern ? getPatternPlan(klines, ticker) : null;
   let lo = Infinity, hi = -Infinity;
   vis.forEach((k) => { lo = Math.min(lo, k.l); hi = Math.max(hi, k.h); });
   averageSeries.forEach((line) => line.values.forEach((v) => { if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } }));
@@ -85,8 +92,23 @@ export function drawChart(klines, ticker, hover) {
       if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
     });
   }
+  if (pattern && pattern.ok && pattern.active) {
+    const ao = pattern.active;
+    [ao.entry, ao.sl, ao.tp1, ao.tp2].forEach((v) => {
+      if (v != null && Number.isFinite(v)) {
+        lo = Math.min(lo, v);
+        hi = Math.max(hi, v);
+      }
+    });
+  }
   simOpenOrders().forEach((o) => {
     if (o.entry != null) { lo = Math.min(lo, o.entry); hi = Math.max(hi, o.entry); }
+  });
+  manualLevels.forEach((lv) => {
+    if (lv && Number.isFinite(lv.price)) {
+      lo = Math.min(lo, lv.price);
+      hi = Math.max(hi, lv.price);
+    }
   });
   if (hs && hs.patterns) {
     hs.patterns.forEach((p) => {
@@ -417,6 +439,9 @@ export function drawChart(klines, ticker, hover) {
 
   if (box && box.ok) {
     drawBox(svg, box, vx, y, W - PAD.r);
+  }
+  if (div3 && div3.ok) {
+    drawDiv3(svg, div3, vx, y, view);
   }
 
   if (state.ind.hl && ticker && ticker.high && ticker.low) {
@@ -885,9 +910,59 @@ export function drawChart(klines, ticker, hover) {
       svg.appendChild(lab);
     });
   } else if (srLab) {
-    srLab.textContent = state.ind.sr
-      ? (srMode === 'swing' ? (swing ? swing.label : '波段未现') : '支压未现')
-      : '';
+    srLab.textContent = manualLevels.length
+      ? manualSr.label
+      : (state.ind.sr
+        ? (srMode === 'swing' ? (swing ? swing.label : '波段未现') : (srMode === 'manual' ? manualSr.label : '支压未现'))
+        : '');
+  }
+
+  if (manualLevels.length) {
+    const usedManualY = [];
+    if (lastY != null) usedManualY.push(lastY - 4);
+    manualLevels.forEach((lv) => {
+      if (lv.price < lo || lv.price > hi) return;
+      const isRes = lv.role === 'res';
+      const color = isRes ? 'var(--down)' : 'var(--up)';
+      const yy = y(lv.price);
+      const x1 = PAD.l;
+      const x2 = W - PAD.r;
+      const gMan = svgEl('g', {
+        class: 'manual-sr-level',
+        'data-manual-sr-role': lv.role,
+        'data-manual-sr-price': String(lv.price),
+      });
+      const tip = svgEl('title', {});
+      tip.textContent = lv.title;
+      gMan.appendChild(tip);
+      gMan.appendChild(svgEl('line', {
+        x1: x1.toFixed(1), x2: x2.toFixed(1),
+        y1: yy.toFixed(1), y2: yy.toFixed(1),
+        stroke: color, 'stroke-width': '1.4',
+        'stroke-dasharray': '6 3', opacity: '.85',
+      }));
+      let labY = Math.max(PAD.t + 10, Math.min(plotBottom - 4, yy - 4));
+      usedManualY.forEach((uy) => {
+        if (Math.abs(uy - labY) < 12) labY = Math.max(PAD.t + 10, uy - 12);
+      });
+      usedManualY.push(labY);
+      const lab = svgEl('text', {
+        x: (x2 - 4).toFixed(1),
+        y: labY.toFixed(1),
+        fill: color,
+        'font-size': '10.5',
+        'font-weight': '750',
+        'font-family': 'var(--font-mono)',
+        'text-anchor': 'end',
+        stroke: 'var(--bg)',
+        'stroke-width': '3',
+        'paint-order': 'stroke',
+        opacity: '.92',
+      });
+      lab.textContent = (isRes ? '压力 ' : '支撑 ') + px(lv.price);
+      gMan.appendChild(lab);
+      svg.appendChild(gMan);
+    });
   }
 
   const bounceLab = $('bounceLab');
@@ -919,6 +994,9 @@ export function drawChart(klines, ticker, hover) {
   }
   if (fib && fib.ok) {
     drawFib(svg, fib, vx, y, W - PAD.r, PAD.t, plotBottom);
+  }
+  if (pattern && pattern.ok) {
+    drawPatternPlan(svg, pattern, vis, view, x, vx, y, W - PAD.r, PAD.t, plotBottom);
   }
 
   if (state.ind.macd) {
@@ -953,7 +1031,10 @@ export function drawChart(klines, ticker, hover) {
     })),
     bodyW: bodyW, wickW: wickW, bodyStroke: bodyStroke, hollowUp: hollowUp,
     boxSig: box ? box.sig : '', stDir: stPack ? stPack.lastDir : 0,
+    div3Sig: div3 ? div3.sig : '',
+    patternSig: pattern ? pattern.sig : '',
     stackSig: stackSig,
+    manualSrSig: manualSrSignature(klines, ticker),
   };
   positionUsidxResizer();
   drawFastOverlay(svg, vis, view, x, y);
@@ -1038,12 +1119,21 @@ export function patchLastCandle(klines) {
     const bx = getBox(klines);
     if ((bx ? bx.sig : '') !== s.boxSig) return false;
   }
+  if (state.ind.div3) {
+    const d3 = getDiv3(klines);
+    if ((d3 ? d3.sig : '') !== s.div3Sig) return false;
+  }
+  if (state.ind.pattern) {
+    const patLive = getPatternPlan(klines, state.ticker);
+    if ((patLive ? patLive.sig : '') !== s.patternSig) return false;
+  }
   if (state.ind.st) {
     stLive = getSuperTrend(klines);
     if ((stLive ? stLive.lastDir : 0) !== s.stDir) return false;
     if (stLive.last != null && (stLive.last > s.hi || stLive.last < s.lo)) return false;
   }
   if (state.ind.stack && stackLevelSignature(getStack()) !== s.stackSig) return false;
+  if (manualSrSignature(klines, state.ticker) !== s.manualSrSig) return false;
   const y = s.y, x = s.x;
   const up = k.c >= k.o;
   const color = up ? 'var(--up)' : 'var(--down)';
@@ -1331,6 +1421,16 @@ export function showTip(e, klines) {
         (pack.target != null ? '  量度目标 ' + px(pack.target) + '（结构参考）' : ''))
       : '箱体未现');
   }
+  if (state.ind.div3) {
+    const pack = getDiv3(klines);
+    const giDiv = i + i0;
+    const hit = pack && (pack.marks || []).find((mk) => mk.i === giDiv || mk.extremeI === giDiv || mk.anchorI === giDiv);
+    const guides = pack && (pack.guides || []).filter((g) => g && (g.i === giDiv || g.extremeI === giDiv || g.anchorI === giDiv));
+    extra += '<br>' + (hit ? hit.lab : ((pack && pack.label) || '三维背离未现'));
+    (guides || []).forEach((g) => {
+      extra += '<br>' + (g.name || g.tag || '分项') + (g.diverged ? ' 分项背离' : ' 分项未齐');
+    });
+  }
   if (state.ind.hkld) {
     const pack = getHkld(klines);
     extra += '<br>' + (pack && pack.ok
@@ -1357,6 +1457,10 @@ export function showTip(e, klines) {
     if (srMode === 'swing' && pack.swing && pack.swing.range > 0 && i === pack.swing.endI) {
       extra += '<br>' + pack.swing.label;
     }
+  }
+  const manualPack = getManualSr(klines, state.ticker);
+  if (manualPack.levels.length) {
+    extra += '<br>' + manualPack.label;
   }
   if (state.ind.fib) {
     const pack = getFib(klines);
@@ -1387,6 +1491,17 @@ export function showTip(e, klines) {
     const gi = i + i0;
     const hit = (pack.marks || []).find((mk) => mk.i === gi);
     extra += '<br>' + (hit ? (hit.lab + ' ' + px(hit.price)) : (pack.label || '企稳未现'));
+  }
+  if (state.ind.pattern) {
+    const pack = getPatternPlan(klines, state.ticker);
+    const gi = i + i0;
+    const hit = pack && (pack.marks || []).find((mk) => mk.i === gi);
+    if (hit) {
+      extra += '<br>形态开单 ' + (hit.dir > 0 ? '做多' : '做空') + ' · ' + hit.pattern.name +
+        '（开 ' + px(hit.entry) + ' / 损 ' + px(hit.sl) + ' / TP1 ' + px(hit.tp1) + ' / TP2 ' + px(hit.tp2) + '）';
+    } else if (pack && pack.ok) {
+      extra += '<br>形态开单 ' + pack.label;
+    }
   }
   const html =
     fmtBarTime(k.t) + '<br>开 ' + px(k.o) + '  高 ' + px(k.h) +

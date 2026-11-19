@@ -2,6 +2,7 @@ import { fmtBarTime, fmtClock, fmtFunding, fmtHm, px } from '../core/format.js';
 import { bwRankWindow } from '../core/math.js';
 import { analyzeBoll, bollMacdSignal } from '../indicators/boll.js';
 import { getBox } from '../indicators/box.js';
+import { getDiv3, guideLine } from '../indicators/div3.js';
 import { STACK_GLOSS, STACK_TFS, getStack, stackKindText, stackSame, stackTrend } from '../indicators/stack.js';
 import { getSuperTrend } from '../indicators/supertrend.js';
 import { judge } from '../judge/judge.js';
@@ -11,6 +12,7 @@ import { barsForChart } from '../net/rest.js';
 import { $, isMarketOpen, mkt, state } from '../state.js';
 import { tickSimTrade } from '../trade/sim.js';
 import { bollSt } from '../ui/indicator-menu.js';
+import { renderPatternPanel } from '../ui/pattern-float.js';
 import { paintChart } from './chart.js';
 import { openSignalView, renderFastPanel } from './trade-overlay.js';
 
@@ -158,6 +160,25 @@ export function renderBoxStatus(klines) {
     '<span>' + (b.pos == null ? b.posLab : (b.posLab + ' ' + Math.round(b.pos * 100) + '%')) + '</span>';
 }
 
+export function renderDiv3State(klines) {
+  const el = $('div3State');
+  if (!el) return;
+  if (!state.ind.div3) {
+    el.innerHTML = '';
+    return;
+  }
+  const pack = getDiv3(klines);
+  if (!pack.ok) {
+    el.innerHTML = '<span>' + pack.why + '</span>';
+    return;
+  }
+  const cls = pack.dir > 0 ? 'up' : (pack.dir < 0 ? 'dn' : 'mid');
+  const lines = (pack.guides || []).map(guideLine).join(' · ');
+  el.innerHTML =
+    '<i class="box-flag ' + cls + '">' + pack.statusLab + '</i>' +
+    '<span>' + lines + '</span>';
+}
+
 export function renderStackBar() {
   const el = $('stackBar');
   if (!el) return;
@@ -271,14 +292,17 @@ export function renderQuote() {
   $('liveDot').className = 'live' + ((open || state.wsOk) && !state.paused ? ' on' : '');
   $('lastSub').textContent = mkt().symbol + ' · ' + liveLabel();
   if (t.last != null) tickSimTrade(t.last);
+  if (state.ind.pattern) renderPatternPanel(barsForChart(), t);
 }
 
 export function renderHeavy(klines) {
   renderFastPanel();
+  renderPatternPanel(klines, state.ticker);
   renderBollStatus(klines);
   renderStackBar();
   renderStState(klines);
   renderBoxStatus(klines);
+  renderDiv3State(klines);
   const t = state.ticker;
   const j = judge(klines, t, state.mtf);
 

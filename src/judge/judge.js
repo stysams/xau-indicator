@@ -2,6 +2,7 @@ import { klinesClosed } from '../core/bars.js';
 import { atrFallback, px } from '../core/format.js';
 import { atr, rsi, swings } from '../core/math.js';
 import { bollMacdSignal, getBollMacd } from '../indicators/boll.js';
+import { getDiv3 } from '../indicators/div3.js';
 import { getFib } from '../indicators/fib.js';
 import { getHkld } from '../indicators/hkld.js';
 import { getHold } from '../indicators/hold.js';
@@ -96,6 +97,14 @@ export function judge(klines, ticker, mtf) {
   if (bollPack) factors.push({ id: 'boll', name: '布林', vote: voteSrc.length ? bollPack.vote : 0, why: voteSrc.length ? bollPack.why : '正在走的 K 只观察，收盘才确认。' });
   if (macdPack) factors.push({ id: 'macd', name: 'MACD', vote: voteSrc.length ? macdPack.vote : 0, why: voteSrc.length ? macdPack.why : '正在走的 K 只观察，收盘才确认。' });
   if (sigPack) factors.push({ id: 'sig', name: '布林配 MACD', vote: voteSrc.length ? sigPack.vote : 0, why: voteSrc.length ? sigPack.why : '正在走的 K 只观察，收盘才确认。' });
+  if (factorOn('div3')) {
+    const d3 = getDiv3(voteSrc.length ? voteSrc : klines);
+    factors.push({
+      id: 'div3', name: '三维背离',
+      vote: voteSrc.length ? d3.vote : 0,
+      why: voteSrc.length ? d3.why : '正在走的 K 只观察，收盘才确认。',
+    });
+  }
   if (stackPack) factors.push({ id: 'stack', name: '套轨', vote: stackPack.vote, why: stackPack.why, core: true });
   let hkldPack = factorOn('hkld') ? getHkld(voteSrc.length ? voteSrc : klines) : null;
   if (hkldPack) {

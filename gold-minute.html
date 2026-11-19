@@ -193,6 +193,12 @@ try {
               <path d="M2.4 4.2L6 8l3.6-3.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
+          <div class="manual-sr-bar" id="manualSrBar" role="group" aria-label="手动支撑压力位">
+            <label class="lab" for="manualSrInput">支压位</label>
+            <input type="text" class="manual-sr-input num" id="manualSrInput" data-manual-sr-input inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="如 3773-3792-3797-3820" aria-label="手动输入压力支撑位，用连字符分隔">
+            <span class="manual-sr-meta num" id="manualSrMeta" hidden></span>
+            <button type="button" class="btn manual-sr-clear" id="btnManualSrClear" data-manual-sr-clear hidden title="清空手动输入的支撑压力线">清空</button>
+          </div>
           <div class="indicator-settings-body" id="indicatorSettingsBody" role="dialog" aria-label="指标设置" popover="auto">
             <div class="toolbar indicator-toolbar">
               <span class="lab">指标</span>
@@ -208,6 +214,7 @@ try {
                 <button type="button" data-ind="macd" aria-pressed="false" title="MACD 副图与布林复合信号">MACD</button>
                 <button type="button" data-ind="usidx" aria-pressed="false" title="USIDX 美元指数副图：独立请求 Gate TradFi 数据，关闭时不请求">USIDX</button>
                 <button type="button" data-ind="fast" aria-pressed="false" title="开单信号：1分/5分定方向，10秒回踩或触轨收回后给出开多/开空">开单</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="pattern" aria-pressed="false" aria-checked="false" title="形态开单：根据吞没、锤子线、流星线、启明/黄昏之星、红三兵/三只乌鸦、孕线突破等 K 线形态结合趋势过滤判断多空，弹出交易面板浮窗并给出开仓、止损与 TP1/TP2 止盈点位"><i class="pattern-c"></i>形态开单</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="hl" aria-pressed="false" aria-checked="false" title="今日最高最低"><i class="hl-c"></i>高低</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="bounce" aria-pressed="false" aria-checked="false" title="超跌反弹 / 超涨回落：急跌或急涨后，收盘重新越过 EMA9 才算收回"><i class="bounce-c"></i>反弹</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="pull" aria-pressed="false" aria-checked="false" title="拉升回踩 / 杀跌反抽：先有一段冲动，再回踩均线，收盘确认才算踩住"><i class="pull-c"></i>回踩</button>
@@ -219,6 +226,7 @@ try {
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="box" aria-pressed="false" aria-checked="false" title="箱体震荡：摆动高低点按 ATR 容差聚类，上下沿各有两次以上触碰才画箱体。框出上沿、下沿、中轴与触碰点，收盘越过边缘一定幅度记为上破或下破。回看根数可调。只画结构，不是下单指令"><i class="box-c"></i>箱体震荡</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="fib" aria-pressed="false" aria-checked="false" title="斐波那契：可自动选择摆动，也可指定低点到高点或高点到低点；扩展可独立显示 1.272 / 1.618。左侧因子仍单独勾选"><i class="fib-c"></i>斐波那契</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="st" aria-pressed="false" aria-checked="false" title="超级趋势：以 ATR 包络做趋势跟踪。多头段线在价格下方为绿，空头段线在价格上方为红，收盘穿越才换向，换向处标转多或转空。周期与倍数可调。滞后于反转，震荡里会来回换向，只描述趋势方向，不是下单指令"><i class="st-c"></i>超级趋势</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="div3" aria-pressed="false" aria-checked="false" title="三维背离：MACD、KDJ、RSI 在 5 根内同时背离才标记。底背离是后一段价格更低而三个指标没有更低，顶背离相反。金叉或死叉才触发。正在走的那根只标预备。左侧因子仍单独勾选。只描述动能不确认，不是下单指令"><i class="div3-c"></i>三维背离</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="vwap" aria-pressed="false" aria-checked="false" title="日内均价：有成交量时按典型价格计算 VWAP；黄金无统一现货成交量时使用日内典型价格均值作为代理。价格站上偏强，跌破偏弱，不单独作为入场信号"><i class="vwap-c"></i>日内均价</button>
               </div>
             </div>
@@ -381,6 +389,11 @@ try {
           </div>
           <span class="hint-wide">摆动点按 ATR 容差聚类 · 上下沿各需两次以上触碰 · 有三组以上平行锚点才画斜向通道 · 破位后投影一倍箱高目标</span>
         </div>
+        <div class="toolbar sub-toolbar" id="div3Bar" hidden>
+          <span class="lab">三维背离</span>
+          <span class="hint-wide">主图三种虚线是 MACD / KDJ / RSI 各自最近一段比较，左上角 M、K、R 标出是否背离。三项在 5 根内同时背离才画三维标记</span>
+          <span class="st-state" id="div3State" role="status"></span>
+        </div>
         <div class="toolbar sub-toolbar" id="fibBar" hidden>
           <span class="lab">斐波锚点</span>
           <div class="seg" role="group" aria-label="斐波那契锚点方向">
@@ -396,8 +409,12 @@ try {
             <button type="button" data-sr-mode="normal" aria-pressed="true" title="常规支压：显示历史摆动点、整数位和会话位形成的支撑压力线">常规</button>
             <button type="button" data-sr-mode="swing" aria-pressed="false" title="波段：过滤小幅反转，显示最近完整波段或达到门槛的进行中波段，并区分确认端点">波段</button>
             <button type="button" data-sr-mode="pressure" aria-pressed="false" title="撑压：只显示当前价格附近最近的一组支撑区域和压力区域">撑压</button>
+            <button type="button" data-sr-mode="manual" aria-pressed="false" title="手动：仅显示手动输入的支撑压力价位，当前价格上方为压力、下方为支撑">手动</button>
           </div>
-          <span class="hint-wide">三种类型只显示一种：常规看结构，波段看趋势高低，撑压看当前最近支撑与压力</span>
+          <label class="lab" for="srManualInput">手动价位</label>
+          <input type="text" class="manual-sr-input num" id="srManualInput" data-manual-sr-input inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="如 3773-3792-3797-3820" aria-label="手动输入压力支撑位，用连字符分隔">
+          <button type="button" class="btn manual-sr-clear" data-manual-sr-clear hidden title="清空手动输入的支撑压力线">清空</button>
+          <span class="hint-wide">可输入如 3773-3792-3797-3820，当前价格上方为压力、下方为支撑</span>
         </div>
         <div class="subbar" id="bollStatus" hidden></div>
         <div class="subbar" id="boxStatus" hidden></div>
@@ -468,6 +485,65 @@ try {
       </div>
       <p class="hint" id="fastWhy">1 分和 5 分定方向。10 秒回踩均线或触轨收回后给出开多/开空。正在走的那根只显示预备，收盘才开仓。纸面信号，不是下单指令。</p>
       <div class="fast-hist" id="fastHist"></div>
+    </aside>
+
+    <aside class="pat-panel" id="patternBox" aria-labelledby="patternTitle" hidden>
+      <div class="pat-head" id="patternDrag" title="拖动标题栏可移动位置，双击恢复默认">
+        <div class="pat-head-col pat-head-left">
+          <span class="pat-grip" aria-hidden="true"></span>
+          <h2 id="patternTitle">交易面板</h2>
+        </div>
+        <div class="pat-head-col pat-head-right">
+          <span class="pat-head-status">状态</span>
+          <div class="pat-head-actions">
+            <button type="button" class="pat-btn" id="btnPatternRecalc" title="立即重新计算 K 线形态与开单/止盈止损点位">重算</button>
+            <button type="button" class="pat-btn" id="btnPatternFold" aria-expanded="true" title="收起或展开面板">收起</button>
+            <button type="button" class="pat-btn" id="btnPatternClose" title="关闭形态开单浮窗">×</button>
+          </div>
+        </div>
+      </div>
+      <div class="pat-body" id="patternBody">
+        <div class="pat-row">
+          <div class="pat-key">当前订单</div>
+          <div class="pat-val is-muted" id="patOrder"><i class="pat-dot flat" aria-hidden="true"></i>观望中</div>
+        </div>
+        <div class="pat-row">
+          <div class="pat-key">当前时段</div>
+          <div class="pat-val is-gold" id="patSession">--</div>
+        </div>
+        <div class="pat-row">
+          <div class="pat-key">趋势方向</div>
+          <div class="pat-val is-muted" id="patTrend">--</div>
+        </div>
+        <div class="pat-row">
+          <div class="pat-key">K线形态</div>
+          <div class="pat-val is-muted" id="patName">等待形态</div>
+        </div>
+        <div class="pat-row">
+          <div class="pat-key">开仓价格</div>
+          <div class="pat-val num is-cyan" id="patEntry">--</div>
+        </div>
+        <div class="pat-row">
+          <div class="pat-key">止损价格</div>
+          <div class="pat-val num is-dn" id="patSl">--</div>
+        </div>
+        <div class="pat-row">
+          <div class="pat-key">止盈目标</div>
+          <div class="pat-val num is-up pat-tp" id="patTp">--</div>
+        </div>
+        <div class="pat-row">
+          <div class="pat-key">时段倍数</div>
+          <div class="pat-val num is-amber" id="patMult">SL×1.8 | TP1×1.8 | TP2×3</div>
+        </div>
+        <div class="pat-row">
+          <div class="pat-key">盈亏</div>
+          <div class="pat-val num is-muted" id="patPnl">0%</div>
+        </div>
+        <div class="pat-row">
+          <div class="pat-key">RF 信号</div>
+          <div class="pat-val is-muted" id="patRf">观望等待</div>
+        </div>
+      </div>
     </aside>
 
     <details class="foot">

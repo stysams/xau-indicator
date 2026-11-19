@@ -5,9 +5,11 @@ import { fmtBj, fmtRange, fromZoned, sessSnapshot, venueState } from './core/ses
 import { getFib } from './indicators/fib.js';
 import { getHkld } from './indicators/hkld.js';
 import { getHold } from './indicators/hold.js';
+import { getPatternPlan } from './indicators/pattern.js';
 import { getBox } from './indicators/box.js';
+import { getDiv3 } from './indicators/div3.js';
 import { getSmc } from './indicators/smc.js';
-import { getSr } from './indicators/sr.js';
+import { formatManualSr, getManualSr, getSr, parseManualSr } from './indicators/sr.js';
 import { getStack } from './indicators/stack.js';
 import { getSuperTrend } from './indicators/supertrend.js';
 import { getTrap } from './indicators/trap.js';
@@ -25,7 +27,8 @@ import { bindBiasPane } from './ui/bias-pane.js';
 import { applyColor, endDrag, setChartMagnify, stepChartMagnify, switchMarket, syncMarketChrome, zoomAt } from './ui/chrome.js';
 import { bindFacDrag, bindFacMenu, buildFacMenu, closeFacMenu, loadFac, refreshAfterFac, syncFacButtons } from './ui/factor-menu.js';
 import { bindFastFloat, loadFastPos } from './ui/fast-float.js';
-import { IND_KEYS, applyBollCssVars, closeBollStyleMenu, closeIndMenu, defaultBollStyle, indMenuItems, loadInd, normalizeSrMode, onBollStyleChange, parseHexColor, refreshAfterInd, resetBollStyle, saveInd, setIndMenu, syncIndButtons, toggleBollStyleMenu, toggleIndMenu } from './ui/indicator-menu.js';
+import { bindPatternFloat, loadPatternPos, renderPatternPanel } from './ui/pattern-float.js';
+import { IND_KEYS, applyBollCssVars, closeBollStyleMenu, closeIndMenu, defaultBollStyle, indMenuItems, loadInd, normalizeSrMode, onBollStyleChange, parseHexColor, refreshAfterInd, resetBollStyle, saveInd, setIndMenu, setManualSrText, syncIndButtons, toggleBollStyleMenu, toggleIndMenu } from './ui/indicator-menu.js';
 import { normalizeFibMode } from './indicators/fib.js';
 import { averageLineId, normalizeAverageLines } from './indicators/moving-average.js';
 import { bindLayoutPreset, closeLayoutMenu } from './ui/layout-preset.js';
@@ -44,6 +47,7 @@ loadFac();
 loadInd();
 applyBollCssVars();
 loadFastPos();
+loadPatternPos();
 
 loadSim();
 setChartMagnify(state.chartMagnify);
@@ -172,6 +176,32 @@ document.querySelectorAll('button[data-sr-mode]').forEach((b) => {
     saveInd();
     syncIndButtons();
     refreshAfterInd('srMode');
+    if (state.srMode === 'manual') {
+      const inp = $('srManualInput') || $('manualSrInput');
+      if (inp && inp.focus) inp.focus();
+    }
+  });
+});
+document.querySelectorAll('[data-manual-sr-input]').forEach((inp) => {
+  inp.addEventListener('input', () => {
+    setManualSrText(inp.value, false);
+  });
+  inp.addEventListener('change', () => {
+    setManualSrText(inp.value, true);
+  });
+  inp.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      setManualSrText(inp.value, true);
+    } else if (e.key === 'Escape') {
+      e.stopPropagation();
+      inp.blur();
+    }
+  });
+});
+document.querySelectorAll('[data-manual-sr-clear]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    setManualSrText('', true);
   });
 });
 
@@ -289,6 +319,7 @@ document.querySelectorAll('button[data-rsi-n]').forEach((b) => {
     syncFacButtons();
     state.chartScale = null;
     state._hkldKey = '';
+    state._div3Key = '';
     const klines = barsForChart();
     drawChart(klines, state.ticker, state.hover);
     renderHeavy(klines);
@@ -548,6 +579,7 @@ $('btnZoomReset').addEventListener('click', () => {
 document.addEventListener('keydown', (e) => {
   const dlg = $('simDlg');
   if (dlg && dlg.open) return;
+  if (e.target && /input|textarea|select/i.test(e.target.tagName)) return;
   if (e.key === 'r' || e.key === 'R') { e.preventDefault(); loadMain(); loadMtf(); loadFast(); }
   if (e.key === ' ') {
     if (e.target && /input|button|summary|textarea/i.test(e.target.tagName)) return;
@@ -582,6 +614,7 @@ bindFacMenu();
 bindFacDrag();
 bindSessRail();
 bindFastFloat();
+bindPatternFloat();
 
 function refreshAfterLayout() {
   state.chartScale = null;
@@ -589,6 +622,7 @@ function refreshAfterLayout() {
   drawChart(klines, state.ticker, state.hover);
   renderHeavy(klines);
   renderFastPanel();
+  renderPatternPanel(klines, state.ticker);
 }
 
 bindLayoutPreset(refreshAfterLayout);
@@ -619,12 +653,17 @@ window.__goldTest = {
   getTrap: (kl) => getTrap(kl || state.klines),
   getHold: (kl) => getHold(kl || state.klines),
   getSr: (kl) => getSr(kl || state.klines),
+  parseManualSr: (raw) => parseManualSr(raw),
+  formatManualSr: (raw) => formatManualSr(raw),
+  getManualSr: (kl, tk) => getManualSr(kl || state.klines, tk || state.ticker),
+  setManualSr: (raw) => setManualSrText(raw, true),
   getSmc: (kl) => getSmc(kl || state.klines),
   getStack: () => getStack(),
   getHkld: (kl) => getHkld(kl || state.klines),
   getFib: (kl) => getFib(kl || state.klines),
   getSuperTrend: (kl) => getSuperTrend(kl || state.klines),
   getBox: (kl) => getBox(kl || state.klines),
+  getDiv3: (kl) => getDiv3(kl || state.klines),
   judge: (kl) => judge(kl || state.klines, state.ticker, state.mtf),
   evalFastSetup: (bars, ticker, preview) => evalFastSetup(bars, ticker, preview),
   mtfLean: (kl) => mtfLean(kl),
@@ -665,6 +704,7 @@ window.__goldTest = {
     state._fibKey = '';
     state._stKey = '';
     state._boxKey = '';
+    state._div3Key = '';
     state.viewCount = null;
     state.viewEnd = null;
     state.followLive = true;
@@ -680,6 +720,7 @@ window.__goldTest = {
       fib: getFib(used),
       st: getSuperTrend(used),
       box: getBox(used),
+      div3: getDiv3(used),
       judge: judge(used, state.ticker, state.mtf),
     };
   },
@@ -752,6 +793,7 @@ window.__goldTest = {
     return factorOn(k);
   },
   collectSignals: (kl) => collectSignalEvents(kl || barsForChart()),
+  patternPlan: (kl, tk) => getPatternPlan(kl || barsForChart(), tk !== undefined ? tk : state.ticker),
   pushFastMark: (t, dir) => {
     state.fastMarks = (state.fastMarks || []).concat([{ t: Number(t), dir: Number(dir) || 1 }]).slice(-12);
     state.chartScale = null;

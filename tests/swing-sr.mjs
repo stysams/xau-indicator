@@ -1,8 +1,14 @@
 import { pivotPoints, significantPivots } from '../src/core/math.js';
 import {
+  buildManualSrLevels,
   computeSr,
+  formatManualSr,
+  getManualSr,
+  manualSrSignature,
+  parseManualSr,
   srBreakMeta,
   srLevelZone,
+  srTitle,
   srTouchMeta,
   srWaveRange,
 } from '../src/indicators/sr.js';
@@ -153,6 +159,49 @@ function flatBars(closes) {
   state.tf = oldTf;
   state.mkt = oldMkt;
   state.ticker = oldTicker;
+}
+
+// 手动输入支撑压力位（如 3773-3792-3797-3820）：当前价上方为压力，下方（含相等）为支撑，随价格变化自动翻转。
+{
+  const parsed = parseManualSr('3773-3792-3797-3820');
+  assert(parsed.length === 4, '应解析出 4 个手动价位: ' + parsed.length);
+  assert(
+    parsed[0] === 3773 && parsed[1] === 3792 && parsed[2] === 3797 && parsed[3] === 3820,
+    '解析结果应按升序排列: ' + parsed.join(','),
+  );
+  assert(formatManualSr('3820 - 3773, 3797 / 3792 3792') === '3773-3792-3797-3820', '应支持去重排序并格式化为连字符分隔');
+
+  const levelsAt3795 = buildManualSrLevels('3773-3792-3797-3820', 3795);
+  assert(levelsAt3795.length === 4, '应生成 4 条支撑压力线');
+  assert(levelsAt3795[0].price === 3773 && levelsAt3795[0].role === 'sup', '3773 < 3795 应为支撑');
+  assert(levelsAt3795[1].price === 3792 && levelsAt3795[1].role === 'sup', '3792 < 3795 应为支撑');
+  assert(levelsAt3795[2].price === 3797 && levelsAt3795[2].role === 'res', '3797 > 3795 应为压力');
+  assert(levelsAt3795[3].price === 3820 && levelsAt3795[3].role === 'res', '3820 > 3795 应为压力');
+  assert(srTitle(levelsAt3795[0], 3795).startsWith('支撑 '), '下方手动位标题应为支撑');
+  assert(srTitle(levelsAt3795[2], 3795).startsWith('压力 '), '上方手动位标题应为压力');
+
+  const oldManual = state.manualSr;
+  const oldManualText = state.manualSrText;
+  state.manualSrText = '3773-3792-3797-3820';
+  state.manualSr = parseManualSr(state.manualSrText);
+
+  const barsLow = [bar(0, 3790, 3796, 3788, 3795)];
+  const pack1 = getManualSr(barsLow, null);
+  assert(pack1.sup.length === 2 && pack1.res.length === 2, '现价 3795 时应为 2 支撑 2 压力');
+  assert(pack1.nearSup && pack1.nearSup.price === 3792, '最近支撑应为 3792');
+  assert(pack1.nearRes && pack1.nearRes.price === 3797, '最近压力应为 3797');
+  const sig1 = manualSrSignature(barsLow, null);
+
+  const barsHigh = [bar(0, 3795, 3802, 3794, 3800)];
+  const pack2 = getManualSr(barsHigh, null);
+  assert(pack2.sup.length === 3 && pack2.res.length === 1, '现价升至 3800 后 3797 应自动转为支撑');
+  assert(pack2.nearSup && pack2.nearSup.price === 3797, '最近支撑应更新为 3797');
+  assert(pack2.nearRes && pack2.nearRes.price === 3820, '最近压力应更新为 3820');
+  const sig2 = manualSrSignature(barsHigh, null);
+  assert(sig1 !== sig2, '跨越手动价位后签名应改变以触发重绘');
+
+  state.manualSr = oldManual;
+  state.manualSrText = oldManualText;
 }
 
 console.log('PASS swing-sr');

@@ -11,6 +11,7 @@ export const FAC_ITEMS = [
   { k: 'tape', lab: '近端 K 线' },
   { k: 'boll', lab: '布林' },
   { k: 'macd', lab: 'MACD' },
+  { k: 'div3', lab: '三维背离' },
   { k: 'sig', lab: '布林配 MACD' },
   { k: 'stack', lab: '套轨' },
   { k: 'hkld', lab: '高空低多' },
@@ -28,7 +29,7 @@ export const FAC_ITEMS = [
 ];
 
 export const FAC_FAMILY = {
-  ema: 'mom', vwap: 'mom', rsi: 'mom', macd: 'mom', sig: 'mom', boll: 'mom', tape: 'mom',
+  ema: 'mom', vwap: 'mom', rsi: 'mom', macd: 'mom', div3: 'mom', sig: 'mom', boll: 'mom', tape: 'mom',
   dxy: 'macro',
   xauUsidx: 'macro',
   mtf: 'mom', stack: 'mom', hkld: 'mom',
@@ -58,7 +59,7 @@ export function factorOn(k) {
 export function factorFamilyId(f) {
   if (f && f.id && FAC_FAMILY[f.id]) return FAC_FAMILY[f.id];
   const n = (f && f.name) || '';
-  if (/均线|RSI|MACD|布林|近端|套轨|高空|低多|多周期|上破|下破/.test(n)) return 'mom';
+  if (/均线|RSI|MACD|布林|近端|套轨|高空|低多|多周期|上破|下破|背离/.test(n)) return 'mom';
   if (/高低|SMC|头肩/.test(n)) return 'struct';
   if (/支撑|压力|诱|企稳|受阻|反弹|回踩|斐波那契|超涨|超跌|杀跌|拉升/.test(n)) return 'touch';
   if (/日内|24小时/.test(n)) return 'pos';

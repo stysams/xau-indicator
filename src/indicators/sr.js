@@ -277,8 +277,90 @@ export function srMergeLevel(levels, price, radius, patch) {
   return null;
 }
 
+export function parseManualSr(raw) {
+  if (raw == null) return [];
+  const tokens = Array.isArray(raw)
+    ? raw.map(function (x) { return String(x == null ? '' : x).trim(); })
+    : String(raw).trim().split(/[-,\s/，；;、|—–~]+/);
+  const nums = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const s = tokens[i];
+    if (!s || !/^\d+(?:\.\d+)?$/.test(s)) continue;
+    const v = Number(s);
+    if (!Number.isFinite(v) || !(v > 0)) continue;
+    nums.push(v);
+  }
+  nums.sort(function (a, b) { return a - b; });
+  const out = [];
+  for (let i = 0; i < nums.length && out.length < 32; i++) {
+    if (!out.length || Math.abs(nums[i] - out[out.length - 1]) > 1e-9) {
+      out.push(nums[i]);
+    }
+  }
+  return out;
+}
+
+export function formatManualSr(raw) {
+  return parseManualSr(raw).map(function (v) { return String(v); }).join('-');
+}
+
+export function buildManualSrLevels(rawOrPrices, lastPx) {
+  const prices = parseManualSr(rawOrPrices);
+  const refPx = (lastPx != null && Number.isFinite(Number(lastPx))) ? Number(lastPx) : null;
+  return prices.map(function (p) {
+    const isRes = refPx != null ? p > refPx : false;
+    const role = isRes ? 'res' : 'sup';
+    return {
+      price: p,
+      role: role,
+      kind: isRes ? '压力' : '支撑',
+      label: (isRes ? '压力 ' : '支撑 ') + px(p),
+      title: '手动' + (isRes ? '压力 ' : '支撑 ') + px(p),
+      source: 'manual',
+      manual: true,
+      distance: refPx != null ? Math.abs(p - refPx) : 0,
+    };
+  });
+}
+
+export function getManualSr(klines, ticker) {
+  const barLast = klines && klines.length ? klines[klines.length - 1].c : null;
+  const tk = ticker !== undefined ? ticker : state.ticker;
+  const lastPx = Number.isFinite(barLast) ? barLast : (tk && Number.isFinite(tk.last) ? tk.last : null);
+  const raw = (Array.isArray(state.manualSr) && state.manualSr.length) ? state.manualSr : state.manualSrText;
+  const levels = buildManualSrLevels(raw, lastPx);
+  const sups = levels.filter(function (lv) { return lv.role === 'sup'; }).slice().sort(function (a, b) { return b.price - a.price; });
+  const ress = levels.filter(function (lv) { return lv.role === 'res'; }).slice().sort(function (a, b) { return a.price - b.price; });
+  const nearSup = sups[0] || null;
+  const nearRes = ress[0] || null;
+  let label = '手动支压未设';
+  if (nearSup && nearRes) label = '支撑 ' + px(nearSup.price) + ' / 压力 ' + px(nearRes.price);
+  else if (nearSup) label = '支撑 ' + px(nearSup.price);
+  else if (nearRes) label = '压力 ' + px(nearRes.price);
+  return {
+    levels: levels,
+    sup: sups,
+    res: ress,
+    nearSup: nearSup,
+    nearRes: nearRes,
+    supCount: sups.length,
+    resCount: ress.length,
+    lastPx: lastPx,
+    label: label,
+  };
+}
+
+export function manualSrSignature(klines, ticker) {
+  const pack = getManualSr(klines, ticker);
+  return pack.levels.map(function (lv) { return lv.price + ':' + lv.role; }).join('|');
+}
+
 export function srTitle(lv, lastPx) {
   if (!lv) return '';
+  if (lv.manual || lv.source === 'manual') {
+    const isRes = (lastPx != null && Number.isFinite(lastPx)) ? lv.price > lastPx : lv.role === 'res';
+    return (isRes ? '压力 ' : '支撑 ') + px(lv.price);
+  }
   if (lv.session) return lv.session + ' ' + px(lv.price);
   if (lv.source === 'boll20' || lv.boll20) return 'BOLL20' + (lv.bollKind ? lv.bollKind : '') + ' ' + px(lv.price);
   const flipped = lv.flipCount > 0 ? '转换' : '';

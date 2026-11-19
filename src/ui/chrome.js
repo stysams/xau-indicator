@@ -1,3 +1,4 @@
+import { formatManualSr, parseManualSr } from '../indicators/sr.js';
 import { loadMain, loadMtf } from '../net/loader.js';
 import { barsForChart, liveEndFor } from '../net/rest.js';
 import { clearUsidx, loadUsidx } from '../net/usidx.js';
@@ -5,6 +6,7 @@ import { connectWs, disconnectWs } from '../net/ws.js';
 import { $, MARKETS, MIN_BARS, MKT_KEY, PAD, W, mkt, state } from '../state.js';
 import { loadFast } from '../trade/fast.js';
 import { loadSim, refreshSimUi, saveSim } from '../trade/sim.js';
+import { syncManualSrUi } from './indicator-menu.js';
 import { applySessChrome } from './session-rail.js';
 import { drawChart, hideCrosshair, refreshCrosshair, wrap } from '../view/chart.js';
 import { banner } from '../view/panels.js';
@@ -51,6 +53,8 @@ export function clearMarketData() {
   state._pbKey = '';
   state._trapKey = '';
   state._holdKey = '';
+  state._patternKey = '';
+  state._pattern = null;
   clearUsidx();
   state.simOrders = [];
   state.simLastClose = null;
@@ -70,6 +74,10 @@ export function switchMarket(id) {
   state.mkt = id;
   try { localStorage.setItem(MKT_KEY, id); } catch (e) {}
   clearMarketData();
+  const mSr = (state.manualSrByMkt && typeof state.manualSrByMkt[id] === 'string') ? state.manualSrByMkt[id] : '';
+  state.manualSr = parseManualSr(mSr);
+  state.manualSrText = state.manualSr.length ? formatManualSr(state.manualSr) : '';
+  syncManualSrUi();
   loadSim();
   refreshSimUi();
   syncMarketChrome();

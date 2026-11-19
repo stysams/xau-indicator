@@ -173,6 +173,47 @@ export function rsi(closes, period) {
   return s.length ? s[s.length - 1] : null;
 }
 
+// 通达信 SMA(X, N, M)：Y = (M*X + (N-M)*Y') / N。seed 只作内部起点，X 还没出来时不写出。
+export function tdxSma(values, period, weight, seed) {
+  const n = values ? values.length : 0;
+  const out = new Array(n).fill(null);
+  const p = Math.max(1, Math.floor(Number(period) || 1));
+  const m = weight == null ? 1 : Number(weight);
+  let y = seed == null ? null : Number(seed);
+  for (let i = 0; i < n; i++) {
+    const x = values[i];
+    if (x == null || !Number.isFinite(x)) continue;
+    y = y == null ? x : (m * x + (p - m) * y) / p;
+    out[i] = y;
+  }
+  return out;
+}
+
+// KDJ：RSV 用 N 根高低，K/D 用通达信 SMA，初值 50。J = 3K - 2D。默认 9 / 3 / 3。
+export function kdjOf(klines, period, m1, m2) {
+  period = period || 9;
+  m1 = m1 || 3;
+  m2 = m2 || 3;
+  const n = klines ? klines.length : 0;
+  const rsv = new Array(n).fill(null);
+  const empty = { rsv: rsv, k: rsv.slice(), d: rsv.slice(), j: rsv.slice() };
+  if (n < period) return empty;
+  for (let i = period - 1; i < n; i++) {
+    let hh = -Infinity;
+    let ll = Infinity;
+    for (let j = i - period + 1; j <= i; j++) {
+      if (klines[j].h > hh) hh = klines[j].h;
+      if (klines[j].l < ll) ll = klines[j].l;
+    }
+    const span = hh - ll;
+    rsv[i] = span === 0 ? 50 : (klines[i].c - ll) / span * 100;
+  }
+  const k = tdxSma(rsv, m1, 1, 50);
+  const d = tdxSma(k, m2, 1, 50);
+  const j = k.map((kv, i) => (kv == null || d[i] == null ? null : 3 * kv - 2 * d[i]));
+  return { rsv: rsv, k: k, d: d, j: j };
+}
+
 export function atr(klines, period) {
   period = period || 14;
   if (!klines || klines.length < period + 1) return null;

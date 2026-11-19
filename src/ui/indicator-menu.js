@@ -3,15 +3,17 @@ import { rsi } from '../core/math.js';
 import { barsForChart } from '../net/rest.js';
 import { normalizeFibMode } from '../indicators/fib.js';
 import { AVERAGE_KINDS, AVERAGE_TFS, averageLineId, normalizeAverageLines } from '../indicators/moving-average.js';
+import { formatManualSr, getManualSr, parseManualSr } from '../indicators/sr.js';
 import { $, state } from '../state.js';
 import { applyFastPos } from './fast-float.js';
+import { applyPatternPos, renderPatternPanel } from './pattern-float.js';
 import { drawChart, wrap } from '../view/chart.js';
-import { renderBollStatus, renderBoxStatus, renderHeavy, renderStState, renderStackBar } from '../view/panels.js';
+import { renderBollStatus, renderBoxStatus, renderDiv3State, renderHeavy, renderStState, renderStackBar } from '../view/panels.js';
 import { renderFastPanel } from '../view/trade-overlay.js';
 
 export const IND_KEY = 'gold-minute-ind';
 
-export const IND_KEYS = ['boll', 'smc', 'smcSig', 'stack', 'hkld', 'fib', 'hs', 'sr', 'bounce', 'pull', 'trap', 'hold', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'usidx', 'vwap', 'fast', 'st', 'box'];
+export const IND_KEYS = ['boll', 'smc', 'smcSig', 'stack', 'hkld', 'fib', 'hs', 'sr', 'bounce', 'pull', 'trap', 'hold', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'usidx', 'vwap', 'fast', 'pattern', 'st', 'box', 'div3'];
 
 export const IND_MORE = [
   { k: 'hl', lab: '高低' },
@@ -25,13 +27,64 @@ export const IND_MORE = [
   { k: 'box', lab: '箱体震荡' },
   { k: 'fib', lab: '斐波那契' },
   { k: 'st', lab: '超级趋势' },
+  { k: 'div3', lab: '三维背离' },
   { k: 'vwap', lab: '日内均价' },
+  { k: 'pattern', lab: '形态开单' },
 ];
 
-export const SR_MODES = ['normal', 'swing', 'pressure'];
+export const SR_MODES = ['normal', 'swing', 'pressure', 'manual'];
 
 export function normalizeSrMode(v) {
   return SR_MODES.indexOf(v) >= 0 ? v : 'normal';
+}
+
+export function syncManualSrUi(klines, ticker) {
+  const text = String(state.manualSrText || '');
+  const prices = parseManualSr(text);
+  state.manualSr = prices;
+  document.querySelectorAll('[data-manual-sr-input]').forEach((inp) => {
+    if (typeof document !== 'undefined' && document.activeElement === inp) return;
+    if (inp.value !== text) inp.value = text;
+  });
+  document.querySelectorAll('[data-manual-sr-clear]').forEach((btn) => {
+    btn.hidden = !text.trim() && !prices.length;
+  });
+  const metaEl = $('manualSrMeta');
+  if (metaEl) {
+    if (!prices.length) {
+      metaEl.hidden = true;
+      metaEl.innerHTML = '';
+    } else {
+      const pack = getManualSr(klines || state.klines, ticker !== undefined ? ticker : state.ticker);
+      metaEl.hidden = false;
+      if (pack.lastPx != null) {
+        metaEl.innerHTML =
+          '<span class="res">压 ' + pack.resCount + '</span>' +
+          '<i class="sep">/</i>' +
+          '<span class="sup">支 ' + pack.supCount + '</span>';
+      } else {
+        metaEl.textContent = prices.length + ' 条';
+      }
+    }
+  }
+}
+
+export function setManualSrText(raw, normalize) {
+  const str = raw == null ? '' : String(raw);
+  const prices = parseManualSr(str);
+  const nextText = normalize ? (prices.length ? formatManualSr(prices) : '') : str;
+  state.manualSrText = nextText;
+  state.manualSr = prices;
+  if (!state.manualSrByMkt || typeof state.manualSrByMkt !== 'object') state.manualSrByMkt = {};
+  state.manualSrByMkt[state.mkt || 'xau'] = formatManualSr(prices);
+  saveInd();
+  syncManualSrUi();
+  syncIndButtons();
+  state.chartScale = null;
+  state._srKey = '';
+  const klines = barsForChart();
+  drawChart(klines, state.ticker, state.hover);
+  return prices;
 }
 
 export const ST_PERIODS = [7, 10, 14];
@@ -143,6 +196,20 @@ export function loadInd() {
     if (raw.bollK === 1.5 || raw.bollK === 2 || raw.bollK === 2.5) state.bollK = raw.bollK;
     if (typeof raw.srMode === 'string') state.srMode = normalizeSrMode(raw.srMode);
     else if (raw.srSwing === true) state.srMode = 'swing';
+    if (raw.manualSrByMkt && typeof raw.manualSrByMkt === 'object') {
+      const map = {};
+      Object.keys(raw.manualSrByMkt).forEach((k) => {
+        if (typeof raw.manualSrByMkt[k] === 'string') {
+          map[k] = formatManualSr(raw.manualSrByMkt[k]);
+        }
+      });
+      state.manualSrByMkt = map;
+    }
+    const savedManual = (state.manualSrByMkt && typeof state.manualSrByMkt[state.mkt] === 'string')
+      ? state.manualSrByMkt[state.mkt]
+      : (typeof raw.manualSrText === 'string' ? raw.manualSrText : '');
+    state.manualSr = parseManualSr(savedManual);
+    state.manualSrText = formatManualSr(state.manualSr);
     if (raw.rsiN === 6 || raw.rsiN === 9 || raw.rsiN === 14) state.rsiN = raw.rsiN;
     const legacyLines = [];
     if (Array.isArray(raw.maPeriods)) raw.maPeriods.forEach((period) => legacyLines.push({ kind: 'ma', period: period, tf: '1m' }));
@@ -186,6 +253,10 @@ export function saveInd() {
       stackDraw: Object.assign({}, state.stackDraw),
       fibMode: normalizeFibMode(state.fibMode), fibExt: !!state.fibExt,
       srMode: state.srMode,
+      manualSrText: formatManualSr(state.manualSr),
+      manualSrByMkt: Object.assign({}, state.manualSrByMkt || {}, {
+        [state.mkt || 'xau']: formatManualSr(state.manualSr),
+      }),
       bollStyle: state.bollStyle,
     })));
   } catch (e) {}
@@ -236,6 +307,8 @@ export function syncIndButtons() {
   });
   const boxBar = $('boxBar');
   if (boxBar) boxBar.hidden = !state.ind.box;
+  const div3Bar = $('div3Bar');
+  if (div3Bar) div3Bar.hidden = !state.ind.div3;
   document.querySelectorAll('button[data-box-len]').forEach((b) => {
     b.setAttribute('aria-pressed', String(Number(b.dataset.boxLen) === state.boxLen));
   });
@@ -274,6 +347,7 @@ export function syncIndButtons() {
   document.querySelectorAll('button[data-sr-mode]').forEach((b) => {
     b.setAttribute('aria-pressed', String(b.dataset.srMode === state.srMode));
   });
+  syncManualSrUi();
   const beep = $('btnFastBeep');
   if (beep) beep.setAttribute('aria-pressed', String(!!state.fastBeep));
   const fastBox = $('fastBox');
@@ -281,6 +355,12 @@ export function syncIndButtons() {
     fastBox.hidden = !state.ind.fast;
     if (!state.ind.fast) fastBox.classList.remove('is-placed');
     else if (!state.fastDrag) applyFastPos(false);
+  }
+  const patternBox = $('patternBox');
+  if (patternBox) {
+    patternBox.hidden = !state.ind.pattern;
+    if (!state.ind.pattern) patternBox.classList.remove('is-placed');
+    else if (!state.patternDrag) applyPatternPos(false);
   }
   const caret = $('btnIndMore');
   if (caret) {
@@ -353,12 +433,16 @@ export function refreshAfterInd(key) {
   state._fibKey = '';
   state._stKey = '';
   state._boxKey = '';
+  state._div3Key = '';
+  state._patternKey = '';
   const klines = barsForChart();
   drawChart(klines, state.ticker, state.hover);
   renderBollStatus(klines);
   renderStackBar();
   renderStState(klines);
   renderBoxStatus(klines);
+  renderDiv3State(klines);
+  renderPatternPanel(klines, state.ticker);
   if (key === 'fast') renderFastPanel();
   if (key === 'rsi') renderHeavy(klines);
 }

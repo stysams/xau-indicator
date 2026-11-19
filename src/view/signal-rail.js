@@ -1,8 +1,10 @@
 import { fmtBarTime, fmtHm, px } from '../core/format.js';
 import { getBox } from '../indicators/box.js';
+import { getDiv3 } from '../indicators/div3.js';
 import { getFib } from '../indicators/fib.js';
 import { getHkld } from '../indicators/hkld.js';
 import { getHold } from '../indicators/hold.js';
+import { getPatternPlan } from '../indicators/pattern.js';
 import { getPb } from '../indicators/pb.js';
 import { getSmc } from '../indicators/smc.js';
 import { getSr } from '../indicators/sr.js';
@@ -36,7 +38,7 @@ function dedupeSigs(list) {
 
 const SIGNAL_FACTOR = {
   hold: 'hold', trap: 'trap', bounce: 'bounce', pull: 'pull', smc: 'smc', bos: 'smc',
-  stack: 'stack', hkld: 'hkld', fib: 'fib', sr: 'sr',
+  stack: 'stack', hkld: 'hkld', fib: 'fib', sr: 'sr', div3: 'div3',
 };
 
 // 技术事件只在其对应判断因子启用时进入时间线。关系因子可用时，以事件
@@ -184,6 +186,19 @@ export function collectSignalEvents(klines) {
     });
   });
 
+  const div3 = getDiv3(klines);
+  (div3 && div3.marks || []).forEach((mk) => {
+    if (!mk || mk.status !== 'trigger') return;
+    pushSig(out, {
+      i: mk.i,
+      t: klines[mk.i] && klines[mk.i].t,
+      dir: mk.dir,
+      kind: 'div3',
+      lab: mk.lab || (mk.dir > 0 ? '三维底背离' : '三维顶背离'),
+      price: mk.extremePx,
+    });
+  });
+
   const box = getBox(klines);
   if (box && box.ok && box.breakI != null && box.breakI >= 0) {
     pushSig(out, {
@@ -228,6 +243,21 @@ export function collectSignalEvents(klines) {
       price: null,
     });
   });
+
+  if (state.ind.pattern) {
+    const patPack = getPatternPlan(klines, state.ticker);
+    (patPack && patPack.marks || []).forEach((mk) => {
+      if (!mk || mk.i == null) return;
+      pushSig(out, {
+        i: mk.i,
+        t: mk.t,
+        dir: mk.dir,
+        kind: 'pattern',
+        lab: (mk.dir > 0 ? '形态多 · ' : '形态空 · ') + (mk.pattern ? mk.pattern.name : ''),
+        price: mk.entry,
+      });
+    });
+  }
 
   return matchSignalsToFactors(dedupeSigs(out), klines, state.usidxBars);
 }
