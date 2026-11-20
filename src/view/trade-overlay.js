@@ -191,7 +191,7 @@ export function placeLevelTag(id, price, show, lab) {
   const wrap = $('chartWrap');
   const s = state.chartScale;
   if (!tag || !wrap) return;
-  if (!show || price == null || !s || !s.y) {
+  if (!show || price == null || !s || !s.y || (s.fitCandles && (price < s.lo || price > s.hi))) {
     tag.classList.remove('show');
     return;
   }
@@ -220,6 +220,7 @@ export function placeSimTags() {
   const opens = simOpenOrders();
   if (!wrap || !s || !s.y || !opens.length) return;
   opens.filter((o) => o.source !== 'fast').slice(-8).forEach((o) => {
+    if (s.fitCandles && (o.entry < s.lo || o.entry > s.hi)) return;
     const tag = document.createElement('div');
     tag.className = 'lvl-tag sim entry num show';
     if (o.dir > 0) tag.classList.add('tp');

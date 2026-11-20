@@ -7,7 +7,7 @@ const tests = ['gate-api.cjs', 'api-source.mjs', 'math-indicators.mjs', 'div3.mj
 
 // 基线回归要开 headless Chrome，默认不跑。
 // 改动 src/ 之后建议跑一次：WITH_BROWSER=1 node tests/run-all.mjs
-if (process.env.WITH_BROWSER) tests.push('_baseline/verify.mjs');
+if (process.env.WITH_BROWSER) tests.push('chart-wheel-fit.mjs', '_baseline/verify.mjs');
 
 let failed = 0;
 for (let i = 0; i < tests.length; i++) {

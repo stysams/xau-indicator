@@ -34,8 +34,8 @@ function stackLevelSignature(pack) {
 }
 
 export function drawChart(klines, ticker, hover) {
-  const svg = $('chart');
-  svg.replaceChildren();
+  const chart = $('chart');
+  chart.replaceChildren();
   const usidxResizer = $('usidxResizer');
   if (usidxResizer) usidxResizer.hidden = true;
   $('chartEmpty').style.display = klines.length ? 'none' : 'grid';
@@ -71,6 +71,8 @@ export function drawChart(klines, ticker, hover) {
   const pattern = state.ind.pattern ? getPatternPlan(klines, ticker) : null;
   let lo = Infinity, hi = -Infinity;
   vis.forEach((k) => { lo = Math.min(lo, k.l); hi = Math.max(hi, k.h); });
+  const candleLo = lo, candleHi = hi;
+  const fitCandles = view.count < klines.length;
   averageSeries.forEach((line) => line.values.forEach((v) => { if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } }));
   if (state.ind.vwap) {
     view.vwap.forEach((v) => { if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } });
@@ -267,6 +269,11 @@ export function drawChart(klines, ticker, hover) {
       });
     });
   }
+  // 放大时间轴后，价格轴要跟随可见蜡烛的高低点。
+  if (fitCandles) {
+    lo = candleLo;
+    hi = candleHi;
+  }
   const padY = (hi - lo) * 0.08 || 1;
   lo -= padY; hi += padY;
   const priceOffset = Number(state.priceOffset) || 0;
@@ -313,7 +320,15 @@ export function drawChart(klines, ticker, hover) {
     t.textContent = v.toFixed(2);
     gGrid.appendChild(t);
   }
-  svg.appendChild(gGrid);
+  chart.appendChild(gGrid);
+
+  const priceClip = svgEl('clipPath', { id: 'ck-price-clip' });
+  priceClip.appendChild(svgEl('rect', { x: 0, y: PAD.t, width: W, height: plotH }));
+  const defs = svgEl('defs', {});
+  defs.appendChild(priceClip);
+  chart.appendChild(defs);
+  const svg = svgEl('g', { 'clip-path': 'url(#ck-price-clip)' });
+  chart.appendChild(svg);
 
   if (state.ind.boll) {
     function polyB(arr, stroke, dash, id, width, op) {
@@ -1020,11 +1035,9 @@ export function drawChart(klines, ticker, hover) {
     });
   }
 
-  drawOscPanes(svg, view, osc.panes, x, nBars, bodyW);
-
   state.chartScale = {
     lo: lo, hi: hi, nBars: nBars, lastT: vis[nBars - 1].t, x: x, y: y,
-    start: view.start, follow: view.follow, fullN: klines.length,
+    start: view.start, follow: view.follow, fullN: klines.length, fitCandles: fitCandles,
     plotTop: PAD.t, plotBottom: plotBottom, lastPx: lastPx,
     panes: osc.panes.map((p) => ({
       key: p.key, top: p.top, h: p.h, lo: p.lo, hi: p.hi, digits: p.digits,
@@ -1047,6 +1060,7 @@ export function drawChart(klines, ticker, hover) {
     lastLine.setAttribute('id', 'ck-last');
     svg.appendChild(lastLine);
   }
+  drawOscPanes(chart, view, osc.panes, x, nBars, bodyW);
   refreshCrosshair();
   placeLastTag(lastPx);
   placeFastTags();
@@ -1060,14 +1074,14 @@ export function drawChart(klines, ticker, hover) {
       'text-anchor': 'middle', 'font-family': 'var(--font-mono)',
     });
     t.textContent = fmtAxis(vis[i].t);
-    svg.appendChild(t);
+    chart.appendChild(t);
   }
 
-  drawSignalRail(svg, klines, vis, view, xScale.index);
+  drawSignalRail(chart, klines, vis, view, xScale.index);
 
   if (hover >= 0 && hover < nBars) {
     const xc = x(hover);
-    svg.appendChild(svgEl('line', {
+    chart.appendChild(svgEl('line', {
       x1: xc, x2: xc, y1: PAD.t, y2: H - PAD.b,
       stroke: 'var(--ink-1)', 'stroke-width': '1', opacity: '.25',
     }));
@@ -1088,7 +1102,7 @@ export function patchLastCandle(klines) {
   const lastLine = document.getElementById('ck-last');
   if (!wick || !body) return false;
   if (state.ind.last && !lastLine) return false;
-  if (state.ind.boll) {
+  if (state.ind.boll && !s.fitCandles) {
     const lastB = view.bollUp[view.bollUp.length - 1];
     const lastD = view.bollDn[view.bollDn.length - 1];
     if (state.ind.boll2 && lastB != null && lastB > s.hi) return false;
@@ -1130,7 +1144,7 @@ export function patchLastCandle(klines) {
   if (state.ind.st) {
     stLive = getSuperTrend(klines);
     if ((stLive ? stLive.lastDir : 0) !== s.stDir) return false;
-    if (stLive.last != null && (stLive.last > s.hi || stLive.last < s.lo)) return false;
+    if (!s.fitCandles && stLive.last != null && (stLive.last > s.hi || stLive.last < s.lo)) return false;
   }
   if (state.ind.stack && stackLevelSignature(getStack()) !== s.stackSig) return false;
   if (manualSrSignature(klines, state.ticker) !== s.manualSrSig) return false;

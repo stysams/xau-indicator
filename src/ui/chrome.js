@@ -118,6 +118,7 @@ export function zoomAt(clientX, factor) {
   const xPlot = Math.min(1, Math.max(0, (mx - PAD.l) / plotW));
   const pivot = view.start + xPlot * Math.max(0, view.count - 1);
   const nextCount = Math.min(maxViewCount(total), Math.max(MIN_BARS, Math.round(view.count * factor)));
+  if (nextCount !== view.count) state.priceOffset = 0;
   let newStart = Math.round(pivot - xPlot * Math.max(0, nextCount - 1));
   newStart = Math.max(0, Math.min(total - 1, newStart));
   if (state.followLive) applyView(nextCount, liveEndFor(total, nextCount), total);
