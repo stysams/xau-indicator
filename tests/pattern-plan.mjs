@@ -12,8 +12,10 @@ import {
   normalizePatternMode,
   sessionProfileForTs,
 } from '../src/indicators/pattern.js';
-import { parseStreamName } from '../src/net/rest.js';
-import { MARKETS, state } from '../src/state.js';
+import { parseStreamName, liveEndFor } from '../src/net/rest.js';
+import { MARKETS, PAD, W, state } from '../src/state.js';
+import { layoutPatternPlan } from '../src/view/overlays.js';
+import { chartXScale } from '../src/view/viewport.js';
 import { approx, assert } from './_lib/assert.mjs';
 
 function bar(t, o, h, l, c) {
@@ -295,6 +297,126 @@ function bar(t, o, h, l, c) {
   state.mkt = 'eth';
   assert(!computePatternPlan(warmup, null, undefined, 'xaudz').ok, 'xaudz 仅支持黄金');
   state.mkt = 'xau';
+}
+
+// 9. 形态开单绘图布局校验：开仓/止损/TP1/TP2 文字标签与 Buy/Sell 气泡不得遮挡 K 线
+{
+  const overlap = (a, b) => a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
+  const xRight = W - PAD.r;
+  const plotTop = PAD.t;
+  const plotBottom = 360;
+
+  const baseT = Math.floor(Date.UTC(2026, 5, 1, 2, 0, 0) / 1000);
+  const klines = [];
+  let pxVal = 3780;
+  for (let i = 0; i < 36; i++) {
+    const o = pxVal;
+    const step = (i % 4 === 3) ? 0.30 : -0.55;
+    const c = o + step;
+    klines.push(bar(baseT + i * 180, o, Math.max(o, c) + 0.35, Math.min(o, c) - 0.35, c));
+    pxVal = c;
+  }
+  const o36 = pxVal;
+  const c36 = o36 + 1.6;
+  klines.push(bar(baseT + 36 * 180, o36, c36 + 0.35, o36 - 0.15, c36));
+  const o37 = c36;
+  const c37 = o37 + 0.95;
+  // 让触发前一根带更长上影，检验 Sell 气泡是否避开相邻棒的影线
+  klines.push(bar(baseT + 37 * 180, o37, c37 + 1.1, o37 - 0.15, c37));
+  const o38 = c37 + 0.05;
+  const c38 = o37 - 1.15;
+  klines.push(bar(baseT + 38 * 180, o38, o38 + 0.2, c38 - 0.15, c38));
+  const c39 = c38 - 0.3;
+  klines.push(bar(baseT + 39 * 180, c38, c38 + 0.2, c39 - 0.1, c39));
+
+  const plan = computePatternPlan(klines, { last: c39 }, Date.UTC(2026, 5, 1, 2, 33, 0), 'strict');
+  assert(plan.active, '绘图布局测试应存在活跃订单');
+
+  // (a) 盯盘模式（右侧有留白）
+  const count = klines.length;
+  const endLive = Math.round(liveEndFor(klines.length, count));
+  const startLive = endLive - count;
+  const i0Live = Math.max(0, startLive);
+  const visLive = klines.slice(i0Live, Math.min(klines.length, endLive));
+  const viewLive = { start: startLive, end: endLive, count: count, bars: visLive, follow: true };
+  let lo = Infinity;
+  let hi = -Infinity;
+  visLive.forEach((k) => { lo = Math.min(lo, k.l); hi = Math.max(hi, k.h); });
+  [plan.active.entry, plan.active.sl, plan.active.tp1, plan.active.tp2].forEach((v) => {
+    lo = Math.min(lo, v);
+    hi = Math.max(hi, v);
+  });
+  const padY = (hi - lo) * 0.08 || 1;
+  lo -= padY;
+  hi += padY;
+  const scaleLive = chartXScale(viewLive, PAD.l, xRight);
+  const yFn = (v) => plotTop + (hi - v) / (hi - lo) * (plotBottom - plotTop);
+
+  const layoutLive = layoutPatternPlan(
+    plan, visLive, viewLive, scaleLive.local, scaleLive.clampedIndex, yFn, xRight, plotTop, plotBottom
+  );
+  assert(layoutLive.order && layoutLive.order.lines.length === 4, '应输出 4 条订单水平线标签');
+  assert(layoutLive.order.inlineMode === true, '盯盘模式应启用示例图右侧同行标注模式');
+  assert(layoutLive.order.lines.some((r) => /^入场\(.+\)$/.test(r.lab)), '入场标签应采用 入场(价格) 格式');
+  assert(layoutLive.order.lines.some((r) => /^止损\(.+\)$/.test(r.lab)), '止损标签应采用 止损(价格) 格式');
+  assert(layoutLive.order.lines.some((r) => /^TP1\(.+\)/.test(r.lab)), 'TP1 标签应采用 TP1(价格) 格式');
+  assert(layoutLive.order.lines.some((r) => /^TP2\(.+\)$/.test(r.lab)), 'TP2 标签应采用 TP2(价格) 格式');
+  layoutLive.order.lines.forEach((row) => {
+    assert(row.lineX2 >= layoutLive.lastCandleRight + 20, '水平线应向右延伸到 K 线外侧留白区后截停: ' + row.lab);
+    assert(row.labX >= row.lineX2 + 8, '文字应位于水平线右端外侧，不与线条或 K 线重叠: ' + row.lab);
+    layoutLive.candleBoxes.forEach((cb) => {
+      const candleBox = { x1: cb.x1, y1: cb.yTop, x2: cb.x2, y2: cb.yBot };
+      assert(!overlap(row.box, candleBox), '标签不得遮挡任何 K 线: ' + row.lab);
+    });
+  });
+  for (let i = 0; i < layoutLive.order.lines.length; i++) {
+    for (let j = i + 1; j < layoutLive.order.lines.length; j++) {
+      assert(!overlap(layoutLive.order.lines[i].box, layoutLive.order.lines[j].box), '订单标签之间不得互相重叠');
+    }
+  }
+  layoutLive.marks.forEach((mkItem) => {
+    layoutLive.candleBoxes.forEach((cb) => {
+      const candleBox = { x1: cb.x1, y1: cb.yTop, x2: cb.x2, y2: cb.yBot };
+      const pillRect = {
+        x1: mkItem.xc - mkItem.pillW / 2,
+        y1: mkItem.pillTop,
+        x2: mkItem.xc + mkItem.pillW / 2,
+        y2: mkItem.pillTop + mkItem.pillH,
+      };
+      assert(!overlap(pillRect, candleBox), 'Buy/Sell 气泡矩形不得遮挡触发棒或相邻 K 线');
+    });
+  });
+
+  // (b) 历史回看视窗（K 线铺满至右边界，无右侧留白）+ 保本止损紧贴开仓价
+  const tp1Bar = bar(baseT + 40 * 180, c39, c39 + 0.1, plan.active.tp1 - 0.2, plan.active.tp1 + 0.1);
+  const barsBe = klines.concat([tp1Bar]);
+  const planBe = computePatternPlan(barsBe, { last: tp1Bar.c }, Date.UTC(2026, 5, 1, 2, 36, 0), 'strict');
+  assert(planBe.active && planBe.active.hitTp1 && planBe.active.hitTp1I === 40, '触达 TP1 应记录触发棒索引');
+  const viewHist = { start: 0, end: barsBe.length, count: barsBe.length, bars: barsBe, follow: false };
+  const scaleHist = chartXScale(viewHist, PAD.l, xRight);
+  const layoutHist = layoutPatternPlan(
+    planBe, barsBe, viewHist, scaleHist.local, scaleHist.clampedIndex, yFn, xRight, plotTop, plotBottom
+  );
+  assert(layoutHist.order && layoutHist.order.lines.length === 4, '历史视窗下同样输出 4 条标签');
+  assert(layoutHist.order.lines.some((r) => /^保本止损\(.+\)$/.test(r.lab)), '保本止损应采用 保本止损(价格) 格式');
+  assert(layoutHist.order.lines.some((r) => /^TP1\(.+\) ✓$/.test(r.lab)), '触达 TP1 后右侧标签应附带 ✓');
+  for (let i = 0; i < layoutHist.order.lines.length; i++) {
+    for (let j = i + 1; j < layoutHist.order.lines.length; j++) {
+      assert(!overlap(layoutHist.order.lines[i].box, layoutHist.order.lines[j].box), '保本止损紧贴开仓价时标签仍不得重叠');
+    }
+  }
+  layoutHist.order.lines.forEach((row) => {
+    layoutHist.candleBoxes.forEach((cb) => {
+      const bodyBox = { x1: cb.x1, y1: cb.bodyTop, x2: cb.x2, y2: cb.bodyBot };
+      assert(!overlap(row.box, bodyBox), '历史满屏视窗下标签不得遮挡 K 线实体: ' + row.lab);
+    });
+  });
+  layoutHist.hitMarks.forEach((hm) => {
+    layoutHist.candleBoxes.forEach((cb) => {
+      const candleBox = { x1: cb.x1, y1: cb.yTop, x2: cb.x2, y2: cb.yBot };
+      assert(!overlap(hm.box, candleBox), 'TP1/TP2 达标勾号标注不得遮挡 K 线');
+    });
+  });
 }
 
 console.log('PASS pattern-plan');

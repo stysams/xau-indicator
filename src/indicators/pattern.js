@@ -330,6 +330,7 @@ function buildOrder(klines, i, dir, pattern, atrVal, sess) {
     session: sess,
     status: 'open',
     hitTp1: false,
+    hitTp1I: -1,
     breakeven: false,
     exitI: -1,
     exitPx: null,
@@ -374,7 +375,7 @@ function computeXaudzPlan(klines, ticker, now) {
   for (let j = 0; j < marks.length; j++) {
     const mark = marks[j];
     const next = marks[j + 1];
-    const order = { ...mark, origSl: mark.sl, status: 'open', hitTp1: false };
+    const order = { ...mark, origSl: mark.sl, status: 'open', hitTp1: false, hitTp1I: -1 };
     const last = next ? next.i : end;
     for (let i = mark.i + 1; i <= last; i++) {
       const bar = klines[i];
@@ -384,7 +385,10 @@ function computeXaudzPlan(klines, ticker, now) {
         break;
       }
       const favorable = order.dir > 0 ? bar.h : bar.l;
-      order.hitTp1 ||= order.dir * (favorable - order.tp1) >= 0;
+      if (!order.hitTp1 && order.dir * (favorable - order.tp1) >= 0) {
+        order.hitTp1 = true;
+        order.hitTp1I = i;
+      }
       if (order.dir * (favorable - order.tp2) >= 0) {
         Object.assign(order, { status: 'tp2', exitI: i, exitPx: order.tp2 });
         break;
@@ -472,6 +476,7 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
         } else {
           if (!active.hitTp1 && k.h >= active.tp1) {
             active.hitTp1 = true;
+            active.hitTp1I = i;
             if (isStrict) {
               active.breakeven = true;
               active.sl = active.entry - active.atr * BE_CUSHION_ATR;
@@ -498,6 +503,7 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
         } else {
           if (!active.hitTp1 && k.l <= active.tp1) {
             active.hitTp1 = true;
+            active.hitTp1I = i;
             if (isStrict) {
               active.breakeven = true;
               active.sl = active.entry + active.atr * BE_CUSHION_ATR;

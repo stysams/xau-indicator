@@ -94,13 +94,24 @@ export function drawChart(klines, ticker, hover) {
       if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
     });
   }
-  if (pattern && pattern.ok && pattern.active) {
-    const ao = pattern.active;
-    [ao.entry, ao.sl, ao.tp1, ao.tp2].forEach((v) => {
-      if (v != null && Number.isFinite(v)) {
-        lo = Math.min(lo, v);
-        hi = Math.max(hi, v);
-      }
+  if (pattern && pattern.ok) {
+    if (pattern.active) {
+      const ao = pattern.active;
+      [ao.entry, ao.sl, ao.tp1, ao.tp2].forEach((v) => {
+        if (v != null && Number.isFinite(v)) {
+          lo = Math.min(lo, v);
+          hi = Math.max(hi, v);
+        }
+      });
+    }
+    const patSpan = (hi - lo) || 1;
+    const markPad = patSpan * 0.055;
+    (pattern.marks || []).forEach((mk) => {
+      if (!mk || mk.i < view.start || mk.i >= view.end) return;
+      const bar = klines[mk.i];
+      if (!bar) return;
+      if (mk.dir > 0 && Number.isFinite(bar.l)) lo = Math.min(lo, bar.l - markPad);
+      if (mk.dir < 0 && Number.isFinite(bar.h)) hi = Math.max(hi, bar.h + markPad);
     });
   }
   simOpenOrders().forEach((o) => {
@@ -512,7 +523,7 @@ export function drawChart(klines, ticker, hover) {
     svg.appendChild(gSwing);
   }
 
-  const gC = svgEl('g', {});
+  const gC = svgEl('g', { id: 'ck-candles' });
   vis.forEach((k, i) => {
     const xc = x(i);
     const up = k.c >= k.o;
