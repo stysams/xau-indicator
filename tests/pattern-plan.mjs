@@ -6,6 +6,7 @@ import {
   computePatternPlan,
   computeRangeFilter,
   detectBarPattern,
+  detectLowLatencyPattern,
   efficiencyRatio,
   formatSessionMults,
   isBlockedByWall,
@@ -42,7 +43,7 @@ function bar(t, o, h, l, c) {
 
   const sAsia = sessionProfileForTs(asiaTs);
   assert(sAsia.id === 'asia' && sAsia.name === '亚盘', '亚盘时段识别');
-  assert(formatSessionMults(sAsia) === 'SL×1.8 | TP1×1.8 | TP2×3', '亚盘倍数格式与经典一致');
+  assert(formatSessionMults(sAsia) === 'SL×1.8 | TP1×1.8 | TP2×4.3', '亚盘倍数格式与优化后 1:2.4 盈亏比一致');
 
   assert(sessionProfileForTs(eurTs).id === 'europe', '欧盘时段识别');
   assert(sessionProfileForTs(ovlTs).id === 'overlap', '欧美重叠时段识别');
@@ -162,7 +163,7 @@ function bar(t, o, h, l, c) {
   approx(distTp2 / distSl, SESSION_PROFILES.asia.tp2Mult / SESSION_PROFILES.asia.slMult, { tol: 1e-6, label: '亚盘 TP2/SL 倍数比' });
   assert(plan.pnlPts > 0 && plan.pnlPct > 0, '空单价格下跌时浮盈为正');
 
-  // 追加一根触及 TP1 但未到 TP2 的 K 线，验证止损自动移至开仓价保本（含 0.15 ATR 缓冲）
+  // 追加一根触及 TP1 但未到 TP2 的 K 线，验证止损自动移至盈利侧保本锁盈（含 0.05 ATR 锁利缓冲）
   const tp1Bar = bar(
     baseT + 40 * 180,
     c39,
@@ -172,7 +173,7 @@ function bar(t, o, h, l, c) {
   );
   const planBe = computePatternPlan(klines.concat([tp1Bar]), { last: tp1Bar.c }, Date.UTC(2026, 5, 1, 2, 36, 0), 'strict');
   assert(planBe.active && planBe.active.hitTp1 && planBe.active.breakeven, '触及 TP1 后开启保本止损');
-  approx(planBe.active.sl, planBe.active.entry + planBe.active.atr * BE_CUSHION_ATR, { tol: 1e-6, label: '空单保本止损含 0.15 ATR 缓冲' });
+  approx(planBe.active.sl, planBe.active.entry - planBe.active.atr * BE_CUSHION_ATR, { tol: 1e-6, label: '空单保本止损移至盈利侧锁盈 0.05 ATR' });
 
   // 三档灵敏度归一化与切换检查
   assert(normalizePatternMode('classic') === 'classic', '经典档归一化');
@@ -282,7 +283,8 @@ function bar(t, o, h, l, c) {
 
     const firstTarget = bar(t + 60, entry, Math.max(entry, tp1), Math.min(entry, tp1), tp1);
     const first = computePatternPlan(bars.concat(firstTarget), null, (t + 120) * 1000, 'xaudz');
-    assert(first.active?.hitTp1 && !first.lastClosed, '达到 TP1 后继续跟踪');
+    assert(first.active?.hitTp1 && first.active?.breakeven && !first.lastClosed, '达到 TP1 后开启保本并继续跟踪');
+    approx(first.active.sl, entry, { label: 'xaudz 达到 TP1 后止损移至开仓价保本' });
 
     const secondTarget = bar(t + 120, tp1, Math.max(tp1, tp2), Math.min(tp1, tp2), tp2);
     const final = computePatternPlan(bars.concat(firstTarget, secondTarget), null, (t + 180) * 1000, 'xaudz');
@@ -417,6 +419,49 @@ function bar(t, o, h, l, c) {
       assert(!overlap(hm.box, candleBox), 'TP1/TP2 达标勾号标注不得遮挡 K 线');
     });
   });
+}
+
+// 10. 低延迟单棒形态（扫荡收回 / 回踩拒收）与智能布林墙过滤校验
+{
+  const atrArr = new Array(12).fill(2.0);
+  // 扫低收回：刺破前 6 根低点 3700 后长下影收回至 3701.8
+  const sweepUpBars = [
+    bar(1, 3702, 3703, 3700.5, 3701.5),
+    bar(2, 3701.5, 3702.5, 3700.2, 3701.0),
+    bar(3, 3701.0, 3702.2, 3700.4, 3701.6),
+    bar(4, 3701.6, 3702.4, 3700.1, 3701.2),
+    bar(5, 3701.2, 3702.0, 3700.3, 3700.9),
+    bar(6, 3700.9, 3701.8, 3700.0, 3700.8),
+    bar(7, 3700.8, 3702.0, 3698.4, 3701.8),
+  ];
+  const pSweep = detectLowLatencyPattern(sweepUpBars, 6, atrArr, null, null);
+  assert(pSweep && pSweep.dir === 1 && pSweep.code === 'sweep_up', '识别扫低收回低延迟反转形态');
+
+  // 顺势均线回踩拒跌
+  const e9 = [3700, 3701, 3702, 3703, 3704, 3705, 3706];
+  const e20 = [3698, 3698.5, 3699, 3699.6, 3700.2, 3701.0, 3702.0];
+  const pbBars = [
+    bar(1, 3701, 3702, 3700, 3701.5),
+    bar(2, 3701.5, 3703, 3701, 3702.5),
+    bar(3, 3702.5, 3704, 3702, 3703.5),
+    bar(4, 3703.5, 3705, 3703, 3704.5),
+    bar(5, 3704.5, 3706, 3704, 3705.5),
+    bar(6, 3705.5, 3707, 3705, 3706.5),
+    bar(7, 3706.2, 3707.2, 3704.5, 3707.0),
+  ];
+  const pPb = detectLowLatencyPattern(pbBars, 6, atrArr, e9, e20);
+  assert(pPb && pPb.dir === 1 && pPb.code === 'pb_reject_up', '识别回踩拒跌低延迟顺势形态');
+
+  // 智能布林墙：干净大实体上破放行，带长上影阻滞的极端超买拦截
+  const bollMock = { mid: new Array(10).fill(3700), sd: new Array(10).fill(2.0) };
+  const cleanBreak = Array.from({ length: 10 }, (_, idx) =>
+    idx === 9 ? bar(100 + idx * 60, 3702.0, 3705.2, 3701.8, 3705.0) : bar(100 + idx * 60, 3700, 3701, 3699, 3700)
+  );
+  const rejectedTop = Array.from({ length: 10 }, (_, idx) =>
+    idx === 9 ? bar(100 + idx * 60, 3702.0, 3707.5, 3701.8, 3704.8) : bar(100 + idx * 60, 3700, 3701, 3699, 3700)
+  );
+  assert(isBlockedByWall(cleanBreak, 9, 1, 2.0, bollMock) === false, '布林外沿干净大实体真突破不应被拦截');
+  assert(isBlockedByWall(rejectedTop, 9, 1, 2.0, bollMock) === true, '布林极端外沿带长上影阻滞应被拦截');
 }
 
 console.log('PASS pattern-plan');

@@ -217,7 +217,7 @@ export function renderPatternPanel(klines, ticker) {
   }
 
   if (multEl) {
-    multEl.textContent = pack.multText || (isXaudz ? '--' : 'SL×1.8 | TP1×1.8 | TP2×3');
+    multEl.textContent = pack.multText || (isXaudz ? '--' : 'SL×1.8 | TP1×1.8 | TP2×4.3');
   }
 
   if (winRateLabelEl) winRateLabelEl.textContent = isXaudz ? '近端 TP1 达标率' : '近端胜率';
