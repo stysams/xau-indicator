@@ -7,6 +7,7 @@ import { fibRatioText, getFib } from '../indicators/fib.js';
 import { getHkld } from '../indicators/hkld.js';
 import { getHold } from '../indicators/hold.js';
 import { getHs, hsNeckAt } from '../indicators/hs.js';
+import { getPatSr } from '../indicators/pattern-sr.js';
 import { getPatternPlan } from '../indicators/pattern.js';
 import { getPb } from '../indicators/pb.js';
 import { getSmc } from '../indicators/smc.js';
@@ -18,7 +19,7 @@ import { $, H, PAD, W, state } from '../state.js';
 import { simOpenOrders } from '../trade/sim.js';
 import { bollDash, bollSt, syncManualSrUi } from '../ui/indicator-menu.js';
 import { drawOscPanes, findPane, oscLayout, paneY } from './osc.js';
-import { drawBox, drawDiv3, drawFib, drawHkld, drawHold, drawPatternPlan, drawPbSetup, drawTrapSetup } from './overlays.js';
+import { drawBox, drawDiv3, drawFib, drawHkld, drawHold, drawPatSr, drawPatternPlan, drawPbSetup, drawTrapSetup } from './overlays.js';
 import { drawSignalRail } from './signal-rail.js';
 import { bollAreaD, lineD, lineSegD, svgEl } from './svg.js';
 import { drawFastOverlay, drawSimOverlay, openFastTrade, placeFastTags } from './trade-overlay.js';
@@ -53,6 +54,7 @@ export function drawChart(klines, ticker, hover) {
   const smc = state.ind.smc ? smcPack : null;
   const hs = state.ind.hs ? getHs(klines) : null;
   const sr = state.ind.sr ? getSr(klines) : null;
+  const patSr = state.ind.patSr ? getPatSr(klines) : null;
   const srMode = state.srMode || 'normal';
   const swing = (sr && srMode === 'swing') ? sr.swing : null;
   const manualSr = getManualSr(klines, ticker);
@@ -144,6 +146,18 @@ export function drawChart(klines, ticker, hover) {
     if (sr.nearTest && allow(sr.nearTest.price)) {
       lo = Math.min(lo, sr.nearTest.price);
       hi = Math.max(hi, sr.nearTest.price);
+    }
+  }
+  if (patSr && patSr.ok) {
+    const lastPx = vis[vis.length - 1] && vis[vis.length - 1].c;
+    const span = (hi - lo) || 1;
+    const cap = Math.max((patSr.atrv || 0) * 2.0, span * 0.18);
+    const allow = (p) => p != null && lastPx != null && Math.abs(p - lastPx) <= cap;
+    if (patSr.nearSup && allow(patSr.nearSup.price)) lo = Math.min(lo, patSr.nearSup.zoneLo != null ? patSr.nearSup.zoneLo : patSr.nearSup.price);
+    if (patSr.nearRes && allow(patSr.nearRes.price)) hi = Math.max(hi, patSr.nearRes.zoneHi != null ? patSr.nearRes.zoneHi : patSr.nearRes.price);
+    if (patSr.nearTest && allow(patSr.nearTest.price)) {
+      lo = Math.min(lo, patSr.nearTest.zoneLo != null ? patSr.nearTest.zoneLo : patSr.nearTest.price);
+      hi = Math.max(hi, patSr.nearTest.zoneHi != null ? patSr.nearTest.zoneHi : patSr.nearTest.price);
     }
   }
   function pbExpand(pack) {
@@ -1021,6 +1035,9 @@ export function drawChart(klines, ticker, hover) {
   if (fib && fib.ok) {
     drawFib(svg, fib, vx, y, W - PAD.r, PAD.t, plotBottom);
   }
+  if (patSr && patSr.ok) {
+    drawPatSr(svg, patSr, vx, y, W - PAD.r, PAD.t, plotBottom, lastPx);
+  }
   if (pattern && pattern.ok) {
     drawPatternPlan(svg, pattern, vis, view, x, vx, y, W - PAD.r, PAD.t, plotBottom);
   }
@@ -1056,6 +1073,7 @@ export function drawChart(klines, ticker, hover) {
     bodyW: bodyW, wickW: wickW, bodyStroke: bodyStroke, hollowUp: hollowUp,
     boxSig: box ? box.sig : '', stDir: stPack ? stPack.lastDir : 0,
     div3Sig: div3 ? div3.sig : '',
+    patSrSig: patSr ? patSr.sig : '',
     patternSig: pattern ? pattern.sig : '',
     stackSig: stackSig,
     manualSrSig: manualSrSignature(klines, ticker),
@@ -1147,6 +1165,10 @@ export function patchLastCandle(klines) {
   if (state.ind.div3) {
     const d3 = getDiv3(klines);
     if ((d3 ? d3.sig : '') !== s.div3Sig) return false;
+  }
+  if (state.ind.patSr) {
+    const ps = getPatSr(klines);
+    if ((ps ? ps.sig : '') !== s.patSrSig) return false;
   }
   if (state.ind.pattern) {
     const patLive = getPatternPlan(klines, state.ticker);

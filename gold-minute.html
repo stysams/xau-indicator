@@ -223,6 +223,7 @@ try {
                 <button type="button" data-ind="usidx" aria-pressed="false" title="USIDX 美元指数副图：独立请求 Gate TradFi 数据，关闭时不请求">USIDX</button>
                 <button type="button" data-ind="fast" aria-pressed="false" title="开单信号：1分/5分定方向，10秒回踩或触轨收回后给出开多/开空">开单</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="pattern" aria-pressed="false" aria-checked="false" title="形态开单：根据吞没、锤子线、流星线、启明/黄昏之星、红三兵/三只乌鸦、孕线突破等 K 线形态结合趋势过滤判断多空，弹出交易面板浮窗并给出开仓、止损与 TP1/TP2 止盈点位"><i class="pattern-c"></i>形态开单</button>
+                <button type="button" class="sw" role="menuitemcheckbox" data-ind="patSr" aria-pressed="false" aria-checked="false" title="形态支撑：结合经典价格结构形态（W底/双底、M顶/双顶、三重底/顶、头肩颈线、上升支撑线/下降压力线/收敛三角）与反转 K 线形态（启明/黄昏之星、吞没、锤子线/流星线、平底/平顶、扫低/扫高收回）自动识别支撑压力带，支持多形态共振合并与收盘破位后顶底转换"><i class="patsr-c"></i>形态支撑</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="hl" aria-pressed="false" aria-checked="false" title="今日最高最低"><i class="hl-c"></i>高低</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="bounce" aria-pressed="false" aria-checked="false" title="超跌反弹 / 超涨回落：急跌或急涨后，收盘重新越过 EMA9 才算收回"><i class="bounce-c"></i>反弹</button>
                 <button type="button" class="sw" role="menuitemcheckbox" data-ind="pull" aria-pressed="false" aria-checked="false" title="拉升回踩 / 杀跌反抽：先有一段冲动，再回踩均线，收盘确认才算踩住"><i class="pull-c"></i>回踩</button>
@@ -424,6 +425,20 @@ try {
           <input type="text" class="manual-sr-input num" id="srManualInput" data-manual-sr-input inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="如 3773-3792-3797-3820" aria-label="手动输入压力支撑位，用连字符分隔">
           <button type="button" class="btn manual-sr-clear" data-manual-sr-clear hidden title="清空手动输入的支撑压力线">清空</button>
           <span class="hint-wide">可输入如 3773-3792-3797-3820，当前价格上方为压力、下方为支撑</span>
+        </div>
+        <div class="toolbar sub-toolbar" id="patSrBar" hidden>
+          <span class="lab">形态来源</span>
+          <div class="seg" role="group" aria-label="形态支撑来源">
+            <button type="button" data-pat-sr-source="all" aria-pressed="true" title="同时识别经典结构形态（W底/M顶/三重底顶/头肩颈线/斜向支撑线）与反转K线形态带">全部</button>
+            <button type="button" data-pat-sr-source="struct" aria-pressed="false" title="仅识别 W底/M顶、三重底/顶、头肩颈线与斜向支撑/压力趋势线">结构</button>
+            <button type="button" data-pat-sr-source="candle" aria-pressed="false" title="仅识别吞没、锤子线/流星线、启明/黄昏之星、平底/平顶、扫低/扫高收回支撑压力带">K线</button>
+          </div>
+          <span class="lab">显示</span>
+          <div class="seg" role="group" aria-label="形态支撑显示方向">
+            <button type="button" data-pat-sr-side="both" aria-pressed="true" title="同时显示形态支撑与形态压力，收盘破位后自动顶底转换">支+压</button>
+            <button type="button" data-pat-sr-side="sup" aria-pressed="false" title="仅显示有效形态支撑位与支撑趋势线，主图更清爽">仅支撑</button>
+          </div>
+          <span class="st-state" id="patSrState" role="status"></span>
         </div>
         <div class="subbar" id="bollStatus" hidden></div>
         <div class="subbar" id="boxStatus" hidden></div>

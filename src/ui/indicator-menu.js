@@ -2,6 +2,7 @@ import { n } from '../core/format.js';
 import { rsi } from '../core/math.js';
 import { barsForChart } from '../net/rest.js';
 import { normalizeFibMode } from '../indicators/fib.js';
+import { normalizePatSrSide, normalizePatSrSource } from '../indicators/pattern-sr.js';
 import { normalizePatternMode } from '../indicators/pattern.js';
 import { AVERAGE_KINDS, AVERAGE_TFS, averageLineId, normalizeAverageLines } from '../indicators/moving-average.js';
 import { formatManualSr, getManualSr, parseManualSr } from '../indicators/sr.js';
@@ -9,15 +10,16 @@ import { $, state } from '../state.js';
 import { applyFastPos } from './fast-float.js';
 import { applyPatternPos, renderPatternPanel } from './pattern-float.js';
 import { drawChart, wrap } from '../view/chart.js';
-import { renderBollStatus, renderBoxStatus, renderDiv3State, renderHeavy, renderStState, renderStackBar } from '../view/panels.js';
+import { renderBollStatus, renderBoxStatus, renderDiv3State, renderHeavy, renderPatSrState, renderStState, renderStackBar } from '../view/panels.js';
 import { renderFastPanel } from '../view/trade-overlay.js';
 
 export const IND_KEY = 'gold-minute-ind';
 
-export const IND_KEYS = ['boll', 'smc', 'smcSig', 'stack', 'hkld', 'fib', 'hs', 'sr', 'bounce', 'pull', 'trap', 'hold', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'usidx', 'vwap', 'fast', 'pattern', 'st', 'box', 'div3'];
+export const IND_KEYS = ['boll', 'smc', 'smcSig', 'stack', 'hkld', 'fib', 'hs', 'sr', 'patSr', 'bounce', 'pull', 'trap', 'hold', 'last', 'hl', 'boll1', 'boll2', 'boll3', 'macd', 'rsi', 'usidx', 'vwap', 'fast', 'pattern', 'st', 'box', 'div3'];
 
 export const IND_MORE = [
   { k: 'hl', lab: '高低' },
+  { k: 'patSr', lab: '形态支撑' },
   { k: 'bounce', lab: '反弹' },
   { k: 'pull', lab: '回踩' },
   { k: 'trap', lab: '诱空诱多' },
@@ -197,6 +199,8 @@ export function loadInd() {
     if (raw.bollK === 1.5 || raw.bollK === 2 || raw.bollK === 2.5) state.bollK = raw.bollK;
     if (typeof raw.srMode === 'string') state.srMode = normalizeSrMode(raw.srMode);
     else if (raw.srSwing === true) state.srMode = 'swing';
+    if (typeof raw.patSrSource === 'string') state.patSrSource = normalizePatSrSource(raw.patSrSource);
+    if (typeof raw.patSrSide === 'string') state.patSrSide = normalizePatSrSide(raw.patSrSide);
     if (raw.manualSrByMkt && typeof raw.manualSrByMkt === 'object') {
       const map = {};
       Object.keys(raw.manualSrByMkt).forEach((k) => {
@@ -256,6 +260,8 @@ export function saveInd() {
       fibMode: normalizeFibMode(state.fibMode), fibExt: !!state.fibExt,
       patternMode: normalizePatternMode(state.patternMode),
       srMode: state.srMode,
+      patSrSource: normalizePatSrSource(state.patSrSource),
+      patSrSide: normalizePatSrSide(state.patSrSide),
       manualSrText: formatManualSr(state.manualSr),
       manualSrByMkt: Object.assign({}, state.manualSrByMkt || {}, {
         [state.mkt || 'xau']: formatManualSr(state.manualSr),
@@ -350,6 +356,16 @@ export function syncIndButtons() {
   document.querySelectorAll('button[data-sr-mode]').forEach((b) => {
     b.setAttribute('aria-pressed', String(b.dataset.srMode === state.srMode));
   });
+  const patSrBar = $('patSrBar');
+  if (patSrBar) patSrBar.hidden = !state.ind.patSr;
+  const patSrSource = normalizePatSrSource(state.patSrSource);
+  document.querySelectorAll('button[data-pat-sr-source]').forEach((b) => {
+    b.setAttribute('aria-pressed', String(b.dataset.patSrSource === patSrSource));
+  });
+  const patSrSide = normalizePatSrSide(state.patSrSide);
+  document.querySelectorAll('button[data-pat-sr-side]').forEach((b) => {
+    b.setAttribute('aria-pressed', String(b.dataset.patSrSide === patSrSide));
+  });
   syncManualSrUi();
   const beep = $('btnFastBeep');
   if (beep) beep.setAttribute('aria-pressed', String(!!state.fastBeep));
@@ -431,6 +447,7 @@ export function refreshAfterInd(key) {
   state._bmKey = '';
   state._hsKey = '';
   state._srKey = '';
+  state._patSrKey = '';
   state._smcKey = '';
   state._pbKey = '';
   state._trapKey = '';
@@ -449,6 +466,7 @@ export function refreshAfterInd(key) {
   renderStState(klines);
   renderBoxStatus(klines);
   renderDiv3State(klines);
+  renderPatSrState(klines);
   renderPatternPanel(klines, state.ticker);
   if (key === 'fast') renderFastPanel();
   if (key === 'rsi') renderHeavy(klines);

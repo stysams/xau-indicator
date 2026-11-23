@@ -4,6 +4,7 @@ import { getDiv3 } from '../indicators/div3.js';
 import { getFib } from '../indicators/fib.js';
 import { getHkld } from '../indicators/hkld.js';
 import { getHold } from '../indicators/hold.js';
+import { getPatSr } from '../indicators/pattern-sr.js';
 import { getPatternPlan } from '../indicators/pattern.js';
 import { getPb } from '../indicators/pb.js';
 import { getSmc } from '../indicators/smc.js';
@@ -38,7 +39,7 @@ function dedupeSigs(list) {
 
 const SIGNAL_FACTOR = {
   hold: 'hold', trap: 'trap', bounce: 'bounce', pull: 'pull', smc: 'smc', bos: 'smc',
-  stack: 'stack', hkld: 'hkld', fib: 'fib', sr: 'sr', div3: 'div3',
+  stack: 'stack', hkld: 'hkld', fib: 'fib', sr: 'sr', patSr: 'patSr', div3: 'div3',
 };
 
 // 技术事件只在其对应判断因子启用时进入时间线。关系因子可用时，以事件
@@ -223,6 +224,19 @@ export function collectSignalEvents(klines) {
       kind: 'sr',
       lab: (bearish ? '破支撑' : '破压力') + (lv.price != null ? ' ' + px(lv.price) : ''),
       price: lv.price,
+    });
+  });
+
+  const patSr = getPatSr(klines);
+  (patSr && patSr.events || []).forEach((ev) => {
+    if (!ev || ev.i == null) return;
+    pushSig(out, {
+      i: ev.i,
+      t: ev.t != null ? ev.t : (klines[ev.i] && klines[ev.i].t),
+      dir: ev.dir,
+      kind: 'patSr',
+      lab: ev.lab || '形态支撑',
+      price: ev.price,
     });
   });
 

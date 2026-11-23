@@ -7,6 +7,7 @@ import { getFib } from '../indicators/fib.js';
 import { getHkld } from '../indicators/hkld.js';
 import { getHold } from '../indicators/hold.js';
 import { getHs } from '../indicators/hs.js';
+import { getPatSr } from '../indicators/pattern-sr.js';
 import { getPb } from '../indicators/pb.js';
 import { getSmc } from '../indicators/smc.js';
 import { getSr, srPivotK, srSwingDeviation } from '../indicators/sr.js';
@@ -222,6 +223,19 @@ export function judge(klines, ticker, mtf) {
     }
     srPack = Object.assign({}, srPack, { vote: srVote, why: srWhy });
     factors.push({ id: 'sr', name: '支撑压力', vote: srVote, why: srWhy, core: false });
+  }
+  if (factorOn('patSr')) {
+    const ps = getPatSr(voteSrc.length ? voteSrc : klines);
+    let pv = voteSrc.length ? ps.vote : 0;
+    let pw = voteSrc.length ? ps.why : '正在走的 K 只观察，收盘才确认。';
+    if (pv && srPack && srPack.vote === pv) {
+      pv = 0;
+      pw = pw + '。同一段已记入支撑压力，形态支撑方向票不计。';
+    } else if (pv && trapPack && trapPack.vote === pv) {
+      pv = 0;
+      pw = pw + '。同一段已记入诱空诱多，形态支撑方向票不计。';
+    }
+    factors.push({ id: 'patSr', name: '形态支撑', vote: pv, why: pw, core: false });
   }
   if (trapPack) {
     const tName = trapPack.dir < 0 ? '诱多' : (trapPack.dir > 0 ? '诱空' : '诱空诱多');

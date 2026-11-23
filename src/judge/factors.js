@@ -20,6 +20,7 @@ export const FAC_ITEMS = [
   { k: 'smc', lab: 'SMC' },
   { k: 'hs', lab: '头肩形态' },
   { k: 'sr', lab: '支撑压力' },
+  { k: 'patSr', lab: '形态支撑' },
   { k: 'trap', lab: '诱空诱多' },
   { k: 'hold', lab: '企稳' },
   { k: 'bounce', lab: '反弹' },
@@ -34,7 +35,7 @@ export const FAC_FAMILY = {
   xauUsidx: 'macro',
   mtf: 'mom', stack: 'mom', hkld: 'mom',
   swing: 'struct', smc: 'struct', hs: 'struct',
-  sr: 'touch', trap: 'touch', bounce: 'touch', pull: 'touch', fib: 'touch', hold: 'touch',
+  sr: 'touch', patSr: 'touch', trap: 'touch', bounce: 'touch', pull: 'touch', fib: 'touch', hold: 'touch',
   day: 'pos', range: 'pos',
 };
 

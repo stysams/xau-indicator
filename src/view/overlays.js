@@ -1,6 +1,7 @@
 import { px } from '../core/format.js';
 import { guideHeader, guideLine } from '../indicators/div3.js';
 import { fibNear, fibRatioText } from '../indicators/fib.js';
+import { patSrTitle } from '../indicators/pattern-sr.js';
 import { PAD } from '../state.js';
 import { svgEl } from './svg.js';
 
@@ -1237,4 +1238,201 @@ export function drawPatternPlan(svg, pack, vis, view, x, vx, y, xRight, plotTop,
     gMk.appendChild(lab);
     svg.appendChild(gMk);
   });
+}
+
+export function drawPatSr(svg, pack, vx, y, xRight, plotTop, plotBottom, lastPx) {
+  if (!pack || !pack.ok) return;
+  const topBound = plotTop != null ? plotTop : PAD.t;
+  const botBound = plotBottom != null ? plotBottom : 360;
+  const gRoot = svgEl('g', { class: 'patsr-overlay' });
+  const usedY = [];
+
+  function placeLabelY(rawY) {
+    let ly = Math.max(topBound + 11, Math.min(botBound - 5, rawY));
+    for (let pass = 0; pass < 3; pass++) {
+      usedY.forEach((uy) => {
+        if (Math.abs(uy - ly) < 12.5) {
+          ly = ly <= uy ? Math.max(topBound + 11, uy - 12.5) : Math.min(botBound - 5, uy + 12.5);
+        }
+      });
+    }
+    usedY.push(ly);
+    return ly;
+  }
+
+  // 1. 经典价格结构形态骨架线（W底 / M顶 / 三重底 / 三重顶 / 头肩）
+  (pack.shapes || []).forEach((sh) => {
+    if (!sh || !sh.points || sh.points.length < 3) return;
+    const color = sh.dir > 0 ? 'var(--up)' : 'var(--down)';
+    const gSh = svgEl('g', { class: 'patsr-shape', 'data-patsr-code': sh.code });
+    const tip = svgEl('title', {});
+    tip.textContent = sh.name + ' 结构形态' +
+      (sh.basePrice != null ? (' · 形态位 ' + px(sh.basePrice)) : '') +
+      (sh.neckPrice != null ? (' · 颈线 ' + px(sh.neckPrice)) : '');
+    gSh.appendChild(tip);
+
+    let d = '';
+    sh.points.forEach((pt, idx) => {
+      d += (idx ? 'L' : 'M') + vx(pt.i).toFixed(1) + ',' + y(pt.price).toFixed(1);
+    });
+    gSh.appendChild(svgEl('path', {
+      d: d, fill: 'none', stroke: color,
+      'stroke-width': '1.3', 'stroke-dasharray': '4 3',
+      'stroke-linejoin': 'round', opacity: '.58',
+    }));
+    sh.points.forEach((pt) => {
+      gSh.appendChild(svgEl('circle', {
+        cx: vx(pt.i).toFixed(1), cy: y(pt.price).toFixed(1),
+        r: '2.5', fill: color, opacity: '.72',
+      }));
+    });
+    const midPt = sh.points[Math.floor(sh.points.length / 2)];
+    const tagY = y(midPt.price) + (sh.dir > 0 ? -7 : 12);
+    if (tagY >= topBound + 6 && tagY <= botBound - 4) {
+      const lab = svgEl('text', {
+        x: vx(midPt.i).toFixed(1),
+        y: tagY.toFixed(1),
+        fill: color,
+        'font-size': '9.5',
+        'font-weight': '750',
+        'font-family': 'var(--font)',
+        'text-anchor': 'middle',
+        stroke: 'var(--bg)',
+        'stroke-width': '3',
+        'paint-order': 'stroke',
+        opacity: '.86',
+      });
+      lab.textContent = sh.name;
+      gSh.appendChild(lab);
+    }
+    gRoot.appendChild(gSh);
+  });
+
+  // 2. 斜向形态支撑/压力趋势线与头肩颈线
+  (pack.trendlines || []).forEach((tl) => {
+    if (!tl || !Number.isFinite(tl.slope) || !Number.isFinite(tl.intercept)) return;
+    const asSup = tl.role === 'sup' || (tl.role === 'test' && (lastPx == null ? tl.structRole === 'sup' : lastPx >= tl.price));
+    const color = asSup ? 'var(--up)' : 'var(--down)';
+    const broken = tl.flipCount > 0;
+    const x1 = vx(tl.startI);
+    const xEnd = vx(tl.endI);
+    const prevX = vx(Math.max(tl.startI, tl.endI - 1));
+    const slotPx = Math.max(1, Math.abs(xEnd - prevX));
+    const extraBars = Math.max(0, (xRight - xEnd) / slotPx);
+    const y1 = y(tl.intercept + tl.slope * tl.startI);
+    const y2 = y(tl.intercept + tl.slope * (tl.endI + extraBars));
+    if ((y1 < topBound - 40 && y2 < topBound - 40) || (y1 > botBound + 40 && y2 > botBound + 40)) return;
+
+    const gTl = svgEl('g', { class: 'patsr-trendline', 'data-patsr-code': tl.code });
+    const tip = svgEl('title', {});
+    tip.textContent = tl.name + (broken ? '（已破位转换）' : '') + ' · 当前参考价 ' + px(tl.price) +
+      ' · ' + tl.touches + ' 次触碰';
+    gTl.appendChild(tip);
+
+    gTl.appendChild(svgEl('line', {
+      x1: x1.toFixed(1), x2: xRight.toFixed(1),
+      y1: y1.toFixed(1), y2: y2.toFixed(1),
+      stroke: color,
+      'stroke-width': tl.role === 'test' ? '1.65' : '1.35',
+      'stroke-dasharray': broken ? '5 4' : '7 3',
+      opacity: broken ? '.52' : '.82',
+    }));
+    (tl.anchors || []).forEach((a) => {
+      gTl.appendChild(svgEl('circle', {
+        cx: vx(a.i).toFixed(1), cy: y(a.price).toFixed(1),
+        r: '2.6', fill: 'var(--bg)', stroke: color, 'stroke-width': '1.35',
+        opacity: broken ? '.6' : '.9',
+      }));
+    });
+    if (y2 >= topBound - 6 && y2 <= botBound + 6) {
+      const labY = placeLabelY(y2 - 4);
+      const lab = svgEl('text', {
+        x: (xRight - 4).toFixed(1),
+        y: labY.toFixed(1),
+        fill: color,
+        'font-size': '10',
+        'font-weight': '700',
+        'font-family': 'var(--font)',
+        'text-anchor': 'end',
+        stroke: 'var(--bg)',
+        'stroke-width': '3',
+        'paint-order': 'stroke',
+        opacity: broken ? '.65' : '.9',
+      });
+      const roleTag = broken ? ('转换' + (asSup ? '支撑' : '压力')) : '';
+      lab.textContent = tl.name + (roleTag ? '·' + roleTag : '') + ' ' + px(tl.price);
+      gTl.appendChild(lab);
+    }
+    gRoot.appendChild(gTl);
+  });
+
+  // 3. 水平形态支撑/压力带（含多形态共振与顶底转换）
+  (pack.levels || []).forEach((lv) => {
+    if (!lv || !Number.isFinite(lv.price)) return;
+    const yy = y(lv.price);
+    const yTop = y(lv.zoneHi != null ? lv.zoneHi : lv.price);
+    const yBot = y(lv.zoneLo != null ? lv.zoneLo : lv.price);
+    if (Math.max(yTop, yBot) < topBound - 6 || Math.min(yTop, yBot) > botBound + 6) return;
+
+    const asSup = lv.role === 'sup' || (lv.role === 'test' && (lastPx == null ? lv.structRole === 'sup' : lastPx >= lv.price));
+    const color = asSup ? 'var(--up)' : 'var(--down)';
+    const isTest = lv.role === 'test';
+    const broken = lv.flipCount > 0;
+    const isConfluence = (lv.confluence || 1) >= 2;
+    const x1 = vx(lv.startI != null ? lv.startI : 0);
+    const x2 = xRight;
+
+    const gLv = svgEl('g', {
+      class: 'patsr-level',
+      'data-patsr-role': lv.role,
+      'data-patsr-code': lv.code || '',
+    });
+    const tip = svgEl('title', {});
+    tip.textContent = patSrTitle(lv, lastPx) +
+      '\n区间: ' + px(lv.zoneLo) + ' – ' + px(lv.zoneHi) +
+      '\n来源: ' + (lv.names ? lv.names.join(' + ') : lv.name) +
+      '\n触碰: ' + lv.touches + ' 次 · 强度: ' + lv.strength +
+      (broken ? (' · 顶底转换 ' + lv.flipCount + ' 次') : '');
+    gLv.appendChild(tip);
+
+    gLv.appendChild(svgEl('rect', {
+      x: Math.min(x1, x2).toFixed(1),
+      y: Math.min(yTop, yBot).toFixed(1),
+      width: Math.max(2, Math.abs(x2 - x1)).toFixed(1),
+      height: Math.max(2, Math.abs(yBot - yTop)).toFixed(1),
+      fill: color,
+      opacity: isTest ? '.15' : (isConfluence ? '.11' : (broken ? '.06' : '.085')),
+    }));
+
+    gLv.appendChild(svgEl('line', {
+      x1: x1.toFixed(1), x2: x2.toFixed(1),
+      y1: yy.toFixed(1), y2: yy.toFixed(1),
+      stroke: color,
+      'stroke-width': isTest ? '1.65' : (isConfluence ? '1.45' : '1.15'),
+      'stroke-dasharray': broken ? '4 3' : (lv.isNeck ? '6 3' : ''),
+      opacity: isTest ? '.92' : (broken ? '.56' : '.76'),
+    }));
+
+    const labY = placeLabelY(yy - 4);
+    const lab = svgEl('text', {
+      x: (x2 - 4).toFixed(1),
+      y: labY.toFixed(1),
+      fill: color,
+      'font-size': isTest || isConfluence ? '10.5' : '10',
+      'font-weight': isTest || isConfluence ? '750' : '650',
+      'font-family': 'var(--font)',
+      'text-anchor': 'end',
+      stroke: 'var(--bg)',
+      'stroke-width': '3',
+      'paint-order': 'stroke',
+      opacity: isTest ? '.96' : (broken ? '.72' : '.88'),
+    });
+    const touchTxt = lv.touches >= 2 ? (' · ' + lv.touches + '次') : '';
+    const strTxt = lv.strength >= 76 ? ' · 强' : (lv.strength >= 56 ? ' · 中' : '');
+    lab.textContent = patSrTitle(lv, lastPx) + touchTxt + strTxt;
+    gLv.appendChild(lab);
+    gRoot.appendChild(gLv);
+  });
+
+  svg.appendChild(gRoot);
 }

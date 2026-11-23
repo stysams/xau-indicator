@@ -3,6 +3,7 @@ import { bwRankWindow } from '../core/math.js';
 import { analyzeBoll, bollMacdSignal } from '../indicators/boll.js';
 import { getBox } from '../indicators/box.js';
 import { getDiv3, guideLine } from '../indicators/div3.js';
+import { getPatSr } from '../indicators/pattern-sr.js';
 import { STACK_GLOSS, STACK_TFS, getStack, stackKindText, stackSame, stackTrend } from '../indicators/stack.js';
 import { getSuperTrend } from '../indicators/supertrend.js';
 import { judge } from '../judge/judge.js';
@@ -179,6 +180,36 @@ export function renderDiv3State(klines) {
     '<span>' + lines + '</span>';
 }
 
+export function renderPatSrState(klines) {
+  const el = $('patSrState');
+  if (!el) return;
+  if (!state.ind.patSr) {
+    el.innerHTML = '';
+    return;
+  }
+  const pack = getPatSr(klines);
+  if (!pack.ok) {
+    el.innerHTML = '<span>' + pack.why + '</span>';
+    return;
+  }
+  const cls = pack.dir > 0 ? 'up' : (pack.dir < 0 ? 'dn' : 'mid');
+  const parts = [];
+  if (pack.nearSup) {
+    parts.push('<span>支撑 <b>' + pack.nearSup.name + ' ' + px(pack.nearSup.price) + '</b></span>');
+  }
+  if (pack.nearRes) {
+    parts.push('<span>压力 <b>' + pack.nearRes.name + ' ' + px(pack.nearRes.price) + '</b></span>');
+  }
+  if (!parts.length && pack.trendlines && pack.trendlines.length) {
+    const tl = pack.trendlines[0];
+    parts.push('<span>趋势线 <b>' + tl.name + ' ' + px(tl.price) + '</b></span>');
+  }
+  parts.push('<span>共 <b>' + (pack.levels.length + pack.trendlines.length) + '</b> 处形态位</span>');
+  el.innerHTML =
+    '<i class="box-flag ' + cls + '">' + (pack.statusLab || '观察') + '</i>' +
+    parts.join('');
+}
+
 export function renderStackBar() {
   const el = $('stackBar');
   if (!el) return;
@@ -303,6 +334,7 @@ export function renderHeavy(klines) {
   renderStState(klines);
   renderBoxStatus(klines);
   renderDiv3State(klines);
+  renderPatSrState(klines);
   const t = state.ticker;
   const j = judge(klines, t, state.mtf);
 

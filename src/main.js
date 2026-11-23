@@ -5,6 +5,7 @@ import { fmtBj, fmtRange, fromZoned, sessSnapshot, venueState } from './core/ses
 import { getFib } from './indicators/fib.js';
 import { getHkld } from './indicators/hkld.js';
 import { getHold } from './indicators/hold.js';
+import { getPatSr, normalizePatSrSide, normalizePatSrSource } from './indicators/pattern-sr.js';
 import { getPatternPlan } from './indicators/pattern.js';
 import { getBox } from './indicators/box.js';
 import { getDiv3 } from './indicators/div3.js';
@@ -183,6 +184,20 @@ document.querySelectorAll('button[data-sr-mode]').forEach((b) => {
       const inp = $('srManualInput') || $('manualSrInput');
       if (inp && inp.focus) inp.focus();
     }
+  });
+});
+document.querySelectorAll('button[data-pat-sr-source]').forEach((b) => {
+  b.addEventListener('click', () => {
+    state.patSrSource = normalizePatSrSource(b.dataset.patSrSource);
+    refreshAfterInd('patSrSource');
+    renderHeavy(barsForChart());
+  });
+});
+document.querySelectorAll('button[data-pat-sr-side]').forEach((b) => {
+  b.addEventListener('click', () => {
+    state.patSrSide = normalizePatSrSide(b.dataset.patSrSide);
+    refreshAfterInd('patSrSide');
+    renderHeavy(barsForChart());
   });
 });
 document.querySelectorAll('[data-manual-sr-input]').forEach((inp) => {
@@ -699,6 +714,7 @@ window.__goldTest = {
     state._holdKey = '';
     state._pbKey = '';
     state._srKey = '';
+    state._patSrKey = '';
     state._hsKey = '';
     state._smcKey = '';
     state._bmKey = '';
@@ -796,6 +812,7 @@ window.__goldTest = {
     return factorOn(k);
   },
   collectSignals: (kl) => collectSignalEvents(kl || barsForChart()),
+  patSr: (kl) => getPatSr(kl || barsForChart()),
   patternPlan: (kl, tk) => getPatternPlan(kl || barsForChart(), tk !== undefined ? tk : state.ticker),
   pushFastMark: (t, dir) => {
     state.fastMarks = (state.fastMarks || []).concat([{ t: Number(t), dir: Number(dir) || 1 }]).slice(-12);

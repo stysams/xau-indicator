@@ -2017,6 +2017,12 @@ body.is-float-drag, body.is-float-drag * {
   border: 1.4px solid #e2c637;
   box-shadow: inset 4px 0 0 -2px var(--up), inset -4px 0 0 -2px var(--down);
 }
+.sw .patsr-c {
+  width: 14px; height: 11px; border-radius: 1.5px;
+  background: linear-gradient(180deg, var(--down-soft) 0 38%, transparent 38% 62%, var(--up-soft) 62% 100%);
+  border-top: 1.6px solid var(--down);
+  border-bottom: 1.6px solid var(--up);
+}
 
 /* 形态开单交易面板浮窗（贴合深色高亮表格风格） */
 .pat-panel {

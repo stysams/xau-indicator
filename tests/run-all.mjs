@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
-const tests = ['gate-api.cjs', 'api-source.mjs', 'math-indicators.mjs', 'div3.mjs', 'pattern-plan.mjs', 'closed-confirm.mjs', 'session-hours.mjs', 'moving-average-mtf.mjs', 'viewport-coordinates.mjs', 'chart-magnify.mjs', 'fib-extension.mjs', 'stack-collapse.mjs', 'stack-draw.mjs', 'quote-mtf.mjs', 'signal-guide.mjs', 'swing-sr.mjs', 'trend-box.mjs', 'hkld-confidence.mjs', 'smc-bias.mjs', 'rw-benchmark.mjs', 'oos-split.mjs'];
+const tests = ['gate-api.cjs', 'api-source.mjs', 'math-indicators.mjs', 'div3.mjs', 'pattern-plan.mjs', 'pattern-sr.mjs', 'closed-confirm.mjs', 'session-hours.mjs', 'moving-average-mtf.mjs', 'viewport-coordinates.mjs', 'chart-magnify.mjs', 'fib-extension.mjs', 'stack-collapse.mjs', 'stack-draw.mjs', 'quote-mtf.mjs', 'signal-guide.mjs', 'swing-sr.mjs', 'trend-box.mjs', 'hkld-confidence.mjs', 'smc-bias.mjs', 'rw-benchmark.mjs', 'oos-split.mjs'];
 
 // 基线回归要开 headless Chrome，默认不跑。
 // 改动 src/ 之后建议跑一次：WITH_BROWSER=1 node tests/run-all.mjs
