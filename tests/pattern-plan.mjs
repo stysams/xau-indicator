@@ -13,6 +13,7 @@ import {
   normalizePatternMode,
   sessionProfileForTs,
 } from '../src/indicators/pattern.js';
+import { findXaudzSetups } from '../src/indicators/xaudz.js';
 import { parseStreamName, liveEndFor } from '../src/net/rest.js';
 import { MARKETS, PAD, W, state } from '../src/state.js';
 import { layoutPatternPlan } from '../src/view/overlays.js';
@@ -43,7 +44,7 @@ function bar(t, o, h, l, c) {
 
   const sAsia = sessionProfileForTs(asiaTs);
   assert(sAsia.id === 'asia' && sAsia.name === '亚盘', '亚盘时段识别');
-  assert(formatSessionMults(sAsia) === 'SL×1.8 | TP1×1.8 | TP2×4.3', '亚盘倍数格式与优化后 1:2.4 盈亏比一致');
+  assert(formatSessionMults(sAsia) === 'SL×1.8 | TP1×1.35 | TP2×4', '亚盘倍数格式与优化后 0.75R TP1 / 2.2R TP2 一致');
 
   assert(sessionProfileForTs(eurTs).id === 'europe', '欧盘时段识别');
   assert(sessionProfileForTs(ovlTs).id === 'overlap', '欧美重叠时段识别');
@@ -159,8 +160,9 @@ function bar(t, o, h, l, c) {
   const distSl = plan.active.origSl - plan.active.entry;
   const distTp1 = plan.active.entry - plan.active.tp1;
   const distTp2 = plan.active.entry - plan.active.tp2;
-  approx(distTp1 / distSl, SESSION_PROFILES.asia.tp1Mult / SESSION_PROFILES.asia.slMult, { tol: 1e-6, label: '亚盘 TP1/SL 倍数比' });
-  approx(distTp2 / distSl, SESSION_PROFILES.asia.tp2Mult / SESSION_PROFILES.asia.slMult, { tol: 1e-6, label: '亚盘 TP2/SL 倍数比' });
+  assert(distSl >= plan.active.atr * SESSION_PROFILES.asia.slMult - 1e-6, '止损不少于盘口基础 ATR 倍数');
+  approx(distTp1 / plan.active.atr, SESSION_PROFILES.asia.tp1Mult, { tol: 1e-6, label: '亚盘 TP1 锚定基础 ATR 倍数（与防插针扩损解耦）' });
+  approx(distTp2 / plan.active.atr, SESSION_PROFILES.asia.tp2Mult, { tol: 1e-6, label: '亚盘 TP2 锚定基础 ATR 倍数（与防插针扩损解耦）' });
   assert(plan.pnlPts > 0 && plan.pnlPct > 0, '空单价格下跌时浮盈为正');
 
   // 追加一根触及 TP1 但未到 TP2 的 K 线，验证止损自动移至盈利侧保本锁盈（含 0.05 ATR 锁利缓冲）
@@ -462,6 +464,32 @@ function bar(t, o, h, l, c) {
   );
   assert(isBlockedByWall(cleanBreak, 9, 1, 2.0, bollMock) === false, '布林外沿干净大实体真突破不应被拦截');
   assert(isBlockedByWall(rejectedTop, 9, 1, 2.0, bollMock) === true, '布林极端外沿带长上影阻滞应被拦截');
+}
+
+// 11. xaudz 同方向重复触发不得强杀未平持仓
+{
+  state.mkt = 'xau';
+  state.tf = '1m';
+  const baseT = 1795017600;
+  const bars = Array.from({ length: 100 }, (_, i) => {
+    // 在第 95 根构造确认摆动低点 3698.6，使多单止损有充足结构缓冲，避免回踩时先打止损
+    if (i === 95) return bar(baseT + i * 60, 3699.8, 3700.4, 3698.6, 3699.9);
+    return bar(baseT + i * 60, 3700, 3700.5, 3699.5, 3700);
+  });
+  // 第 100 根：向上突破 EMA100 + 1ATR 触发做多
+  bars.push(bar(baseT + 100 * 60, 3700, 3703.2, 3699.8, 3703.0));
+  // 中间 6 根：跌回 EMA100 + 1ATR 下方但不触及原止损，也不触及 TP1
+  for (let k = 1; k <= 6; k++) {
+    const c = k === 6 ? 3700.9 : 3701.4;
+    bars.push(bar(baseT + (100 + k) * 60, 3701.4, 3702.0, 3700.8, c));
+  }
+  // 第 107 根：再次强势收破 EMA100 + 1ATR（发出第二条同方向 xaudz 信号）
+  bars.push(bar(baseT + 107 * 60, 3701.0, 3703.8, 3700.9, 3703.6));
+  const rawSetups = findXaudzSetups(bars, bars.length - 1);
+  assert(rawSetups.length === 2 && rawSetups[0].dir === 1 && rawSetups[1].dir === 1, '测试序列应产生两条同向 xaudz 原始信号');
+  const plan = computePatternPlan(bars, null, (baseT + 109 * 60) * 1000, 'xaudz');
+  assert(plan.active && plan.active.i === 100 && plan.history.length === 0, 'xaudz 持仓期间出现同向重复信号不得强杀旧单');
+  assert(plan.marks.length === 1, '被忽略的同向重复信号不应重复写入 marks');
 }
 
 console.log('PASS pattern-plan');

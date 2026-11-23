@@ -12,13 +12,13 @@ export function normalizePatternMode(v) {
 }
 
 export const SESSION_PROFILES = {
-  asia: { id: 'asia', name: '亚盘', slMult: 1.8, tp1Mult: 1.8, tp2Mult: 4.3 },
-  europe: { id: 'europe', name: '欧盘', slMult: 2.0, tp1Mult: 2.0, tp2Mult: 4.8 },
-  overlap: { id: 'overlap', name: '欧美重叠', slMult: 2.2, tp1Mult: 2.2, tp2Mult: 5.3 },
-  us: { id: 'us', name: '美盘', slMult: 2.0, tp1Mult: 2.0, tp2Mult: 4.8 },
+  asia: { id: 'asia', name: '亚盘', slMult: 1.8, tp1Mult: 1.35, tp2Mult: 4.0 },
+  europe: { id: 'europe', name: '欧盘', slMult: 2.0, tp1Mult: 1.5, tp2Mult: 4.4 },
+  overlap: { id: 'overlap', name: '欧美重叠', slMult: 2.2, tp1Mult: 1.65, tp2Mult: 4.8 },
+  us: { id: 'us', name: '美盘', slMult: 2.0, tp1Mult: 1.5, tp2Mult: 4.4 },
 };
 
-// 稳健档 TP1 触达后移动保本锁盈的盈利侧缓冲幅度（ATR 倍数，覆盖点差避免回吐）
+// TP1 触达后移动保本锁盈的盈利侧缓冲幅度（ATR 倍数，覆盖点差避免回吐）
 export const BE_CUSHION_ATR = 0.05;
 
 // 低延迟 Range Filter 参数与防插针结构止损缓冲
@@ -377,9 +377,9 @@ function buildOrder(klines, i, dir, pattern, atrVal, sess) {
     }
   }
 
-  // 按盘口 R 倍数等比映射 TP1 / TP2，保证结构止损自适应后盈亏比始终稳定
-  const tp1Dist = slDist * (sess.tp1Mult / sess.slMult);
-  const tp2Dist = slDist * (sess.tp2Mult / sess.slMult);
+  // 止盈锚定盘口基础 ATR 倍数，与防插针结构止损解耦，避免扩损把 TP1/TP2 同步推远导致胜率受损
+  const tp1Dist = unit * sess.tp1Mult;
+  const tp2Dist = unit * sess.tp2Mult;
   const origSl = dir > 0 ? entry - slDist : entry + slDist;
   const tp1 = dir > 0 ? entry + tp1Dist : entry - tp1Dist;
   const tp2 = dir > 0 ? entry + tp2Dist : entry - tp2Dist;
@@ -429,53 +429,81 @@ function computeXaudzPlan(klines, ticker, now) {
   }
 
   const setups = findXaudzSetups(klines, end);
-  const marks = setups.map((setup) => {
+  const setupByIndex = new Map();
+  for (let s = 0; s < setups.length; s++) {
+    setupByIndex.set(setups[s].i, setups[s]);
+  }
+  const marks = [];
+  const history = [];
+  let active = null;
+
+  function openXaudzOrder(setup) {
     const t = klines[setup.i].t;
-    return {
-      ...setup, t,
+    const mark = {
+      ...setup,
+      t,
       id: t + ':' + setup.dir + ':xaudz',
       pattern: { name: 'xaudz 反推版', code: 'xaudz' },
       session: sessionProfileForTs(t * 1000),
     };
-  });
-  const history = [];
-  let active = null;
-  for (let j = 0; j < marks.length; j++) {
-    const mark = marks[j];
-    const next = marks[j + 1];
-    const order = { ...mark, origSl: mark.sl, status: 'open', hitTp1: false, hitTp1I: -1, breakeven: false };
-    const last = next ? next.i : end;
-    for (let i = mark.i + 1; i <= last; i++) {
-      const bar = klines[i];
-      const stopHit = order.dir > 0 ? bar.l <= order.sl : bar.h >= order.sl;
+    marks.push(mark);
+    return {
+      ...mark,
+      origSl: mark.sl,
+      status: 'open',
+      hitTp1: false,
+      hitTp1I: -1,
+      breakeven: false,
+      exitI: -1,
+      exitPx: null,
+    };
+  }
+
+  for (let i = 0; i <= end; i++) {
+    const bar = klines[i];
+    if (active) {
+      const stopHit = active.dir > 0 ? bar.l <= active.sl : bar.h >= active.sl;
       if (stopHit) {
-        Object.assign(order, { status: order.breakeven ? 'be' : 'sl', exitI: i, exitPx: order.sl });
-        break;
-      }
-      const favorable = order.dir > 0 ? bar.h : bar.l;
-      if (!order.hitTp1 && order.dir * (favorable - order.tp1) >= 0) {
-        order.hitTp1 = true;
-        order.hitTp1I = i;
-        order.breakeven = true;
-        order.sl = order.entry;
-      }
-      if (order.dir * (favorable - order.tp2) >= 0) {
-        Object.assign(order, { status: 'tp2', exitI: i, exitPx: order.tp2 });
-        break;
+        Object.assign(active, { status: active.breakeven ? 'be' : 'sl', exitI: i, exitPx: active.sl });
+        history.push(active);
+        active = null;
+      } else {
+        const favorable = active.dir > 0 ? bar.h : bar.l;
+        if (!active.hitTp1 && active.dir * (favorable - active.tp1) >= 0) {
+          active.hitTp1 = true;
+          active.hitTp1I = i;
+          active.breakeven = true;
+          active.sl = active.entry;
+        }
+        if (active.dir * (favorable - active.tp2) >= 0) {
+          Object.assign(active, { status: 'tp2', exitI: i, exitPx: active.tp2 });
+          history.push(active);
+          active = null;
+        }
       }
     }
-    // 新信号接管面板。逐根回放时，同一根同时触达止损与目标按止损处理。
-    if (order.status === 'open' && next) {
-      Object.assign(order, { status: 'flip', exitI: next.i, exitPx: next.entry });
+
+    const setup = setupByIndex.get(i);
+    if (!setup) continue;
+    // 持仓期间忽略同方向重复信号，仅在反向信号出现时反手平仓，避免同向新信号强杀未走完的持仓。
+    if (!active) {
+      active = openXaudzOrder(setup);
+    } else if (setup.dir !== active.dir) {
+      Object.assign(active, { status: 'flip', exitI: i, exitPx: setup.entry });
+      history.push(active);
+      active = openXaudzOrder(setup);
     }
-    if (order.status === 'open') active = order;
-    else history.push(order);
   }
 
   const lastClosed = history.at(-1) || null;
   const lastPx = ticker?.last > 0 && Number.isFinite(ticker.last) ? ticker.last : klines.at(-1).c;
   const pnlPts = active ? active.dir * (lastPx - active.entry) : null;
-  const wins = history.filter((order) => order.hitTp1).length;
+  const tp1Hits = history.filter((order) => order.hitTp1).length;
+  const wins = history.filter((order) => {
+    if (order.hitTp1 || order.status === 'tp2' || order.status === 'be') return true;
+    if (order.status === 'flip') return order.dir * (order.exitPx - order.entry) > 0;
+    return false;
+  }).length;
   const label = active
     ? (active.dir > 0 ? '做多' : '做空') + ' · 开 ' + px(active.entry)
     : '等待信号';
@@ -490,7 +518,7 @@ function computeXaudzPlan(klines, ticker, now) {
     orderSession: active?.session || pack.session,
     marks: marks.slice(-5),
     stats: {
-      total: history.length, wins, tp1Hits: wins, losses: history.length - wins,
+      total: history.length, wins, tp1Hits, losses: history.length - wins,
       tp2Hits: history.filter((order) => order.status === 'tp2').length,
       winRate: history.length ? wins / history.length : null,
     },
@@ -548,7 +576,7 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
             active.hitTp1 = true;
             active.hitTp1I = i;
             active.breakeven = true;
-            active.sl = isStrict ? (active.entry + active.atr * BE_CUSHION_ATR) : active.entry;
+            active.sl = active.entry + active.atr * BE_CUSHION_ATR;
           }
           if (k.h >= active.tp2) {
             active.status = 'tp2';
@@ -573,7 +601,7 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
             active.hitTp1 = true;
             active.hitTp1I = i;
             active.breakeven = true;
-            active.sl = isStrict ? (active.entry - active.atr * BE_CUSHION_ATR) : active.entry;
+            active.sl = active.entry - active.atr * BE_CUSHION_ATR;
           }
           if (k.l <= active.tp2) {
             active.status = 'tp2';
@@ -610,6 +638,9 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
     }
 
     if (!pat) continue;
+    // 剔除分钟级黄金实测胜率最低的孕线假突破；稳健档额外剔除噪音偏高的 EMA9 轻触拒收
+    if (pat.code === 'inside_up' || pat.code === 'inside_dn') continue;
+    if (isStrict && (pat.code === 'pb_reject_up' || pat.code === 'pb_reject_dn')) continue;
 
     // 3. 结构突破与动能过滤
     const m0 = candleMetrics(k);
@@ -629,8 +660,13 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
     const bodyAtr = m0.body / effAt;
     const cp = pat.dir > 0 ? m0.closePos : (1 - m0.closePos);
     const oppWickRatio = m0.range > 0 ? (pat.dir > 0 ? m0.upWick / m0.range : m0.dnWick / m0.range) : 0;
+    const withE50 = pat.dir > 0
+      ? (k.c > e50[i] && e20[i] >= e50[i] - effAt * 0.30)
+      : (k.c < e50[i] && e20[i] <= e50[i] + effAt * 0.30);
 
-    const blockedByWall = useWall && isBlockedByWall(klines, i, pat.dir, effAt, boll);
+    // 墙体过滤：仅拦截逆 EMA50 撞墙或留明显阻滞影线的追顶/砸底，避免误杀顺大势的干净破位
+    const rawWall = useWall && isBlockedByWall(klines, i, pat.dir, effAt, boll);
+    const blockedByWall = rawWall && (!withE50 || oppWickRatio > 0.25);
 
     let baseOk = false;
     let qualified = false;
@@ -647,9 +683,6 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
       const prev20 = e20[Math.max(0, i - 3)];
       const slopeOk = pat.dir > 0 ? (e20[i] >= prev20) : (e20[i] <= prev20);
       const onE20 = pat.dir > 0 ? k.c > e20[i] : k.c < e20[i];
-      const withE50 = pat.dir > 0
-        ? (k.c > e50[i] && e20[i] >= e50[i] - effAt * 0.30)
-        : (k.c < e50[i] && e20[i] <= e50[i] + effAt * 0.30);
       const er = efficiencyRatio(closes, i, 14);
       const distE20 = pat.dir > 0 ? (k.c - e20[i]) / effAt : (e20[i] - k.c) / effAt;
       const r = rsi14[i] != null ? rsi14[i] : 50;
@@ -708,7 +741,11 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
   if (hasForming) {
     const fPat = detectBarPattern(klines, n - 1, atrArr, mode) ||
       detectLowLatencyPattern(klines, n - 1, atrArr, e9, e20);
-    if (fPat && (!active || active.dir !== fPat.dir)) {
+    const skipForming = fPat && (
+      fPat.code === 'inside_up' || fPat.code === 'inside_dn' ||
+      (isStrict && (fPat.code === 'pb_reject_up' || fPat.code === 'pb_reject_dn'))
+    );
+    if (fPat && !skipForming && (!active || active.dir !== fPat.dir)) {
       forming = fPat;
     }
   }
