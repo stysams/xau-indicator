@@ -5,29 +5,75 @@ import { patSrTitle } from '../indicators/pattern-sr.js';
 import { PAD } from '../state.js';
 import { svgEl } from './svg.js';
 
-export function drawPbSetup(svg, pack, vx, y) {
+// 按水平视窗 [xMin, xMax] 对真实 K 线坐标线段做线性裁剪，
+// 避免左/右锚点移出视窗时被钳死在边界，导致斜线/折线随缩放平移漂移。
+export function clipSegmentX(x1, y1, x2, y2, xMin, xMax) {
+  if (!Number.isFinite(x1) || !Number.isFinite(y1) || !Number.isFinite(x2) || !Number.isFinite(y2)) return null;
+  let ax = x1, ay = y1, bx = x2, by = y2;
+  if (ax > bx) {
+    const tx = ax, ty = ay;
+    ax = bx; ay = by;
+    bx = tx; by = ty;
+  }
+  if (bx < xMin || ax > xMax) return null;
+  const dx = bx - ax;
+  if (dx === 0) return { x1: ax, y1: ay, x2: bx, y2: by };
+  if (ax < xMin) {
+    const t = (xMin - ax) / dx;
+    ay = ay + (by - ay) * t;
+    ax = xMin;
+  }
+  if (bx > xMax) {
+    const t = (xMax - ax) / (bx - ax);
+    by = ay + (by - ay) * t;
+    bx = xMax;
+  }
+  return { x1: ax, y1: ay, x2: bx, y2: by };
+}
+
+function indexBoundsForX(xIndex, xMin, xMax) {
+  const x0 = xIndex(0);
+  const slotW = xIndex(1) - x0;
+  if (!Number.isFinite(slotW) || Math.abs(slotW) < 1e-9) return null;
+  return {
+    slotW: slotW,
+    iLeft: (xMin - x0) / slotW,
+    iRight: (xMax - x0) / slotW,
+  };
+}
+
+export function drawPbSetup(svg, pack, xIndex, y, xRight) {
   if (!pack || pack.hide || pack.status === 'none' || !pack.points || !pack.points.length) return;
+  const rightBound = xRight != null ? xRight : (960 - PAD.r);
   const color = pack.dir > 0 ? 'var(--up)' : 'var(--down)';
   const op = pack.status === 'trigger' ? '.95' : (pack.status === 'watch' ? '.82' : '.42');
   const dash = pack.status === 'trigger' ? '' : '5 4';
   let d = '';
-  pack.points.forEach((pt, i) => {
-    d += (i ? 'L' : 'M') + vx(pt.i).toFixed(1) + ',' + y(pt.price).toFixed(1);
-  });
-  svg.appendChild(svgEl('path', {
-    d: d, fill: 'none', stroke: color,
-    'stroke-width': pack.status === 'trigger' ? '1.8' : '1.4',
-    'stroke-dasharray': dash, 'stroke-linejoin': 'round', opacity: op,
-  }));
+  for (let i = 0; i < pack.points.length - 1; i++) {
+    const pA = pack.points[i];
+    const pB = pack.points[i + 1];
+    const seg = clipSegmentX(xIndex(pA.i), y(pA.price), xIndex(pB.i), y(pB.price), PAD.l, rightBound);
+    if (!seg) continue;
+    d += 'M' + seg.x1.toFixed(1) + ',' + seg.y1.toFixed(1) + 'L' + seg.x2.toFixed(1) + ',' + seg.y2.toFixed(1);
+  }
+  if (d) {
+    svg.appendChild(svgEl('path', {
+      d: d, fill: 'none', stroke: color,
+      'stroke-width': pack.status === 'trigger' ? '1.8' : '1.4',
+      'stroke-dasharray': dash, 'stroke-linejoin': 'round', opacity: op,
+    }));
+  }
   pack.points.forEach((pt) => {
+    const pxX = xIndex(pt.i);
+    if (pxX < PAD.l - 1 || pxX > rightBound + 1) return;
     svg.appendChild(svgEl('circle', {
-      cx: vx(pt.i).toFixed(1), cy: y(pt.price).toFixed(1),
+      cx: pxX.toFixed(1), cy: y(pt.price).toFixed(1),
       r: '3.1', fill: color, opacity: op,
     }));
     const lowish = pt.lab === '低点' || pt.lab === '回踩' || pt.lab === '等待' || pt.lab === '杀起'
       || pt.lab === '诱空' || (pack.kind === 'trap' && pack.dir > 0 && pt.lab === '位');
     const t = svgEl('text', {
-      x: vx(pt.i).toFixed(1),
+      x: pxX.toFixed(1),
       y: (y(pt.price) + (lowish ? 12 : -6)).toFixed(1),
       fill: color,
       'font-size': '10',
@@ -43,59 +89,65 @@ export function drawPbSetup(svg, pack, vx, y) {
     svg.appendChild(t);
   });
   if (pack.status === 'trigger' && pack.target != null) {
-    const x1 = vx(pack.recI >= 0 ? pack.recI : pack.extI);
+    const rawX1 = xIndex(pack.recI >= 0 ? pack.recI : pack.extI);
     const lastPt = pack.points[pack.points.length - 1];
-    const x2 = Math.max(x1 + 28, vx(lastPt.i));
-    svg.appendChild(svgEl('line', {
-      x1: x1.toFixed(1), x2: x2.toFixed(1),
-      y1: y(pack.target).toFixed(1), y2: y(pack.target).toFixed(1),
-      stroke: color, 'stroke-width': '1', 'stroke-dasharray': '2 3', opacity: '.7',
-    }));
-    const tg = svgEl('text', {
-      x: (x2 - 4).toFixed(1),
-      y: (y(pack.target) - 4).toFixed(1),
-      fill: color,
-      'font-size': '10',
-      'font-weight': '650',
-      'font-family': 'var(--font)',
-      'text-anchor': 'end',
-      stroke: 'var(--bg)',
-      'stroke-width': '3',
-      'paint-order': 'stroke',
-      opacity: '.8',
-    });
-    tg.textContent = pack.kind === 'pull' ? (pack.dir > 0 ? '前高' : '前低') : '半程';
-    svg.appendChild(tg);
+    const rawX2 = Math.max(rawX1 + 28, xIndex(lastPt.i));
+    const seg = clipSegmentX(rawX1, y(pack.target), rawX2, y(pack.target), PAD.l, rightBound);
+    if (seg) {
+      svg.appendChild(svgEl('line', {
+        x1: seg.x1.toFixed(1), x2: seg.x2.toFixed(1),
+        y1: seg.y1.toFixed(1), y2: seg.y2.toFixed(1),
+        stroke: color, 'stroke-width': '1', 'stroke-dasharray': '2 3', opacity: '.7',
+      }));
+      const tg = svgEl('text', {
+        x: (seg.x2 - 4).toFixed(1),
+        y: (seg.y2 - 4).toFixed(1),
+        fill: color,
+        'font-size': '10',
+        'font-weight': '650',
+        'font-family': 'var(--font)',
+        'text-anchor': 'end',
+        stroke: 'var(--bg)',
+        'stroke-width': '3',
+        'paint-order': 'stroke',
+        opacity: '.8',
+      });
+      tg.textContent = pack.kind === 'pull' ? (pack.dir > 0 ? '前高' : '前低') : '半程';
+      svg.appendChild(tg);
+    }
   }
 }
 
-export function drawTrapSetup(svg, pack, vx, y, xRight) {
+export function drawTrapSetup(svg, pack, xIndex, y, xRight) {
   if (!pack || pack.hide || pack.status === 'none' || pack.level == null) return;
+  const rightBound = xRight != null ? xRight : (960 - PAD.r);
   const color = pack.dir > 0 ? 'var(--up)' : 'var(--down)';
   const op = pack.status === 'trigger' ? '.95' : (pack.status === 'watch' ? '.82' : '.42');
   const dash = pack.status === 'trigger' ? '' : '5 4';
-  const x1 = vx(pack.firstI >= 0 ? pack.firstI : pack.srcI);
-  const x2 = xRight != null ? xRight : vx((pack.points[pack.points.length - 1] || {}).i || pack.sweepI);
-  const yy = y(pack.level);
-  if (pack.equal && pack.radius) {
-    const top = y(pack.level + pack.radius);
-    const bot = y(pack.level - pack.radius);
-    svg.appendChild(svgEl('rect', {
-      x: Math.min(x1, x2).toFixed(1),
-      y: Math.min(top, bot).toFixed(1),
-      width: Math.max(2, Math.abs(x2 - x1)).toFixed(1),
-      height: Math.max(1.5, Math.abs(bot - top)).toFixed(1),
-      fill: color,
-      opacity: '.08',
+  const rawX1 = xIndex(pack.firstI >= 0 ? pack.firstI : pack.srcI);
+  const rawX2 = xRight != null ? xRight : xIndex((pack.points[pack.points.length - 1] || {}).i || pack.sweepI);
+  const seg = clipSegmentX(rawX1, y(pack.level), rawX2, y(pack.level), PAD.l, rightBound);
+  if (seg) {
+    if (pack.equal && pack.radius) {
+      const top = y(pack.level + pack.radius);
+      const bot = y(pack.level - pack.radius);
+      svg.appendChild(svgEl('rect', {
+        x: Math.min(seg.x1, seg.x2).toFixed(1),
+        y: Math.min(top, bot).toFixed(1),
+        width: Math.max(2, Math.abs(seg.x2 - seg.x1)).toFixed(1),
+        height: Math.max(1.5, Math.abs(bot - top)).toFixed(1),
+        fill: color,
+        opacity: '.08',
+      }));
+    }
+    svg.appendChild(svgEl('line', {
+      x1: seg.x1.toFixed(1), x2: seg.x2.toFixed(1),
+      y1: seg.y1.toFixed(1), y2: seg.y2.toFixed(1),
+      stroke: color, 'stroke-width': pack.status === 'trigger' ? '1.5' : '1.2',
+      'stroke-dasharray': dash, opacity: op,
     }));
   }
-  svg.appendChild(svgEl('line', {
-    x1: x1.toFixed(1), x2: x2.toFixed(1),
-    y1: yy.toFixed(1), y2: yy.toFixed(1),
-    stroke: color, 'stroke-width': pack.status === 'trigger' ? '1.5' : '1.2',
-    'stroke-dasharray': dash, opacity: op,
-  }));
-  drawPbSetup(svg, pack, vx, y);
+  drawPbSetup(svg, pack, xIndex, y, rightBound);
 }
 
 export function drawHold(svg, pack, vx, y, xRight, bodyW) {
@@ -167,13 +219,15 @@ export function drawHold(svg, pack, vx, y, xRight, bodyW) {
   });
 }
 
-export function drawBox(svg, pack, vx, y, xRight) {
+export function drawBox(svg, pack, xIndex, y, xRight) {
   if (!pack || !pack.ok || pack.top == null || pack.bottom == null) return;
   const broke = pack.status === 'breakUp' || pack.status === 'breakDn';
   const color = pack.status === 'breakUp'
     ? 'var(--up)'
     : (pack.status === 'breakDn' ? 'var(--down)' : 'var(--accent)');
-  const x1 = vx(pack.boxStart >= 0 ? pack.boxStart : 0);
+  const rawX1 = xIndex(pack.boxStart >= 0 ? pack.boxStart : 0);
+  if (rawX1 > xRight) return;
+  const x1 = Math.max(PAD.l, rawX1);
   const x2 = xRight;
   const left = Math.min(x1, x2);
   const width = Math.max(2, Math.abs(x2 - x1));
@@ -211,7 +265,7 @@ export function drawBox(svg, pack, vx, y, xRight) {
   }
   (pack.touches || []).forEach((tc) => {
     if (tc.i == null || tc.price == null) return;
-    const xc = vx(tc.i);
+    const xc = xIndex(tc.i);
     if (xc < left - 1 || xc > left + width + 1) return;
     g.appendChild(svgEl('circle', {
       cx: xc.toFixed(1),
@@ -227,28 +281,32 @@ export function drawBox(svg, pack, vx, y, xRight) {
     const extTitle = svgEl('title', {});
     extTitle.textContent = (ext.dir > 0 ? '向上' : '向下') + '斜向通道参考，' + ext.anchorCount + '组摆动锚点；不构成开单信号';
     extGroup.appendChild(extTitle);
-    // SVG 绘制只需要把索引映射到右边界；使用可见槽宽近似未来投影长度。
+    const bounds = indexBoundsForX(xIndex, PAD.l, xRight);
     const project = (line) => {
-      const from = line.fromI;
-      const to = line.toI;
-      const slotPx = Math.max(1, Math.abs(vx(to) - vx(Math.max(from, to - 1))));
-      const extraBars = Math.max(0, (xRight - vx(to)) / slotPx);
+      if (!bounds) return null;
+      const i1 = Math.max(line.fromI, bounds.iLeft);
+      const i2 = bounds.iRight;
+      if (i1 >= i2) return null;
       return {
-        x1: vx(from), x2: xRight,
-        y1: y(line.intercept + line.slope * from),
-        y2: y(line.intercept + line.slope * (to + extraBars)),
+        x1: xIndex(i1), x2: xRight,
+        y1: y(line.intercept + line.slope * i1),
+        y2: y(line.intercept + line.slope * i2),
       };
     };
     [ext.upper, ext.lower].forEach((line) => {
       const q = project(line);
-      extGroup.appendChild(svgEl('line', {
-        x1: q.x1.toFixed(1), x2: q.x2.toFixed(1),
-        y1: q.y1.toFixed(1), y2: q.y2.toFixed(1),
-        stroke: extColor, 'stroke-width': '1.15', 'stroke-dasharray': '5 4',
-      }));
+      if (q) {
+        extGroup.appendChild(svgEl('line', {
+          x1: q.x1.toFixed(1), x2: q.x2.toFixed(1),
+          y1: q.y1.toFixed(1), y2: q.y2.toFixed(1),
+          stroke: extColor, 'stroke-width': '1.15', 'stroke-dasharray': '5 4',
+        }));
+      }
       (line.anchors || []).forEach((a) => {
+        const ax = xIndex(a.i);
+        if (ax < PAD.l - 1 || ax > xRight + 1) return;
         extGroup.appendChild(svgEl('circle', {
-          cx: vx(a.i).toFixed(1), cy: y(a.price).toFixed(1), r: '2', fill: extColor,
+          cx: ax.toFixed(1), cy: y(a.price).toFixed(1), r: '2', fill: extColor,
         }));
       });
     });
@@ -277,8 +335,9 @@ export function drawBox(svg, pack, vx, y, xRight) {
   label(pack.bottom, botTxt + px(pack.bottom) + (pack.botTouches >= 2 ? ' · ' + pack.botTouches + '次' : ''), true);
   if (broke && pack.target != null) {
     const targetY = y(pack.target);
+    const tx1 = Math.max(PAD.l, Math.min(xRight, xIndex(pack.breakI >= 0 ? pack.breakI : pack.boxStart)));
     g.appendChild(svgEl('line', {
-      x1: vx(pack.breakI >= 0 ? pack.breakI : pack.boxStart).toFixed(1),
+      x1: tx1.toFixed(1),
       x2: xRight.toFixed(1), y1: targetY.toFixed(1), y2: targetY.toFixed(1),
       stroke: color, 'stroke-width': '1.15', 'stroke-dasharray': '2 5', opacity: '.72',
     }));
@@ -382,28 +441,38 @@ export function drawHkld(svg, pack, vx, y, xRight) {
   });
 }
 
-export function drawFib(svg, pack, vx, y, xRight, plotTop, plotBottom) {
+export function drawFib(svg, pack, xIndex, y, xRight, plotTop, plotBottom) {
   if (!pack || !pack.ok || !pack.levels || !pack.levels.length) return;
   const color = pack.dir > 0 ? 'var(--up)' : 'var(--down)';
   const gold = 'var(--warn)';
-  const x1 = vx(Math.min(pack.start.i, pack.end.i));
+  const rawX1 = xIndex(Math.min(pack.start.i, pack.end.i));
+  const x1 = Math.max(PAD.l, Math.min(xRight, rawX1));
   const x2 = xRight;
   const top = plotTop == null ? -20 : plotTop;
   const bot = plotBottom == null ? 1e9 : plotBottom;
   const opBase = pack.status === 'trigger' ? .95 : (pack.status === 'watch' ? .84 : .7);
-  svg.appendChild(svgEl('line', {
-    x1: vx(pack.start.i).toFixed(1), x2: vx(pack.end.i).toFixed(1),
-    y1: y(pack.start.price).toFixed(1), y2: y(pack.end.price).toFixed(1),
-    stroke: 'var(--accent)', 'stroke-width': '1.15',
-    'stroke-dasharray': '4 4', opacity: '.55',
-  }));
+  const swingSeg = clipSegmentX(
+    xIndex(pack.start.i), y(pack.start.price),
+    xIndex(pack.end.i), y(pack.end.price),
+    PAD.l, xRight
+  );
+  if (swingSeg) {
+    svg.appendChild(svgEl('line', {
+      x1: swingSeg.x1.toFixed(1), x2: swingSeg.x2.toFixed(1),
+      y1: swingSeg.y1.toFixed(1), y2: swingSeg.y2.toFixed(1),
+      stroke: 'var(--accent)', 'stroke-width': '1.15',
+      'stroke-dasharray': '4 4', opacity: '.55',
+    }));
+  }
   pack.points.forEach((pt) => {
+    const pxX = xIndex(pt.i);
+    if (pxX < PAD.l - 1 || pxX > xRight + 1) return;
     svg.appendChild(svgEl('circle', {
-      cx: vx(pt.i).toFixed(1), cy: y(pt.price).toFixed(1),
+      cx: pxX.toFixed(1), cy: y(pt.price).toFixed(1),
       r: '2.8', fill: 'var(--accent)', opacity: '.85',
     }));
     const t = svgEl('text', {
-      x: vx(pt.i).toFixed(1),
+      x: pxX.toFixed(1),
       y: (y(pt.price) + (pt.lab === '100%' ? 12 : -6)).toFixed(1),
       fill: 'var(--accent)',
       'font-size': '10',
@@ -524,48 +593,57 @@ function drawDiv3Legend(svg, pack) {
   svg.appendChild(g);
 }
 
-export function drawDiv3(svg, pack, vx, y, view) {
+export function drawDiv3(svg, pack, xIndex, y, view, xRight) {
   if (!pack || !pack.ok || !view) return;
   const start = view.start;
   const end = view.start + view.count;
+  const rightBound = xRight != null ? xRight : (xIndex(end - 0.5));
   (pack.guides || []).forEach((g, idx) => {
     if (!guideInView(g, start, end) || g.anchorPx == null || g.extremePx == null) return;
+    const seg = clipSegmentX(
+      xIndex(g.anchorI), y(g.anchorPx),
+      xIndex(g.extremeI), y(g.extremePx),
+      PAD.l, rightBound
+    );
+    if (!seg) return;
     const color = DIV3_GUIDE_COLOR[g.id] || 'var(--ink-2)';
     const grp = svgEl('g', {});
     const tip = svgEl('title', {});
     tip.textContent = guideLine(g) + '。这是分项辅助线，不是三维共振。';
     grp.appendChild(tip);
     grp.appendChild(svgEl('line', {
-      x1: vx(g.anchorI).toFixed(1),
-      y1: y(g.anchorPx).toFixed(1),
-      x2: vx(g.extremeI).toFixed(1),
-      y2: y(g.extremePx).toFixed(1),
+      x1: seg.x1.toFixed(1),
+      y1: seg.y1.toFixed(1),
+      x2: seg.x2.toFixed(1),
+      y2: seg.y2.toFixed(1),
       stroke: color,
       'stroke-width': g.diverged ? '1.35' : '1',
       'stroke-dasharray': g.id === 'kdj' ? '2 2' : (g.id === 'rsi' ? '7 3' : '4 3'),
       opacity: g.diverged ? '.88' : '.42',
     }));
-    const xc = vx(g.extremeI);
-    const yy = y(g.extremePx) + (idx - 1) * 11;
-    grp.appendChild(svgEl('circle', {
-      cx: xc.toFixed(1), cy: y(g.extremePx).toFixed(1), r: g.diverged ? '2.6' : '2',
-      fill: g.diverged ? color : 'var(--bg)', stroke: color, 'stroke-width': '1.2',
-      opacity: g.diverged ? '.95' : '.7',
-    }));
-    const lab = svgEl('text', {
-      x: (xc + 6).toFixed(1),
-      y: yy.toFixed(1),
-      fill: color,
-      'font-size': '9.5',
-      'font-weight': '750',
-      'font-family': 'var(--font)',
-      stroke: 'var(--bg)',
-      'stroke-width': '3',
-      'paint-order': 'stroke',
-      opacity: g.diverged ? '.95' : '.7',
-    });
-    lab.textContent = g.lab || g.tag || '';
-    grp.appendChild(lab);
+    const xc = xIndex(g.extremeI);
+    if (xc >= PAD.l - 1 && xc <= rightBound + 1) {
+      const yy = y(g.extremePx) + (idx - 1) * 11;
+      grp.appendChild(svgEl('circle', {
+        cx: xc.toFixed(1), cy: y(g.extremePx).toFixed(1), r: g.diverged ? '2.6' : '2',
+        fill: g.diverged ? color : 'var(--bg)', stroke: color, 'stroke-width': '1.2',
+        opacity: g.diverged ? '.95' : '.7',
+      }));
+      const lab = svgEl('text', {
+        x: (xc + 6).toFixed(1),
+        y: yy.toFixed(1),
+        fill: color,
+        'font-size': '9.5',
+        'font-weight': '750',
+        'font-family': 'var(--font)',
+        stroke: 'var(--bg)',
+        'stroke-width': '3',
+        'paint-order': 'stroke',
+        opacity: g.diverged ? '.95' : '.7',
+      });
+      lab.textContent = g.lab || g.tag || '';
+      grp.appendChild(lab);
+    }
     svg.appendChild(grp);
   });
   drawDiv3Legend(svg, pack);
@@ -581,20 +659,29 @@ export function drawDiv3(svg, pack, vx, y, view) {
     tip.textContent = (mk.lab || '三维背离') + '。价格与 MACD、KDJ、RSI 不同步，只描述动能，不是下单指令。';
     g.appendChild(tip);
     if (mk.anchorI != null && mk.extremeI != null && mk.anchorI >= 0 && mk.extremeI >= 0 && mk.anchorPx != null && mk.extremePx != null) {
-      g.appendChild(svgEl('line', {
-        x1: vx(mk.anchorI).toFixed(1),
-        y1: y(mk.anchorPx).toFixed(1),
-        x2: vx(mk.extremeI).toFixed(1),
-        y2: y(mk.extremePx).toFixed(1),
-        stroke: color,
-        'stroke-width': live ? '1.4' : '1.15',
-        'stroke-dasharray': dash,
-        opacity: op,
-      }));
+      const mSeg = clipSegmentX(
+        xIndex(mk.anchorI), y(mk.anchorPx),
+        xIndex(mk.extremeI), y(mk.extremePx),
+        PAD.l, rightBound
+      );
+      if (mSeg) {
+        g.appendChild(svgEl('line', {
+          x1: mSeg.x1.toFixed(1),
+          y1: mSeg.y1.toFixed(1),
+          x2: mSeg.x2.toFixed(1),
+          y2: mSeg.y2.toFixed(1),
+          stroke: color,
+          'stroke-width': live ? '1.4' : '1.15',
+          'stroke-dasharray': dash,
+          opacity: op,
+        }));
+      }
       [mk.anchorI, mk.extremeI].forEach((idx, n) => {
+        const pxX = xIndex(idx);
+        if (pxX < PAD.l - 1 || pxX > rightBound + 1) return;
         const pxv = n === 0 ? mk.anchorPx : mk.extremePx;
         g.appendChild(svgEl('circle', {
-          cx: vx(idx).toFixed(1),
+          cx: pxX.toFixed(1),
           cy: y(pxv).toFixed(1),
           r: live ? '2.4' : '2',
           fill: color,
@@ -602,36 +689,38 @@ export function drawDiv3(svg, pack, vx, y, view) {
         }));
       });
     }
-    const xc = vx(mk.extremeI != null && mk.extremeI >= 0 ? mk.extremeI : mk.i);
-    const yy = y(mk.extremePx != null ? mk.extremePx : mk.anchorPx);
-    const s = 4.2;
-    g.appendChild(svgEl('polygon', {
-      points: [
-        (xc).toFixed(1) + ',' + (yy - s).toFixed(1),
-        (xc + s).toFixed(1) + ',' + yy.toFixed(1),
-        xc.toFixed(1) + ',' + (yy + s).toFixed(1),
-        (xc - s).toFixed(1) + ',' + yy.toFixed(1),
-      ].join(' '),
-      fill: live ? color : 'var(--bg)',
-      stroke: color,
-      'stroke-width': '1.3',
-      opacity: op,
-    }));
-    const lab = svgEl('text', {
-      x: xc.toFixed(1),
-      y: (mk.dir > 0 ? yy + 16 : yy - 8).toFixed(1),
-      fill: color,
-      'font-size': '10.5',
-      'font-weight': '750',
-      'font-family': 'var(--font)',
-      'text-anchor': 'middle',
-      stroke: 'var(--bg)',
-      'stroke-width': '3',
-      'paint-order': 'stroke',
-      opacity: op,
-    });
-    lab.textContent = mk.lab || (mk.dir > 0 ? '三维底背离' : '三维顶背离');
-    g.appendChild(lab);
+    const xc = xIndex(mk.extremeI != null && mk.extremeI >= 0 ? mk.extremeI : mk.i);
+    if (xc >= PAD.l - 1 && xc <= rightBound + 1) {
+      const yy = y(mk.extremePx != null ? mk.extremePx : mk.anchorPx);
+      const s = 4.2;
+      g.appendChild(svgEl('polygon', {
+        points: [
+          (xc).toFixed(1) + ',' + (yy - s).toFixed(1),
+          (xc + s).toFixed(1) + ',' + yy.toFixed(1),
+          xc.toFixed(1) + ',' + (yy + s).toFixed(1),
+          (xc - s).toFixed(1) + ',' + yy.toFixed(1),
+        ].join(' '),
+        fill: live ? color : 'var(--bg)',
+        stroke: color,
+        'stroke-width': '1.3',
+        opacity: op,
+      }));
+      const lab = svgEl('text', {
+        x: xc.toFixed(1),
+        y: (mk.dir > 0 ? yy + 16 : yy - 8).toFixed(1),
+        fill: color,
+        'font-size': '10.5',
+        'font-weight': '750',
+        'font-family': 'var(--font)',
+        'text-anchor': 'middle',
+        stroke: 'var(--bg)',
+        'stroke-width': '3',
+        'paint-order': 'stroke',
+        opacity: op,
+      });
+      lab.textContent = mk.lab || (mk.dir > 0 ? '三维底背离' : '三维顶背离');
+      g.appendChild(lab);
+    }
     svg.appendChild(g);
   });
 }
@@ -1240,10 +1329,11 @@ export function drawPatternPlan(svg, pack, vis, view, x, vx, y, xRight, plotTop,
   });
 }
 
-export function drawPatSr(svg, pack, vx, y, xRight, plotTop, plotBottom, lastPx) {
+export function drawPatSr(svg, pack, xIndex, y, xRight, plotTop, plotBottom, lastPx) {
   if (!pack || !pack.ok) return;
   const topBound = plotTop != null ? plotTop : PAD.t;
   const botBound = plotBottom != null ? plotBottom : 360;
+  const bounds = indexBoundsForX(xIndex, PAD.l, xRight);
   const gRoot = svgEl('g', { class: 'patsr-overlay' });
   const usedY = [];
 
@@ -1263,6 +1353,21 @@ export function drawPatSr(svg, pack, vx, y, xRight, plotTop, plotBottom, lastPx)
   // 1. 经典价格结构形态骨架线（W底 / M顶 / 三重底 / 三重顶 / 头肩）
   (pack.shapes || []).forEach((sh) => {
     if (!sh || !sh.points || sh.points.length < 3) return;
+    let d = '';
+    for (let k = 0; k < sh.points.length - 1; k++) {
+      const pA = sh.points[k];
+      const pB = sh.points[k + 1];
+      const seg = clipSegmentX(
+        xIndex(pA.i), y(pA.price),
+        xIndex(pB.i), y(pB.price),
+        PAD.l, xRight
+      );
+      if (!seg) continue;
+      d += 'M' + seg.x1.toFixed(1) + ',' + seg.y1.toFixed(1) +
+        'L' + seg.x2.toFixed(1) + ',' + seg.y2.toFixed(1);
+    }
+    if (!d) return;
+
     const color = sh.dir > 0 ? 'var(--up)' : 'var(--down)';
     const gSh = svgEl('g', { class: 'patsr-shape', 'data-patsr-code': sh.code });
     const tip = svgEl('title', {});
@@ -1271,26 +1376,25 @@ export function drawPatSr(svg, pack, vx, y, xRight, plotTop, plotBottom, lastPx)
       (sh.neckPrice != null ? (' · 颈线 ' + px(sh.neckPrice)) : '');
     gSh.appendChild(tip);
 
-    let d = '';
-    sh.points.forEach((pt, idx) => {
-      d += (idx ? 'L' : 'M') + vx(pt.i).toFixed(1) + ',' + y(pt.price).toFixed(1);
-    });
     gSh.appendChild(svgEl('path', {
       d: d, fill: 'none', stroke: color,
       'stroke-width': '1.3', 'stroke-dasharray': '4 3',
       'stroke-linejoin': 'round', opacity: '.58',
     }));
     sh.points.forEach((pt) => {
+      const cx = xIndex(pt.i);
+      if (cx < PAD.l - 1 || cx > xRight + 1) return;
       gSh.appendChild(svgEl('circle', {
-        cx: vx(pt.i).toFixed(1), cy: y(pt.price).toFixed(1),
+        cx: cx.toFixed(1), cy: y(pt.price).toFixed(1),
         r: '2.5', fill: color, opacity: '.72',
       }));
     });
     const midPt = sh.points[Math.floor(sh.points.length / 2)];
+    const midX = xIndex(midPt.i);
     const tagY = y(midPt.price) + (sh.dir > 0 ? -7 : 12);
-    if (tagY >= topBound + 6 && tagY <= botBound - 4) {
+    if (midX >= PAD.l + 10 && midX <= xRight - 10 && tagY >= topBound + 6 && tagY <= botBound - 4) {
       const lab = svgEl('text', {
-        x: vx(midPt.i).toFixed(1),
+        x: midX.toFixed(1),
         y: tagY.toFixed(1),
         fill: color,
         'font-size': '9.5',
@@ -1308,19 +1412,19 @@ export function drawPatSr(svg, pack, vx, y, xRight, plotTop, plotBottom, lastPx)
     gRoot.appendChild(gSh);
   });
 
-  // 2. 斜向形态支撑/压力趋势线与头肩颈线
+  // 2. 斜向形态支撑/压力趋势线与头肩颈线（严格按真实 barIndex 投影与裁剪，缩放平移零漂移）
   (pack.trendlines || []).forEach((tl) => {
-    if (!tl || !Number.isFinite(tl.slope) || !Number.isFinite(tl.intercept)) return;
+    if (!tl || !bounds || !Number.isFinite(tl.slope) || !Number.isFinite(tl.intercept)) return;
+    const i1 = Math.max(tl.startI, bounds.iLeft);
+    const i2 = bounds.iRight;
+    if (i1 >= i2) return;
+
     const asSup = tl.role === 'sup' || (tl.role === 'test' && (lastPx == null ? tl.structRole === 'sup' : lastPx >= tl.price));
     const color = asSup ? 'var(--up)' : 'var(--down)';
     const broken = tl.flipCount > 0;
-    const x1 = vx(tl.startI);
-    const xEnd = vx(tl.endI);
-    const prevX = vx(Math.max(tl.startI, tl.endI - 1));
-    const slotPx = Math.max(1, Math.abs(xEnd - prevX));
-    const extraBars = Math.max(0, (xRight - xEnd) / slotPx);
-    const y1 = y(tl.intercept + tl.slope * tl.startI);
-    const y2 = y(tl.intercept + tl.slope * (tl.endI + extraBars));
+    const x1 = xIndex(i1);
+    const y1 = y(tl.intercept + tl.slope * i1);
+    const y2 = y(tl.intercept + tl.slope * i2);
     if ((y1 < topBound - 40 && y2 < topBound - 40) || (y1 > botBound + 40 && y2 > botBound + 40)) return;
 
     const gTl = svgEl('g', { class: 'patsr-trendline', 'data-patsr-code': tl.code });
@@ -1338,8 +1442,10 @@ export function drawPatSr(svg, pack, vx, y, xRight, plotTop, plotBottom, lastPx)
       opacity: broken ? '.52' : '.82',
     }));
     (tl.anchors || []).forEach((a) => {
+      const ax = xIndex(a.i);
+      if (ax < PAD.l - 1 || ax > xRight + 1) return;
       gTl.appendChild(svgEl('circle', {
-        cx: vx(a.i).toFixed(1), cy: y(a.price).toFixed(1),
+        cx: ax.toFixed(1), cy: y(a.price).toFixed(1),
         r: '2.6', fill: 'var(--bg)', stroke: color, 'stroke-width': '1.35',
         opacity: broken ? '.6' : '.9',
       }));
@@ -1369,6 +1475,8 @@ export function drawPatSr(svg, pack, vx, y, xRight, plotTop, plotBottom, lastPx)
   // 3. 水平形态支撑/压力带（含多形态共振与顶底转换）
   (pack.levels || []).forEach((lv) => {
     if (!lv || !Number.isFinite(lv.price)) return;
+    const rawX1 = xIndex(lv.startI != null ? lv.startI : 0);
+    if (rawX1 > xRight) return;
     const yy = y(lv.price);
     const yTop = y(lv.zoneHi != null ? lv.zoneHi : lv.price);
     const yBot = y(lv.zoneLo != null ? lv.zoneLo : lv.price);
@@ -1379,7 +1487,7 @@ export function drawPatSr(svg, pack, vx, y, xRight, plotTop, plotBottom, lastPx)
     const isTest = lv.role === 'test';
     const broken = lv.flipCount > 0;
     const isConfluence = (lv.confluence || 1) >= 2;
-    const x1 = vx(lv.startI != null ? lv.startI : 0);
+    const x1 = Math.max(PAD.l, rawX1);
     const x2 = xRight;
 
     const gLv = svgEl('g', {

@@ -19,7 +19,7 @@ import { $, H, PAD, W, state } from '../state.js';
 import { simOpenOrders } from '../trade/sim.js';
 import { bollDash, bollSt, syncManualSrUi } from '../ui/indicator-menu.js';
 import { drawOscPanes, findPane, oscLayout, paneY } from './osc.js';
-import { drawBox, drawDiv3, drawFib, drawHkld, drawHold, drawPatSr, drawPatternPlan, drawPbSetup, drawTrapSetup } from './overlays.js';
+import { clipSegmentX, drawBox, drawDiv3, drawFib, drawHkld, drawHold, drawPatSr, drawPatternPlan, drawPbSetup, drawTrapSetup } from './overlays.js';
 import { drawSignalRail } from './signal-rail.js';
 import { bollAreaD, lineD, lineSegD, svgEl } from './svg.js';
 import { drawFastOverlay, drawSimOverlay, openFastTrade, placeFastTags } from './trade-overlay.js';
@@ -325,6 +325,7 @@ export function drawChart(klines, ticker, hover) {
   const hollowUp = bodyW >= 2.2;
   const i0 = Math.max(0, view.start);
   const x = xScale.local;
+  const xi = xScale.index;
   const y = (v) => PAD.t + (hi - v) / (hi - lo) * plotH;
   const vx = xScale.clampedIndex;
   const lastY = (state.ind.last && lastPx != null) ? y(lastPx) : null;
@@ -478,10 +479,10 @@ export function drawChart(klines, ticker, hover) {
   }
 
   if (box && box.ok) {
-    drawBox(svg, box, vx, y, W - PAD.r);
+    drawBox(svg, box, xi, y, W - PAD.r);
   }
   if (div3 && div3.ok) {
-    drawDiv3(svg, div3, vx, y, view);
+    drawDiv3(svg, div3, xi, y, view, W - PAD.r);
   }
 
   if (state.ind.hl && ticker && ticker.high && ticker.low) {
@@ -508,13 +509,16 @@ export function drawChart(klines, ticker, hover) {
     }));
     const fromPrice = swing.dir > 0 ? swing.lo : swing.hi;
     const toPrice = swing.dir > 0 ? swing.hi : swing.lo;
-    gSwing.appendChild(svgEl('line', {
-      x1: vx(swing.startI).toFixed(1), x2: vx(swing.endI).toFixed(1),
-      y1: y(fromPrice).toFixed(1), y2: y(toPrice).toFixed(1),
-      stroke: 'var(--accent-2)', 'stroke-width': '1.35',
-      'stroke-dasharray': swing.status === 'forming' ? '3 4' : '', opacity: '.72',
-      'vector-effect': 'non-scaling-stroke',
-    }));
+    const swSeg = clipSegmentX(xi(swing.startI), y(fromPrice), xi(swing.endI), y(toPrice), PAD.l, W - PAD.r);
+    if (swSeg) {
+      gSwing.appendChild(svgEl('line', {
+        x1: swSeg.x1.toFixed(1), x2: swSeg.x2.toFixed(1),
+        y1: swSeg.y1.toFixed(1), y2: swSeg.y2.toFixed(1),
+        stroke: 'var(--accent-2)', 'stroke-width': '1.35',
+        'stroke-dasharray': swing.status === 'forming' ? '3 4' : '', opacity: '.72',
+        'vector-effect': 'non-scaling-stroke',
+      }));
+    }
     [
       [swing.hi, swing.hiConfirmed ? '波段高（已确认）' : '波段高（进行中）', 'var(--sr-res)', swing.hiConfirmed],
       [swing.lo, swing.loConfirmed ? '波段低（已确认）' : '波段低（进行中）', 'var(--sr-sup)', swing.loConfirmed],
@@ -777,19 +781,29 @@ export function drawChart(klines, ticker, hover) {
       const op = p.status === 'failed' ? '.42' : (p.status === 'forming' ? '.82' : '.95');
       const pts = [p.ls, p.t1, p.head, p.t2, p.rs];
       let d = '';
-      pts.forEach((pt, idx) => {
-        d += (idx ? 'L' : 'M') + vx(pt.i).toFixed(1) + ',' + y(pt.price).toFixed(1);
-      });
-      svg.appendChild(svgEl('path', {
-        d: d, fill: 'none', stroke: color,
-        'stroke-width': p.status === 'confirmed' ? '1.8' : '1.45',
-        'stroke-dasharray': p.status === 'forming' ? '5 4' : '',
-        'stroke-linejoin': 'round',
-        opacity: op,
-      }));
+      for (let idx = 0; idx < pts.length - 1; idx++) {
+        const seg = clipSegmentX(
+          xi(pts[idx].i), y(pts[idx].price),
+          xi(pts[idx + 1].i), y(pts[idx + 1].price),
+          PAD.l, W - PAD.r
+        );
+        if (!seg) continue;
+        d += 'M' + seg.x1.toFixed(1) + ',' + seg.y1.toFixed(1) + 'L' + seg.x2.toFixed(1) + ',' + seg.y2.toFixed(1);
+      }
+      if (d) {
+        svg.appendChild(svgEl('path', {
+          d: d, fill: 'none', stroke: color,
+          'stroke-width': p.status === 'confirmed' ? '1.8' : '1.45',
+          'stroke-dasharray': p.status === 'forming' ? '5 4' : '',
+          'stroke-linejoin': 'round',
+          opacity: op,
+        }));
+      }
       pts.forEach((pt) => {
+        const pxX = xi(pt.i);
+        if (pxX < PAD.l - 1 || pxX > W - PAD.r + 1) return;
         svg.appendChild(svgEl('circle', {
-          cx: vx(pt.i).toFixed(1),
+          cx: pxX.toFixed(1),
           cy: y(pt.price).toFixed(1),
           r: '3.1',
           fill: color,
@@ -799,25 +813,35 @@ export function drawChart(klines, ticker, hover) {
       const extI = p.breakI != null
         ? p.breakI
         : Math.max(p.rs.i, view.start + Math.max(0, vis.length - 1), klines.length - 1);
-      const nx1 = vx(p.t1.i);
-      const nx2 = vx(extI);
-      const ny1 = y(hsNeckAt(p.t1, p.t2, p.t1.i));
-      const ny2 = y(hsNeckAt(p.t1, p.t2, extI));
-      svg.appendChild(svgEl('line', {
-        x1: nx1.toFixed(1), x2: nx2.toFixed(1),
-        y1: ny1.toFixed(1), y2: ny2.toFixed(1),
-        stroke: color, 'stroke-width': '1.25',
-        'stroke-dasharray': '6 4', opacity: String(Math.max(0.5, Number(op))),
-      }));
-      if (p.status === 'confirmed' && p.target != null) {
+      const neckSeg = clipSegmentX(
+        xi(p.t1.i), y(hsNeckAt(p.t1, p.t2, p.t1.i)),
+        xi(extI), y(hsNeckAt(p.t1, p.t2, extI)),
+        PAD.l, W - PAD.r
+      );
+      if (neckSeg) {
         svg.appendChild(svgEl('line', {
-          x1: vx(p.breakI != null ? p.breakI : p.rs.i).toFixed(1),
-          x2: vx(extI).toFixed(1),
-          y1: y(p.target).toFixed(1),
-          y2: y(p.target).toFixed(1),
-          stroke: color, 'stroke-width': '1',
-          'stroke-dasharray': '2 3', opacity: '.7',
+          x1: neckSeg.x1.toFixed(1), x2: neckSeg.x2.toFixed(1),
+          y1: neckSeg.y1.toFixed(1), y2: neckSeg.y2.toFixed(1),
+          stroke: color, 'stroke-width': '1.25',
+          'stroke-dasharray': '6 4', opacity: String(Math.max(0.5, Number(op))),
         }));
+      }
+      if (p.status === 'confirmed' && p.target != null) {
+        const tgtSeg = clipSegmentX(
+          xi(p.breakI != null ? p.breakI : p.rs.i), y(p.target),
+          xi(extI), y(p.target),
+          PAD.l, W - PAD.r
+        );
+        if (tgtSeg) {
+          svg.appendChild(svgEl('line', {
+            x1: tgtSeg.x1.toFixed(1),
+            x2: tgtSeg.x2.toFixed(1),
+            y1: tgtSeg.y1.toFixed(1),
+            y2: tgtSeg.y2.toFixed(1),
+            stroke: color, 'stroke-width': '1',
+            'stroke-dasharray': '2 3', opacity: '.7',
+          }));
+        }
       }
       const yOff = (pt, isHead) => {
         const above = p.kind === 'top';
@@ -825,8 +849,10 @@ export function drawChart(klines, ticker, hover) {
         return above ? -extra : extra + 3;
       };
       function hsText(txt, pt, isHead) {
+        const pxX = xi(pt.i);
+        if (pxX < PAD.l || pxX > W - PAD.r) return;
         const t = svgEl('text', {
-          x: vx(pt.i).toFixed(1),
+          x: pxX.toFixed(1),
           y: (y(pt.price) + yOff(pt, isHead)).toFixed(1),
           fill: color,
           'font-size': isHead ? '10.5' : '10',
@@ -845,21 +871,24 @@ export function drawChart(klines, ticker, hover) {
       hsText('头', p.head, true);
       hsText(p.liveRs ? '右肩?' : '右肩', p.rs, false);
       const midI = Math.round((p.t1.i + (p.breakI != null ? p.breakI : p.t2.i)) / 2);
-      const neckLab = svgEl('text', {
-        x: vx(midI).toFixed(1),
-        y: (y(hsNeckAt(p.t1, p.t2, midI)) + (p.kind === 'top' ? 12 : -6)).toFixed(1),
-        fill: color,
-        'font-size': '10',
-        'font-weight': '650',
-        'font-family': 'var(--font)',
-        'text-anchor': 'middle',
-        stroke: 'var(--bg)',
-        'stroke-width': '3',
-        'paint-order': 'stroke',
-        opacity: op,
-      });
-      neckLab.textContent = p.status === 'confirmed' ? '颈线已破' : '颈线';
-      svg.appendChild(neckLab);
+      const midX = xi(midI);
+      if (midX >= PAD.l && midX <= W - PAD.r) {
+        const neckLab = svgEl('text', {
+          x: midX.toFixed(1),
+          y: (y(hsNeckAt(p.t1, p.t2, midI)) + (p.kind === 'top' ? 12 : -6)).toFixed(1),
+          fill: color,
+          'font-size': '10',
+          'font-weight': '650',
+          'font-family': 'var(--font)',
+          'text-anchor': 'middle',
+          stroke: 'var(--bg)',
+          'stroke-width': '3',
+          'paint-order': 'stroke',
+          opacity: op,
+        });
+        neckLab.textContent = p.status === 'confirmed' ? '颈线已破' : '颈线';
+        svg.appendChild(neckLab);
+      }
       if (p.status === 'confirmed' && p.target != null) {
         const tg = svgEl('text', {
           x: (vx(extI) - 4).toFixed(1),
@@ -1008,21 +1037,21 @@ export function drawChart(klines, ticker, hover) {
   const bounceLab = $('bounceLab');
   if (bounce && bounce.status !== 'none' && !bounce.hide) {
     if (bounceLab) bounceLab.textContent = bounce.label || '';
-    drawPbSetup(svg, bounce, vx, y);
+    drawPbSetup(svg, bounce, xi, y, W - PAD.r);
   } else if (bounceLab) {
     bounceLab.textContent = state.ind.bounce ? '超跌反弹未现' : '';
   }
   const pullLab = $('pullLab');
   if (pull && pull.status !== 'none' && !pull.hide) {
     if (pullLab) pullLab.textContent = pull.label || '';
-    drawPbSetup(svg, pull, vx, y);
+    drawPbSetup(svg, pull, xi, y, W - PAD.r);
   } else if (pullLab) {
     pullLab.textContent = state.ind.pull ? '拉升回踩未现' : '';
   }
   const trapLab = $('trapLab');
   if (trap && trap.status !== 'none' && !trap.hide) {
     if (trapLab) trapLab.textContent = trap.label || '';
-    drawTrapSetup(svg, trap, vx, y, W - PAD.r);
+    drawTrapSetup(svg, trap, xi, y, W - PAD.r);
   } else if (trapLab) {
     trapLab.textContent = state.ind.trap ? '诱空诱多未现' : '';
   }
@@ -1033,10 +1062,10 @@ export function drawChart(klines, ticker, hover) {
     drawHkld(svg, hkld, vx, y, W - PAD.r);
   }
   if (fib && fib.ok) {
-    drawFib(svg, fib, vx, y, W - PAD.r, PAD.t, plotBottom);
+    drawFib(svg, fib, xi, y, W - PAD.r, PAD.t, plotBottom);
   }
   if (patSr && patSr.ok) {
-    drawPatSr(svg, patSr, vx, y, W - PAD.r, PAD.t, plotBottom, lastPx);
+    drawPatSr(svg, patSr, xi, y, W - PAD.r, PAD.t, plotBottom, lastPx);
   }
   if (pattern && pattern.ok) {
     drawPatternPlan(svg, pattern, vis, view, x, vx, y, W - PAD.r, PAD.t, plotBottom);

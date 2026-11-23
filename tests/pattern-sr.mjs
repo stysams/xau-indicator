@@ -1,7 +1,9 @@
 import { computePatSr, getPatSr, normalizePatSrSide, normalizePatSrSource, patSrTitle } from '../src/indicators/pattern-sr.js';
 import { judge } from '../src/judge/judge.js';
+import { clipSegmentX, drawPatSr } from '../src/view/overlays.js';
 import { collectSignalEvents } from '../src/view/signal-rail.js';
-import { state } from '../src/state.js';
+import { chartXScale } from '../src/view/viewport.js';
+import { PAD, state, W } from '../src/state.js';
 import { assert, approx } from './_lib/assert.mjs';
 
 const T0 = 1_700_000_000;
@@ -248,6 +250,71 @@ try {
     assert(!jOff.factors.some((f) => f.id === 'patSr'), '关闭 patSr 因子后 judge 不应输出');
     const sigsOff = collectSignalEvents(wb);
     assert(!sigsOff.some((e) => e.kind === 'patSr'), '关闭 patSr 因子后信号线应过滤形态支撑事件');
+  }
+
+  // --- 9. 缩放/平移时虚线不漂移（趋势线与形态骨架线严格按真实 K 线坐标裁剪） ---
+  {
+    const seg = clipSegmentX(-100, 100, 100, 200, 0, 50);
+    assert(seg != null, 'clipSegmentX 应保留与视窗相交的线段');
+    approx(seg.x1, 0, { atol: 1e-6, label: 'clip x1' });
+    approx(seg.y1, 150, { atol: 1e-6, label: 'clip y1' });
+    approx(seg.x2, 50, { atol: 1e-6, label: 'clip x2' });
+    approx(seg.y2, 175, { atol: 1e-6, label: 'clip y2' });
+    assert(clipSegmentX(-50, 10, -10, 20, 0, 100) === null, '完全在左侧视窗外应返回 null');
+
+    const prevDoc = globalThis.document;
+    const makeEl = (tag) => ({
+      tag, attrs: {}, children: [], textContent: '',
+      setAttribute(k, v) { this.attrs[k] = String(v); },
+      appendChild(c) { this.children.push(c); return c; },
+    });
+    globalThis.document = { createElementNS(_ns, tag) { return makeEl(tag); } };
+    try {
+      const tri = fromAnchors([
+        [0, 104], [6, 108], [13, 100], [20, 106.8], [27, 101.2], [34, 105.6], [41, 102.4], [46, 104.0],
+      ], 0.10);
+      const pack = computePatSr(tri, { source: 'struct', side: 'both' });
+      const supTl = pack.trendlines.find((t) => t.slope > 0);
+      assert(supTl != null, '需有上升支撑趋势线用于缩放校验');
+
+      const xRight = W - PAD.r;
+      const y = (p) => 14 + (110 - p) / (110 - 98) * 360;
+      const views = [
+        { start: 0, count: 60 },   // 全览
+        { start: 22, count: 30 },  // 放大且左锚点(13)移出左边界
+        { start: 5, count: 25 },   // 放大并左拖使末端(46)移出右边界
+      ];
+
+      views.forEach((view) => {
+        const sc = chartXScale(view, PAD.l, xRight);
+        const root = makeEl('g');
+        drawPatSr(root, pack, sc.index, y, xRight, 14, 374, tri[tri.length - 1].c);
+        const gRoot = root.children[0];
+        const tlGroup = gRoot.children.find((c) => c.attrs.class === 'patsr-trendline' && c.attrs['data-patsr-code'] === supTl.code);
+        assert(tlGroup, '视窗 ' + JSON.stringify(view) + ' 应绘制上升趋势线');
+        const line = tlGroup.children.find((c) => c.tag === 'line');
+        const x1 = Number(line.attrs.x1);
+        const y1 = Number(line.attrs.y1);
+        const x2 = Number(line.attrs.x2);
+        const y2 = Number(line.attrs.y2);
+        assert(x1 >= PAD.l - 0.1 && x2 <= xRight + 0.1, '趋势线端点应落在绘图区水平边界内');
+
+        // 抽检视窗内任意 K 线索引：所绘线段在该 K 线 X 处的 Y 必须与真实趋势线价格 Y 一致（零漂移）
+        const probeI = Math.max(supTl.startI + 1, Math.min(view.start + Math.floor(view.count / 2), tri.length - 1));
+        const pxX = sc.index(probeI);
+        const drawnY = y1 + (y2 - y1) * ((pxX - x1) / (x2 - x1));
+        const exactY = y(supTl.intercept + supTl.slope * probeI);
+        approx(drawnY, exactY, { atol: 0.25, label: '视窗 ' + JSON.stringify(view) + ' 趋势线 @i=' + probeI });
+
+        // 移出视窗的锚点圆点不应被挤压堆在边界上
+        tlGroup.children.filter((c) => c.tag === 'circle').forEach((dot) => {
+          const cx = Number(dot.attrs.cx);
+          assert(cx >= PAD.l - 1 && cx <= xRight + 1, '可见锚点圆点应在视窗内: ' + cx);
+        });
+      });
+    } finally {
+      globalThis.document = prevDoc;
+    }
   }
 } finally {
   state.tf = oldTf;
