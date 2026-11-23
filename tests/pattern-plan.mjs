@@ -44,7 +44,10 @@ function bar(t, o, h, l, c) {
 
   const sAsia = sessionProfileForTs(asiaTs);
   assert(sAsia.id === 'asia' && sAsia.name === '亚盘', '亚盘时段识别');
-  assert(formatSessionMults(sAsia) === 'SL×1.8 | TP1×1.35 | TP2×4', '亚盘倍数格式与优化后 0.75R TP1 / 2.2R TP2 一致');
+  assert(formatSessionMults(sAsia) === 'SL×1.5 | TP1×1.5 | TP2×3.45', '亚盘倍数格式与 1:1 TP1 / 2.3R TP2 一致');
+  Object.values(SESSION_PROFILES).forEach((s) => {
+    approx(s.tp1Mult, s.slMult, { tol: 1e-9, label: s.name + '基础第一止盈应与止损 1:1' });
+  });
 
   assert(sessionProfileForTs(eurTs).id === 'europe', '欧盘时段识别');
   assert(sessionProfileForTs(ovlTs).id === 'overlap', '欧美重叠时段识别');
@@ -160,9 +163,11 @@ function bar(t, o, h, l, c) {
   const distSl = plan.active.origSl - plan.active.entry;
   const distTp1 = plan.active.entry - plan.active.tp1;
   const distTp2 = plan.active.entry - plan.active.tp2;
-  assert(distSl >= plan.active.atr * SESSION_PROFILES.asia.slMult - 1e-6, '止损不少于盘口基础 ATR 倍数');
-  approx(distTp1 / plan.active.atr, SESSION_PROFILES.asia.tp1Mult, { tol: 1e-6, label: '亚盘 TP1 锚定基础 ATR 倍数（与防插针扩损解耦）' });
-  approx(distTp2 / plan.active.atr, SESSION_PROFILES.asia.tp2Mult, { tol: 1e-6, label: '亚盘 TP2 锚定基础 ATR 倍数（与防插针扩损解耦）' });
+  const minSl = plan.active.atr * SESSION_PROFILES.asia.slMult * 0.85;
+  const maxSl = plan.active.atr * (SESSION_PROFILES.asia.slMult + 0.30);
+  assert(distSl >= minSl - 1e-6 && distSl <= maxSl + 1e-6, '止损应位于双向限幅区间 [0.85×base, base+0.30] ATR 内');
+  approx(distTp1, distSl, { tol: 1e-6, label: '第一止盈距离应与初始止损严格保持 1:1' });
+  approx(distTp2 / distSl, SESSION_PROFILES.asia.tp2Mult / SESSION_PROFILES.asia.slMult, { tol: 1e-6, label: '第二止盈按盘口盈亏比等比映射' });
   assert(plan.pnlPts > 0 && plan.pnlPct > 0, '空单价格下跌时浮盈为正');
 
   // 追加一根触及 TP1 但未到 TP2 的 K 线，验证止损自动移至盈利侧保本锁盈（含 0.05 ATR 锁利缓冲）
@@ -490,6 +495,42 @@ function bar(t, o, h, l, c) {
   const plan = computePatternPlan(bars, null, (baseT + 109 * 60) * 1000, 'xaudz');
   assert(plan.active && plan.active.i === 100 && plan.history.length === 0, 'xaudz 持仓期间出现同向重复信号不得强杀旧单');
   assert(plan.marks.length === 1, '被忽略的同向重复信号不应重复写入 marks');
+}
+
+// 12. 宽影线触发防插针扩损时，止损仍受 +0.30 ATR 上限夹紧，且 TP1 与 SL 仍严格保持 1:1
+{
+  state.tf = '3m';
+  state.mkt = 'xau';
+  const baseT = Math.floor(Date.UTC(2026, 5, 1, 2, 0, 0) / 1000); // BJ 10:00 亚盘
+  const klines = [];
+  let pxVal = 3780;
+  for (let i = 0; i < 36; i++) {
+    const o = pxVal;
+    const step = (i % 4 === 3) ? 0.30 : -0.55;
+    const c = o + step;
+    klines.push(bar(baseT + i * 180, o, Math.max(o, c) + 0.35, Math.min(o, c) - 0.35, c));
+    pxVal = c;
+  }
+  const o36 = pxVal;
+  const c36 = o36 + 1.6;
+  klines.push(bar(baseT + 36 * 180, o36, c36 + 0.35, o36 - 0.15, c36));
+  const o37 = c36;
+  const c37 = o37 + 0.95;
+  // 前一根带长上影，拉高形态极值，使结构止损触发上限夹紧
+  klines.push(bar(baseT + 37 * 180, o37, c37 + 1.8, o37 - 0.15, c37));
+  const o38 = c37 + 0.05;
+  const c38 = o37 - 1.15;
+  klines.push(bar(baseT + 38 * 180, o38, o38 + 0.2, c38 - 0.15, c38));
+  const c39 = c38 - 0.2;
+  klines.push(bar(baseT + 39 * 180, c38, c38 + 0.15, c39 - 0.1, c39));
+
+  const plan = computePatternPlan(klines, { last: c39 }, Date.UTC(2026, 5, 1, 2, 33, 0), 'strict');
+  assert(plan.active && plan.active.dir === -1 && plan.active.i === 38, '长影吞没序列应在第 38 根触发空头持仓');
+  const distSl = plan.active.origSl - plan.active.entry;
+  const distTp1 = plan.active.entry - plan.active.tp1;
+  const maxSl = plan.active.atr * (SESSION_PROFILES.asia.slMult + 0.30);
+  approx(distSl, maxSl, { tol: 1e-6, label: '长影线防插针止损应被上限夹紧在基础止损 + 0.30 ATR' });
+  approx(distTp1, distSl, { tol: 1e-6, label: '触发结构扩损后 TP1 仍与止损保持 1:1' });
 }
 
 console.log('PASS pattern-plan');

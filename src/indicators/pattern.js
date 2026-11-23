@@ -12,20 +12,21 @@ export function normalizePatternMode(v) {
 }
 
 export const SESSION_PROFILES = {
-  asia: { id: 'asia', name: '亚盘', slMult: 1.8, tp1Mult: 1.35, tp2Mult: 4.0 },
-  europe: { id: 'europe', name: '欧盘', slMult: 2.0, tp1Mult: 1.5, tp2Mult: 4.4 },
-  overlap: { id: 'overlap', name: '欧美重叠', slMult: 2.2, tp1Mult: 1.65, tp2Mult: 4.8 },
-  us: { id: 'us', name: '美盘', slMult: 2.0, tp1Mult: 1.5, tp2Mult: 4.4 },
+  asia: { id: 'asia', name: '亚盘', slMult: 1.5, tp1Mult: 1.5, tp2Mult: 3.45 },
+  europe: { id: 'europe', name: '欧盘', slMult: 1.65, tp1Mult: 1.65, tp2Mult: 3.8 },
+  overlap: { id: 'overlap', name: '欧美重叠', slMult: 1.8, tp1Mult: 1.8, tp2Mult: 4.15 },
+  us: { id: 'us', name: '美盘', slMult: 1.65, tp1Mult: 1.65, tp2Mult: 3.8 },
 };
 
 // TP1 触达后移动保本锁盈的盈利侧缓冲幅度（ATR 倍数，覆盖点差避免回吐）
 export const BE_CUSHION_ATR = 0.05;
 
-// 低延迟 Range Filter 参数与防插针结构止损缓冲
+// 低延迟 Range Filter 参数与双向限幅结构止损（与 TP1 保持 1:1 盈亏比）
 const RF_PERIOD = 14;
 const RF_MULT = 1.6;
-const ANTI_WICK_BUF_ATR = 0.28;
-const ANTI_WICK_MAX_EXTRA_ATR = 0.70;
+const ANTI_WICK_BUF_ATR = 0.22;
+const ANTI_WICK_MAX_EXTRA_ATR = 0.30;
+const STRUCT_SL_MIN_RATIO = 0.85;
 
 export function sessionProfileForTs(tsMs) {
   const t = Number.isFinite(tsMs) ? tsMs : Date.now();
@@ -362,8 +363,12 @@ function buildOrder(klines, i, dir, pattern, atrVal, sess) {
   const floor = (mkt && mkt().atrFloor) || 0.4;
   const unit = Math.max(Number(atrVal) || 0, floor);
 
-  // 防插针结构止损：以盘口 ATR 倍数为底，若形态极值外侧缓冲更深（在上限内）则外推避开插针扫损
-  let slDist = unit * sess.slMult;
+  // 双向限幅结构止损：形态紧凑时按形态极值外侧缓冲适度收紧止损（不低于基础止损 0.85 倍），
+  // 形态影线略长时适度外推防插针（不超过基础止损 + 0.30 ATR），避免单笔止损过大
+  const baseSlDist = unit * sess.slMult;
+  const minSlDist = baseSlDist * STRUCT_SL_MIN_RATIO;
+  const maxSlDist = unit * (sess.slMult + ANTI_WICK_MAX_EXTRA_ATR);
+  let slDist = baseSlDist;
   const lookBars = Math.max((pattern && pattern.bars) || 2, 2);
   let patExt = dir > 0 ? Infinity : -Infinity;
   for (let j = Math.max(0, i - lookBars + 1); j <= i; j++) {
@@ -371,15 +376,14 @@ function buildOrder(klines, i, dir, pattern, atrVal, sess) {
   }
   if (Number.isFinite(patExt)) {
     const structDist = dir * (entry - patExt) + unit * ANTI_WICK_BUF_ATR;
-    const maxSlDist = unit * (sess.slMult + ANTI_WICK_MAX_EXTRA_ATR);
-    if (structDist > slDist && structDist <= maxSlDist) {
-      slDist = structDist;
+    if (structDist > 0) {
+      slDist = Math.min(maxSlDist, Math.max(minSlDist, structDist));
     }
   }
 
-  // 止盈锚定盘口基础 ATR 倍数，与防插针结构止损解耦，避免扩损把 TP1/TP2 同步推远导致胜率受损
-  const tp1Dist = unit * sess.tp1Mult;
-  const tp2Dist = unit * sess.tp2Mult;
+  // 第一止盈与止损严格保持 1:1（按盘口 tp1/sl 比例映射），TP2 等比映射，避免大止损小止盈导致亏损偏大
+  const tp1Dist = slDist * (sess.tp1Mult / sess.slMult);
+  const tp2Dist = slDist * (sess.tp2Mult / sess.slMult);
   const origSl = dir > 0 ? entry - slDist : entry + slDist;
   const tp1 = dir > 0 ? entry + tp1Dist : entry - tp1Dist;
   const tp2 = dir > 0 ? entry + tp2Dist : entry - tp2Dist;
