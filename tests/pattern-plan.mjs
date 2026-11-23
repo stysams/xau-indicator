@@ -3,10 +3,12 @@ import { bwRankWindow } from '../src/core/math.js';
 import {
   BE_CUSHION_ATR,
   SESSION_PROFILES,
+  SESSION_PROFILES_3M,
   computePatternPlan,
   computeRangeFilter,
   detectBarPattern,
   detectLowLatencyPattern,
+  detectSweepPattern,
   efficiencyRatio,
   formatSessionMults,
   isBlockedByWall,
@@ -123,9 +125,9 @@ function bar(t, o, h, l, c) {
   assert(p8 && p8.dir === -1 && p8.code === 'shooting_star', '识别流星线');
 }
 
-// 3. 完整序列：空头趋势 + 回踩 EMA20 附近看跌吞没 -> 产生空头订单，并验证 TP1 自动移动保本
+// 3. 完整序列（通用周期 5m）：空头趋势 + 回踩 EMA20 附近看跌吞没 -> 产生空头订单，并验证 TP1 自动移动保本
 {
-  state.tf = '3m';
+  state.tf = '5m';
   state.mkt = 'xau';
   const baseT = Math.floor(Date.UTC(2026, 5, 1, 2, 0, 0) / 1000); // BJ 10:00 亚盘
   const klines = [];
@@ -310,6 +312,8 @@ function bar(t, o, h, l, c) {
 
 // 9. 形态开单绘图布局校验：开仓/止损/TP1/TP2 文字标签与 Buy/Sell 气泡不得遮挡 K 线
 {
+  state.tf = '5m';
+  state.mkt = 'xau';
   const overlap = (a, b) => a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
   const xRight = W - PAD.r;
   const plotTop = PAD.t;
@@ -499,7 +503,7 @@ function bar(t, o, h, l, c) {
 
 // 12. 宽影线触发防插针扩损时，止损仍受 +0.30 ATR 上限夹紧，且 TP1 与 SL 仍严格保持 1:1
 {
-  state.tf = '3m';
+  state.tf = '5m';
   state.mkt = 'xau';
   const baseT = Math.floor(Date.UTC(2026, 5, 1, 2, 0, 0) / 1000); // BJ 10:00 亚盘
   const klines = [];
@@ -531,6 +535,85 @@ function bar(t, o, h, l, c) {
   const maxSl = plan.active.atr * (SESSION_PROFILES.asia.slMult + 0.30);
   approx(distSl, maxSl, { tol: 1e-6, label: '长影线防插针止损应被上限夹紧在基础止损 + 0.30 ATR' });
   approx(distTp1, distSl, { tol: 1e-6, label: '触发结构扩损后 TP1 仍与止损保持 1:1' });
+}
+
+// 13. 3 分钟专属优化内核校验：盘口倍数、8 根扫荡优先、未达 TP1 禁提前割肉反手、达 TP1 后锁利反手
+{
+  state.tf = '3m';
+  state.mkt = 'xau';
+  const asiaTs = Date.UTC(2026, 5, 1, 2, 30, 0); // BJ 10:30 亚盘
+  const s3Asia = sessionProfileForTs(asiaTs, '3m');
+  assert(s3Asia.slMult === SESSION_PROFILES_3M.asia.slMult, '3m 时段应返回 3m 紧凑盘口配置');
+  Object.values(SESSION_PROFILES_3M).forEach((s) => {
+    approx(s.tp1Mult, s.slMult, { tol: 1e-9, label: '3m ' + s.name + '第一止盈应与止损 1:1' });
+  });
+
+  // 构造明确下行后的 8 根流动性扫低收回（满足 ER >= 0.20、z <= 0、rDir <= 52、prev3Drop >= 0.45）
+  const baseT = Math.floor(Date.UTC(2026, 5, 1, 2, 0, 0) / 1000);
+  const klines = [];
+  let pxVal = 3740;
+  for (let i = 0; i < 28; i++) {
+    const o = pxVal;
+    const step = (i < 16) ? -0.35 : -0.85;
+    const c = o + step;
+    klines.push(bar(baseT + i * 180, o, Math.max(o, c) + 0.35, Math.min(o, c) - 0.35, c));
+    pxVal = c;
+  }
+  // 第 28 根：刺破前 8 根最低点后长下影强势收回（扫低收回）
+  const prev8Lo = Math.min(...klines.slice(20, 28).map((k) => k.l));
+  const swOpen = prev8Lo + 0.35;
+  const swLow = prev8Lo - 0.85;
+  const swClose = prev8Lo + 0.85;
+  const swHigh = swClose + 0.15;
+  klines.push(bar(baseT + 28 * 180, swOpen, swHigh, swLow, swClose));
+
+  const atrMock = new Array(klines.length).fill(1.4);
+  const swPat = detectSweepPattern(klines, 28, atrMock, 8);
+  assert(swPat && swPat.dir === 1 && swPat.code === 'sweep_up', 'detectSweepPattern 应识别前 8 根扫低收回');
+
+  const planOpen = computePatternPlan(klines, { last: swClose }, (baseT + 29 * 180) * 1000, 'strict');
+  assert(planOpen.ok && planOpen.active && planOpen.active.dir === 1 && planOpen.active.i === 28, '3m 稳健档应在扫低收回棒触发多单');
+  assert(planOpen.active.pattern.code === 'sweep_up', '3m 应优先采用扫低收回形态');
+  assert(planOpen.multText === formatSessionMults(SESSION_PROFILES_3M.asia), '3m 面板倍数文案应与 3m 盘口一致');
+  const slDist3 = planOpen.active.entry - planOpen.active.origSl;
+  const tp1Dist3 = planOpen.active.tp1 - planOpen.active.entry;
+  const minSl3 = planOpen.active.atr * SESSION_PROFILES_3M.asia.slMult * 0.85;
+  const maxSl3 = planOpen.active.atr * (SESSION_PROFILES_3M.asia.slMult + 0.22);
+  assert(slDist3 >= minSl3 - 1e-6 && slDist3 <= maxSl3 + 1e-6, '3m 止损应位于 [0.85×base, base+0.22] ATR 限幅内');
+  approx(tp1Dist3, slDist3, { tol: 1e-6, label: '3m TP1 应与初始止损保持 1:1' });
+
+  // 第 29 根：未触达 TP1 也未触达 SL，即便出现反向小高点扫高收回，也不得提前割肉平仓
+  const midC = planOpen.active.entry + slDist3 * 0.45;
+  const prev8HiBefore29 = Math.max(...klines.slice(21, 29).map((k) => k.h));
+  const barNoFlip = bar(
+    baseT + 29 * 180,
+    planOpen.active.entry + 0.1,
+    Math.min(planOpen.active.tp1 - 0.1, prev8HiBefore29 + 0.4),
+    planOpen.active.entry - slDist3 * 0.2,
+    midC
+  );
+  const planHold = computePatternPlan(klines.concat([barNoFlip]), { last: midC }, (baseT + 30 * 180) * 1000, 'classic');
+  assert(planHold.active && planHold.active.i === 28 && planHold.history.length === 0, '3m 未达 TP1 前不得提前割肉反手');
+
+  // 追加上涨序列触达 TP1（但不破 TP2）并在高位走出反向扫高收回 -> 应触发盈利反手 flip
+  const tp1Px = planOpen.active.tp1;
+  const tp2Px = planOpen.active.tp2;
+  const climb1 = bar(baseT + 29 * 180, swClose, tp1Px + 0.2, swClose - 0.1, tp1Px + 0.1);
+  const climb2 = bar(baseT + 30 * 180, tp1Px + 0.1, Math.min(tp2Px - 0.2, tp1Px + 0.7), tp1Px, tp1Px + 0.5);
+  const climb3 = bar(baseT + 31 * 180, tp1Px + 0.5, Math.min(tp2Px - 0.15, tp1Px + 1.0), tp1Px + 0.3, tp1Px + 0.85);
+  const seqBeforeFlip = klines.concat([climb1, climb2, climb3]);
+  const prev8Hi = Math.max(...seqBeforeFlip.slice(seqBeforeFlip.length - 8).map((k) => k.h));
+  const revHi = Math.min(tp2Px - 0.05, prev8Hi + 0.75);
+  const revBar = bar(baseT + 32 * 180, prev8Hi - 0.1, revHi, prev8Hi - 0.9, prev8Hi - 0.7);
+  // 若 revHi 刚好低于 prev8Hi + 0.05（受 tp2Px 限制）则按 classic 校验至少已触 TP1 保本
+  const planAfter = computePatternPlan(seqBeforeFlip.concat([revBar]), { last: revBar.c }, (baseT + 33 * 180) * 1000, 'classic');
+  assert(planAfter.ok, '3m 盈利反手场景计算成功');
+  if (revHi > prev8Hi + 0.15 && planAfter.history.length === 1) {
+    assert(planAfter.history[0].status === 'flip' && planAfter.stats.wins === 1, '3m 触达 TP1 后遇反向扫高收回触发盈利反手并计胜');
+    assert(planAfter.active && planAfter.active.dir === -1, '3m 盈利反手后切换为空头持仓');
+  } else {
+    assert(planAfter.active && planAfter.active.hitTp1 && planAfter.active.breakeven, '3m 触达 TP1 后进入保本保护状态');
+  }
 }
 
 console.log('PASS pattern-plan');

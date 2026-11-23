@@ -18,6 +18,14 @@ export const SESSION_PROFILES = {
   us: { id: 'us', name: '美盘', slMult: 1.65, tp1Mult: 1.65, tp2Mult: 3.8 },
 };
 
+// 3 分钟周期专属盘口倍数：贴合 3m 形态 3~6 根惯性射程，同时严格维持 TP1=1R / TP2≈2.3R 结构
+export const SESSION_PROFILES_3M = {
+  asia: { id: 'asia', name: '亚盘', slMult: 1.3, tp1Mult: 1.3, tp2Mult: 3.0 },
+  europe: { id: 'europe', name: '欧盘', slMult: 1.4, tp1Mult: 1.4, tp2Mult: 3.22 },
+  overlap: { id: 'overlap', name: '欧美重叠', slMult: 1.5, tp1Mult: 1.5, tp2Mult: 3.45 },
+  us: { id: 'us', name: '美盘', slMult: 1.4, tp1Mult: 1.4, tp2Mult: 3.22 },
+};
+
 // TP1 触达后移动保本锁盈的盈利侧缓冲幅度（ATR 倍数，覆盖点差避免回吐）
 export const BE_CUSHION_ATR = 0.05;
 
@@ -26,16 +34,32 @@ const RF_PERIOD = 14;
 const RF_MULT = 1.6;
 const ANTI_WICK_BUF_ATR = 0.22;
 const ANTI_WICK_MAX_EXTRA_ATR = 0.30;
+const ANTI_WICK_MAX_EXTRA_ATR_3M = 0.22;
 const STRUCT_SL_MIN_RATIO = 0.85;
 
-export function sessionProfileForTs(tsMs) {
+// 3 分钟高胜率核心形态白名单（优先流动性扫荡收回 + 极值反转形态，剔除高延迟追尾/假破形态）
+const CORE_3M_CODES = new Set([
+  'sweep_up', 'sweep_dn',
+  'bull_engulf', 'bear_engulf',
+  'hammer', 'shooting_star',
+  'piercing', 'dark_cloud',
+]);
+const STRICT_3M_CODES = new Set([
+  'sweep_up', 'sweep_dn',
+  'bull_engulf', 'bear_engulf',
+  'hammer', 'shooting_star',
+]);
+const STRICT_3M_ER_MIN = 0.20;
+
+export function sessionProfileForTs(tsMs, tf) {
   const t = Number.isFinite(tsMs) ? tsMs : Date.now();
   const bj = tzParts('Asia/Shanghai', new Date(t));
   const h = bj.h;
-  if (h >= 6 && h < 15) return SESSION_PROFILES.asia;
-  if (h >= 15 && h < 20) return SESSION_PROFILES.europe;
-  if (h >= 20 && h < 24) return SESSION_PROFILES.overlap;
-  return SESSION_PROFILES.us;
+  const table = tf === '3m' ? SESSION_PROFILES_3M : SESSION_PROFILES;
+  if (h >= 6 && h < 15) return table.asia;
+  if (h >= 15 && h < 20) return table.europe;
+  if (h >= 20 && h < 24) return table.overlap;
+  return table.us;
 }
 
 export function formatSessionMults(sess) {
@@ -238,6 +262,30 @@ export function detectBarPattern(klines, i, atrArr, mode) {
   return null;
 }
 
+// 3 分钟高胜率流动性扫荡收回识别：刺破前 N 根极值后长影线快速收回，1 根 K 线直接确认
+export function detectSweepPattern(klines, i, atrArr, lookback) {
+  const lb = lookback || 8;
+  if (!klines || i < lb || i >= klines.length) return null;
+  const at = Math.max(Number(atrArr && atrArr[i]) || 0, (mkt && mkt().atrFloor) || 0.4);
+  const m0 = candleMetrics(klines[i]);
+  if (m0.range < at * 0.48 || m0.range > at * 2.8) return null;
+
+  let prevHi = -Infinity;
+  let prevLo = Infinity;
+  for (let j = i - lb; j < i; j++) {
+    if (klines[j].h > prevHi) prevHi = klines[j].h;
+    if (klines[j].l < prevLo) prevLo = klines[j].l;
+  }
+
+  if (m0.l < prevLo - at * 0.04 && m0.c > prevLo + at * 0.04 && m0.dnWick >= m0.range * 0.35 && m0.closePos >= 0.58) {
+    return { dir: 1, name: '扫低收回', code: 'sweep_up', weight: 3, bars: 1 };
+  }
+  if (m0.h > prevHi + at * 0.04 && m0.c < prevHi - at * 0.04 && m0.upWick >= m0.range * 0.35 && (1 - m0.closePos) >= 0.58) {
+    return { dir: -1, name: '扫高收回', code: 'sweep_dn', weight: 3, bars: 1 };
+  }
+  return null;
+}
+
 // 低延迟单棒形态：流动性扫荡收回（专吃假突破插针）与顺势均线回踩拒收
 export function detectLowLatencyPattern(klines, i, atrArr, e9, e20) {
   if (!klines || i < 6 || i >= klines.length) return null;
@@ -327,7 +375,7 @@ export function isBlockedByWall(klines, i, dir, at, boll) {
 }
 
 function emptyPlan(nowMs, mode, why) {
-  const sess = sessionProfileForTs(nowMs);
+  const sess = sessionProfileForTs(nowMs, state.tf);
   return {
     ok: false,
     mode: mode,
@@ -357,19 +405,21 @@ function emptyPlan(nowMs, mode, why) {
   };
 }
 
-function buildOrder(klines, i, dir, pattern, atrVal, sess) {
+function buildOrder(klines, i, dir, pattern, atrVal, sess, is3m) {
   const k = klines[i];
   const entry = k.c;
   const floor = (mkt && mkt().atrFloor) || 0.4;
   const unit = Math.max(Number(atrVal) || 0, floor);
 
   // 双向限幅结构止损：形态紧凑时按形态极值外侧缓冲适度收紧止损（不低于基础止损 0.85 倍），
-  // 形态影线略长时适度外推防插针（不超过基础止损 + 0.30 ATR），避免单笔止损过大
+  // 形态影线略长时适度外推防插针（3m 不超过基础止损 + 0.22 ATR，其余周期 + 0.30 ATR），避免单笔止损过大
   const baseSlDist = unit * sess.slMult;
   const minSlDist = baseSlDist * STRUCT_SL_MIN_RATIO;
-  const maxSlDist = unit * (sess.slMult + ANTI_WICK_MAX_EXTRA_ATR);
+  const maxExtra = is3m ? ANTI_WICK_MAX_EXTRA_ATR_3M : ANTI_WICK_MAX_EXTRA_ATR;
+  const maxSlDist = unit * (sess.slMult + maxExtra);
   let slDist = baseSlDist;
-  const lookBars = Math.max((pattern && pattern.bars) || 2, 2);
+  const isSweep = pattern && (pattern.code === 'sweep_up' || pattern.code === 'sweep_dn');
+  const lookBars = (is3m && isSweep) ? 1 : Math.max((pattern && pattern.bars) || 2, 2);
   let patExt = dir > 0 ? Infinity : -Infinity;
   for (let j = Math.max(0, i - lookBars + 1); j <= i; j++) {
     patExt = dir > 0 ? Math.min(patExt, klines[j].l) : Math.max(patExt, klines[j].h);
@@ -549,6 +599,7 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
   const floor = (mkt && mkt().atrFloor) || 0.4;
   const isStrict = mode === 'strict';
   const useWall = mode === 'safe' || mode === 'strict';
+  const is3m = state.tf === '3m';
 
   let active = null;
   let lastClosed = null;
@@ -617,6 +668,97 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
           }
         }
       }
+    }
+
+    if (is3m) {
+      // 3 分钟专属优化内核：
+      // 1) 未触达 TP1 前严禁反向提前割肉平仓；仅在触达 TP1 锁利后遇反向合格信号才锁利反手
+      // 2) 优先识别 8 根流动性扫荡收回，搭配核心极值反转形态，剔除追高透支与高延迟追尾形态
+      if (i < 20) continue;
+      if (active && !active.hitTp1) continue;
+      if (!active && i <= coolUntil) continue;
+
+      let pat3 = detectSweepPattern(klines, i, atrArr, 8);
+      if (!pat3) pat3 = detectBarPattern(klines, i, atrArr, 'classic');
+      if (!pat3) continue;
+      if (isStrict ? !STRICT_3M_CODES.has(pat3.code) : !CORE_3M_CODES.has(pat3.code)) continue;
+
+      const m0 = candleMetrics(k);
+      const dir = pat3.dir;
+      const isSweep = pat3.code === 'sweep_up' || pat3.code === 'sweep_dn';
+      const isPin = pat3.code === 'hammer' || pat3.code === 'shooting_star';
+      const rangeAtr = m0.range / effAt;
+      const oppWickRatio = m0.range > 0 ? (dir > 0 ? m0.upWick / m0.range : m0.dnWick / m0.range) : 0;
+      const z = boll.sd[i] > 0 ? (dir * (k.c - boll.mid[i]) / boll.sd[i]) : 0;
+      const r = rsi14[i] != null ? rsi14[i] : 50;
+      const rDir = dir > 0 ? r : (100 - r);
+      const er = efficiencyRatio(closes, i, 14);
+      const prev3Drop = -dir * (klines[i - 1].c - klines[Math.max(0, i - 4)].c) / effAt;
+
+      let hi8 = -Infinity;
+      let lo8 = Infinity;
+      for (let j = Math.max(0, i - 8); j < i - 1; j++) {
+        if (klines[j].h > hi8) hi8 = klines[j].h;
+        if (klines[j].l < lo8) lo8 = klines[j].l;
+      }
+      const touched8 = isSweep || isPin || (dir > 0
+        ? Math.min(k.l, klines[i - 1].l) <= lo8 + effAt * 0.15
+        : Math.max(k.h, klines[i - 1].h) >= hi8 - effAt * 0.15);
+
+      const withE50 = dir > 0
+        ? (k.c > e50[i] && e20[i] >= e50[i] - effAt * 0.30)
+        : (k.c < e50[i] && e20[i] <= e50[i] + effAt * 0.30);
+      const rawWall = useWall && isBlockedByWall(klines, i, dir, effAt, boll);
+      const blockedByWall = rawWall && (!withE50 || oppWickRatio > 0.25);
+
+      let qualified3 = false;
+      if (mode === 'classic') {
+        qualified3 = rangeAtr <= 1.85 && z <= 0.10 && rDir <= 54 &&
+          (isSweep || (touched8 && prev3Drop >= 0.35));
+      } else if (mode === 'safe') {
+        qualified3 = !blockedByWall && rangeAtr <= 1.75 && z <= 0.0 && rDir <= 52 &&
+          (isSweep || (touched8 && prev3Drop >= 0.45));
+      } else {
+        qualified3 = !blockedByWall && er >= STRICT_3M_ER_MIN && rangeAtr <= 1.65 &&
+          z <= 0.0 && rDir <= 52 && prev3Drop >= 0.45 && (isSweep || touched8);
+      }
+
+      if (!qualified3) continue;
+
+      const sess3 = sessionProfileForTs(k.t * 1000, '3m');
+      if (!active) {
+        active = buildOrder(klines, i, dir, pat3, at, sess3, true);
+        marks.push({
+          i: i,
+          t: k.t,
+          dir: dir,
+          entry: active.entry,
+          sl: active.origSl,
+          tp1: active.tp1,
+          tp2: active.tp2,
+          pattern: pat3,
+          session: sess3,
+        });
+      } else if (active.hitTp1 && active.dir !== dir) {
+        active.status = 'flip';
+        active.exitI = i;
+        active.exitPx = k.c;
+        lastClosed = active;
+        history.push(active);
+        active = buildOrder(klines, i, dir, pat3, at, sess3, true);
+        marks.push({
+          i: i,
+          t: k.t,
+          dir: dir,
+          entry: active.entry,
+          sl: active.origSl,
+          tp1: active.tp1,
+          tp2: active.tp2,
+          pattern: pat3,
+          session: sess3,
+        });
+      }
+      continue;
     }
 
     if (isStrict && (active || i <= coolUntil || i < 20)) continue;
@@ -699,10 +841,10 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
         cp >= 0.62 && distE20 <= 2.2 && rDir <= 74;
     }
 
-    const sess = sessionProfileForTs(k.t * 1000);
+    const sess = sessionProfileForTs(k.t * 1000, state.tf);
     if (!active) {
       if (!qualified) continue;
-      active = buildOrder(klines, i, pat.dir, pat, at, sess);
+      active = buildOrder(klines, i, pat.dir, pat, at, sess, false);
       marks.push({
         i: i,
         t: k.t,
@@ -722,7 +864,7 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
       lastClosed = active;
       history.push(active);
       if (qualified) {
-        active = buildOrder(klines, i, pat.dir, pat, at, sess);
+        active = buildOrder(klines, i, pat.dir, pat, at, sess, false);
         marks.push({
           i: i,
           t: k.t,
@@ -743,12 +885,13 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
   // 未收盘 K 线只作预备提示，不提前确认开仓
   let forming = null;
   if (hasForming) {
-    const fPat = detectBarPattern(klines, n - 1, atrArr, mode) ||
-      detectLowLatencyPattern(klines, n - 1, atrArr, e9, e20);
-    const skipForming = fPat && (
-      fPat.code === 'inside_up' || fPat.code === 'inside_dn' ||
-      (isStrict && (fPat.code === 'pb_reject_up' || fPat.code === 'pb_reject_dn'))
-    );
+    const fPat = is3m
+      ? (detectSweepPattern(klines, n - 1, atrArr, 8) || detectBarPattern(klines, n - 1, atrArr, 'classic'))
+      : (detectBarPattern(klines, n - 1, atrArr, mode) || detectLowLatencyPattern(klines, n - 1, atrArr, e9, e20));
+    const skipForming = fPat && (is3m
+      ? (isStrict ? !STRICT_3M_CODES.has(fPat.code) : !CORE_3M_CODES.has(fPat.code))
+      : (fPat.code === 'inside_up' || fPat.code === 'inside_dn' ||
+        (isStrict && (fPat.code === 'pb_reject_up' || fPat.code === 'pb_reject_dn'))));
     if (fPat && !skipForming && (!active || active.dir !== fPat.dir)) {
       forming = fPat;
     }
@@ -760,7 +903,7 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
   const emaDir = e20[end] > e50[end] ? 1 : (e20[end] < e50[end] ? -1 : 0);
   const cEnd = klines[end].c;
   const fEnd = rf.filt[end];
-  const chopFiltered = isStrict && erNow < 0.14;
+  const chopFiltered = isStrict && erNow < (is3m ? STRICT_3M_ER_MIN : 0.14);
 
   let trendDir = 0;
   if (rfDirNow > 0 && (emaDir >= 0 || cEnd >= fEnd)) trendDir = 1;
@@ -771,7 +914,7 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
 
   const lastBar = klines[n - 1];
   const livePx = (ticker && Number.isFinite(ticker.last) && ticker.last > 0) ? ticker.last : lastBar.c;
-  const liveSess = sessionProfileForTs(now);
+  const liveSess = sessionProfileForTs(now, state.tf);
   const atEnd = Math.max(atrArr[end] || 0, floor);
 
   // 空仓时给出参考建议（趋势回踩或压力/支撑反转观察）
