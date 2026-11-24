@@ -37,19 +37,22 @@ const ANTI_WICK_MAX_EXTRA_ATR = 0.30;
 const ANTI_WICK_MAX_EXTRA_ATR_3M = 0.22;
 const STRUCT_SL_MIN_RATIO = 0.85;
 
-// 3 分钟高胜率核心形态白名单（优先流动性扫荡收回 + 极值反转形态，剔除高延迟追尾/假破形态）
-const CORE_3M_CODES = new Set([
+// 分钟级短周期（1m/3m/5m）高胜率核心形态白名单（流动性扫荡收回 + 极值反转形态 + 5m 布林外轨收回）
+const CORE_SHORT_CODES = new Set([
   'sweep_up', 'sweep_dn',
   'bull_engulf', 'bear_engulf',
   'hammer', 'shooting_star',
   'piercing', 'dark_cloud',
+  'bb_snap_up', 'bb_snap_dn',
 ]);
-const STRICT_3M_CODES = new Set([
+const STRICT_SHORT_CODES = new Set([
   'sweep_up', 'sweep_dn',
   'bull_engulf', 'bear_engulf',
   'hammer', 'shooting_star',
+  'bb_snap_up', 'bb_snap_dn',
 ]);
-const STRICT_3M_ER_MIN = 0.20;
+const STRICT_3M_ER_MIN = 0.16;
+const SHORT_TFS = new Set(['1m', '3m', '5m']);
 
 export function sessionProfileForTs(tsMs, tf) {
   const t = Number.isFinite(tsMs) ? tsMs : Date.now();
@@ -325,6 +328,58 @@ export function detectLowLatencyPattern(klines, i, atrArr, e9, e20) {
   return null;
 }
 
+// 布林 ±2.0σ 外轨刺破强收回识别（专抓 5m 等短周期超伸均值回归）
+export function detectBbSnapPattern(klines, i, at, boll) {
+  if (!klines || i < 2 || i >= klines.length || !at || !boll || boll.mid[i] == null || !(boll.sd[i] > 0)) return null;
+  const k = klines[i];
+  const m0 = candleMetrics(k);
+  const rangeAtr = m0.range / at;
+  if (rangeAtr < 0.45 || rangeAtr > 2.2) return null;
+  const z = (k.c - boll.mid[i]) / boll.sd[i];
+  const zLo = (k.l - boll.mid[i]) / boll.sd[i];
+  const zHi = (k.h - boll.mid[i]) / boll.sd[i];
+  if (zLo <= -2.0 && z <= -0.40 && m0.closePos >= 0.58 && (m0.bull || m0.dnWick >= m0.range * 0.45)) {
+    return { dir: 1, name: '布林下轨收回', code: 'bb_snap_up', weight: 3, bars: 1 };
+  }
+  if (zHi >= 2.0 && z >= 0.40 && m0.closePos <= 0.42 && (m0.bear || m0.upWick >= m0.range * 0.45)) {
+    return { dir: -1, name: '布林上轨收回', code: 'bb_snap_dn', weight: 3, bars: 1 };
+  }
+  return null;
+}
+
+// 计算当前收盘在近 lookback 根波段区间中的相对位置（按交易方向归一化：0=低吸起爆位，1=顶部追高位）
+export function rangePosInDir(klines, i, dir, at, lookback) {
+  const lb = lookback || 24;
+  if (!klines || i < 2 || !at) return 0.5;
+  let rHi = -Infinity;
+  let rLo = Infinity;
+  const from = Math.max(0, i - lb);
+  for (let j = from; j <= i; j++) {
+    if (klines[j].h > rHi) rHi = klines[j].h;
+    if (klines[j].l < rLo) rLo = klines[j].l;
+  }
+  const span = rHi - rLo;
+  if (span < at * 1.8) return 0.5;
+  const c = klines[i].c;
+  return dir > 0 ? (c - rLo) / span : (rHi - c) / span;
+}
+
+// 统一防追顶/防砸底判定：多重墙体（不因顺 EMA50 旁路）+ 波段高位/低位区间分位 + 布林超伸
+export function isChasingExtreme(klines, i, dir, at, boll, opts) {
+  if (!klines || i < 4 || !at) return false;
+  if (isBlockedByWall(klines, i, dir, at, boll)) return true;
+  const cfg = opts || {};
+  const maxPos = cfg.maxPos != null ? cfg.maxPos : 0.82;
+  const maxZ = cfg.maxZ != null ? cfg.maxZ : 1.8;
+  const pos = rangePosInDir(klines, i, dir, at, cfg.lookback || 24);
+  if (pos > maxPos) return true;
+  if (boll && boll.mid[i] != null && boll.sd[i] > 0) {
+    const z = dir * (klines[i].c - boll.mid[i]) / boll.sd[i];
+    if (z > maxZ) return true;
+  }
+  return false;
+}
+
 // 判断是否撞在「多重受阻压力天花板 / 支撑地板」或带阻滞影线的布林极端外沿（放行干净真突破）
 export function isBlockedByWall(klines, i, dir, at, boll) {
   if (!klines || i < 4 || !at) return false;
@@ -418,8 +473,11 @@ function buildOrder(klines, i, dir, pattern, atrVal, sess, is3m) {
   const maxExtra = is3m ? ANTI_WICK_MAX_EXTRA_ATR_3M : ANTI_WICK_MAX_EXTRA_ATR;
   const maxSlDist = unit * (sess.slMult + maxExtra);
   let slDist = baseSlDist;
-  const isSweep = pattern && (pattern.code === 'sweep_up' || pattern.code === 'sweep_dn');
-  const lookBars = (is3m && isSweep) ? 1 : Math.max((pattern && pattern.bars) || 2, 2);
+  const isSingleExt = pattern && (
+    pattern.code === 'sweep_up' || pattern.code === 'sweep_dn' ||
+    pattern.code === 'bb_snap_up' || pattern.code === 'bb_snap_dn'
+  );
+  const lookBars = isSingleExt ? 1 : Math.max((pattern && pattern.bars) || 2, 2);
   let patExt = dir > 0 ? Infinity : -Infinity;
   for (let j = Math.max(0, i - lookBars + 1); j <= i; j++) {
     patExt = dir > 0 ? Math.min(patExt, klines[j].l) : Math.max(patExt, klines[j].h);
@@ -599,7 +657,9 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
   const floor = (mkt && mkt().atrFloor) || 0.4;
   const isStrict = mode === 'strict';
   const useWall = mode === 'safe' || mode === 'strict';
-  const is3m = state.tf === '3m';
+  const tf = state.tf || '1m';
+  const is3m = tf === '3m';
+  const isShortTf = SHORT_TFS.has(tf);
 
   let active = null;
   let lastClosed = null;
@@ -612,8 +672,6 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
     const at = atrArr[i] || atrArr[i - 1] || 0;
     const effAt = Math.max(at, floor);
     const rfD = rf.dir[i];
-    const prevRfD = rf.dir[i - 1];
-    const rfFlipped = rfD !== 0 && prevRfD !== 0 && rfD !== prevRfD;
 
     // 1. 先检查当前持仓是否触发止损 / TP1（自动移动保本）/ TP2
     if (active) {
@@ -624,7 +682,10 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
           active.exitPx = active.sl;
           lastClosed = active;
           history.push(active);
-          if (isStrict && !active.hitTp1) coolUntil = i + 2;
+          if (!active.hitTp1) {
+            if (isStrict) coolUntil = i + 2;
+            else if (mode === 'safe') coolUntil = i + 1;
+          }
           active = null;
         } else {
           if (!active.hitTp1 && k.h >= active.tp1) {
@@ -649,7 +710,10 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
           active.exitPx = active.sl;
           lastClosed = active;
           history.push(active);
-          if (isStrict && !active.hitTp1) coolUntil = i + 2;
+          if (!active.hitTp1) {
+            if (isStrict) coolUntil = i + 2;
+            else if (mode === 'safe') coolUntil = i + 1;
+          }
           active = null;
         } else {
           if (!active.hitTp1 && k.l <= active.tp1) {
@@ -670,30 +734,44 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
       }
     }
 
-    if (is3m) {
-      // 3 分钟专属优化内核：
-      // 1) 未触达 TP1 前严禁反向提前割肉平仓；仅在触达 TP1 锁利后遇反向合格信号才锁利反手
-      // 2) 优先识别 8 根流动性扫荡收回，搭配核心极值反转形态，剔除追高透支与高延迟追尾形态
-      if (i < 20) continue;
-      if (active && !active.hitTp1) continue;
-      if (!active && i <= coolUntil) continue;
+    // 统一风控：未触达 TP1 前严禁反向信号提前割肉平仓；仅触达 TP1 锁利后遇反向合格信号才锁利反手
+    if (i < 20) continue;
+    if (active && !active.hitTp1) continue;
+    if (!active && i <= coolUntil) continue;
 
-      let pat3 = detectSweepPattern(klines, i, atrArr, 8);
-      if (!pat3) pat3 = detectBarPattern(klines, i, atrArr, 'classic');
-      if (!pat3) continue;
-      if (isStrict ? !STRICT_3M_CODES.has(pat3.code) : !CORE_3M_CODES.has(pat3.code)) continue;
+    if (isShortTf) {
+      // 1m / 3m / 5m 分钟级极值反转与流动性扫荡内核：
+      // 1) 剔除低胜率顺势追高破位与早割反手，优先 8 根流动性扫荡收回 + 核心极值反转（5m 叠加布林 ±2σ 外轨收回）
+      // 2) 结合防追顶护盾、防逆势急瀑接飞刀与亏损冷却，三档胜率清晰递进
+      let patS = detectSweepPattern(klines, i, atrArr, 8);
+      if (!patS) patS = detectBarPattern(klines, i, atrArr, 'classic');
+      if (!patS && tf === '5m') patS = detectBbSnapPattern(klines, i, effAt, boll);
+      if (!patS) continue;
+
+      const isBb = patS.code === 'bb_snap_up' || patS.code === 'bb_snap_dn';
+      const isSweep = patS.code === 'sweep_up' || patS.code === 'sweep_dn';
+      const isPin = patS.code === 'hammer' || patS.code === 'shooting_star';
+      const isEngulf = patS.code === 'bull_engulf' || patS.code === 'bear_engulf';
+      if (!isBb && (isStrict ? !STRICT_SHORT_CODES.has(patS.code) : !CORE_SHORT_CODES.has(patS.code))) continue;
 
       const m0 = candleMetrics(k);
-      const dir = pat3.dir;
-      const isSweep = pat3.code === 'sweep_up' || pat3.code === 'sweep_dn';
-      const isPin = pat3.code === 'hammer' || pat3.code === 'shooting_star';
+      const dir = patS.dir;
       const rangeAtr = m0.range / effAt;
+      const bodyAtr = m0.body / effAt;
+      const cp = dir > 0 ? m0.closePos : (1 - m0.closePos);
       const oppWickRatio = m0.range > 0 ? (dir > 0 ? m0.upWick / m0.range : m0.dnWick / m0.range) : 0;
       const z = boll.sd[i] > 0 ? (dir * (k.c - boll.mid[i]) / boll.sd[i]) : 0;
+      const zExt = boll.sd[i] > 0
+        ? (dir > 0 ? -(k.l - boll.mid[i]) / boll.sd[i] : (k.h - boll.mid[i]) / boll.sd[i])
+        : 0;
+      const distE20 = dir * (k.c - e20[i]) / effAt;
+      const distE50 = dir * (k.c - e50[i]) / effAt;
       const r = rsi14[i] != null ? rsi14[i] : 50;
       const rDir = dir > 0 ? r : (100 - r);
       const er = efficiencyRatio(closes, i, 14);
       const prev3Drop = -dir * (klines[i - 1].c - klines[Math.max(0, i - 4)].c) / effAt;
+      const e50Slope = dir * (e50[i] - e50[Math.max(0, i - 5)]) / effAt;
+      const againstStrongE50 = e50Slope < -0.25 && distE50 < -0.5;
 
       let hi8 = -Infinity;
       let lo8 = Infinity;
@@ -701,33 +779,80 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
         if (klines[j].h > hi8) hi8 = klines[j].h;
         if (klines[j].l < lo8) lo8 = klines[j].l;
       }
-      const touched8 = isSweep || isPin || (dir > 0
+      const touched8 = isSweep || isPin || isBb || (dir > 0
         ? Math.min(k.l, klines[i - 1].l) <= lo8 + effAt * 0.15
         : Math.max(k.h, klines[i - 1].h) >= hi8 - effAt * 0.15);
 
-      const withE50 = dir > 0
-        ? (k.c > e50[i] && e20[i] >= e50[i] - effAt * 0.30)
-        : (k.c < e50[i] && e20[i] <= e50[i] + effAt * 0.30);
-      const rawWall = useWall && isBlockedByWall(klines, i, dir, effAt, boll);
-      const blockedByWall = rawWall && (!withE50 || oppWickRatio > 0.25);
+      const chasingS = useWall && (
+        isChasingExtreme(klines, i, dir, effAt, boll, { lookback: 24, maxPos: 0.65, maxZ: 0.85 }) ||
+        distE20 > 0.90 || rDir > 58
+      );
 
-      let qualified3 = false;
-      if (mode === 'classic') {
-        qualified3 = rangeAtr <= 1.85 && z <= 0.10 && rDir <= 54 &&
-          (isSweep || (touched8 && prev3Drop >= 0.35));
-      } else if (mode === 'safe') {
-        qualified3 = !blockedByWall && rangeAtr <= 1.75 && z <= 0.0 && rDir <= 52 &&
-          (isSweep || (touched8 && prev3Drop >= 0.45));
+      const withE50 = dir > 0
+        ? (e20[i] > e50[i] && k.c > e50[i])
+        : (e20[i] < e50[i] && k.c < e50[i]);
+      const e20SlopeOk = dir > 0
+        ? (e20[i] >= e20[Math.max(0, i - 3)])
+        : (e20[i] <= e20[Math.max(0, i - 3)]);
+
+      let qualifiedS = false;
+      if (is3m) {
+        if (mode === 'classic') {
+          const noKnife = !againstStrongE50 || z <= -1.25;
+          qualifiedS = noKnife && rangeAtr <= 1.85 && z <= 0.05 && rDir <= 53 &&
+            (isSweep || (touched8 && prev3Drop >= 0.35));
+        } else if (mode === 'safe') {
+          const noKnife = !againstStrongE50 || z <= -1.35;
+          qualifiedS = !chasingS && noKnife && rangeAtr <= 1.85 && z <= -0.50 && rDir <= 46 && zExt >= 1.8 &&
+            ((isSweep && prev3Drop >= 0.22) || (touched8 && prev3Drop >= 0.45));
+        } else {
+          qualifiedS = !chasingS && er >= STRICT_3M_ER_MIN && rangeAtr <= 1.85 && z <= -1.05 && rDir <= 44 &&
+            ((isSweep && prev3Drop >= 0.25) || (touched8 && prev3Drop >= 0.50));
+        }
+      } else if (tf === '1m') {
+        const trendContEngulf = isEngulf && withE50 && e20SlopeOk && rfD === dir &&
+          cp >= 0.72 && oppWickRatio <= 0.15 && bodyAtr >= 1.15 && rangeAtr <= 2.60 && er >= 0.45;
+        if (mode === 'classic') {
+          const rev1m = rangeAtr <= 1.85 && z <= 0.0 && rDir <= 52 &&
+            (isSweep || (touched8 && prev3Drop >= 0.35));
+          qualifiedS = rev1m || trendContEngulf;
+        } else if (mode === 'safe') {
+          qualifiedS = !chasingS && e50Slope >= -0.15 && rangeAtr <= 1.85 && z <= -0.35 && rDir <= 50 &&
+            ((isSweep && prev3Drop >= 0.20) || (touched8 && prev3Drop >= 0.35));
+        } else {
+          qualifiedS = !chasingS && er >= 0.16 && e50Slope >= -0.15 && rangeAtr <= 1.85 &&
+            z <= -0.75 && rDir <= 46 && ((isSweep && prev3Drop >= 0.25) || (touched8 && prev3Drop >= 0.45));
+        }
       } else {
-        qualified3 = !blockedByWall && er >= STRICT_3M_ER_MIN && rangeAtr <= 1.65 &&
-          z <= 0.0 && rDir <= 52 && prev3Drop >= 0.45 && (isSweep || touched8);
+        // 5m：布林 ±2σ 外轨收回 + 极值扫荡反转 + 顺势 EMA20 回踩强吞没
+        const dippedE20 = dir > 0
+          ? (Math.min(k.l, klines[i - 1].l) <= e20[i] + effAt * 0.20 && k.c > e20[i])
+          : (Math.max(k.h, klines[i - 1].h) >= e20[i] - effAt * 0.20 && k.c < e20[i]);
+        const trendPbEngulf = isEngulf && withE50 && e20SlopeOk && dippedE20 &&
+          rfD === dir && cp >= 0.62 && oppWickRatio <= 0.25 && distE20 <= 1.6 && rDir <= 68 && er >= 0.16 && rangeAtr <= 1.85;
+
+        if (mode === 'classic') {
+          const rev5 = rangeAtr <= 1.90 && z <= 0.0 && rDir <= 52 &&
+            (isBb || isSweep || (touched8 && prev3Drop >= 0.35));
+          qualifiedS = rev5 || trendPbEngulf;
+        } else if (mode === 'safe') {
+          const bbOk = isBb && rDir <= 50;
+          const revOk = rangeAtr <= 1.85 && z <= -0.50 && rDir <= 48 &&
+            ((isSweep && prev3Drop >= 0.25) || (touched8 && prev3Drop >= 0.45 && zExt >= 1.6));
+          qualifiedS = (!chasingS && (bbOk || revOk)) || (trendPbEngulf && !chasingS);
+        } else {
+          const bbStrict = !chasingS && er >= 0.14 && isBb && rDir <= 48 && prev3Drop >= 0.35;
+          const revStrict = !chasingS && er >= 0.16 && rangeAtr <= 1.85 && z <= -0.60 && rDir <= 48 &&
+            ((isSweep && prev3Drop >= 0.30) || (touched8 && prev3Drop >= 0.45 && zExt >= 1.8));
+          qualifiedS = bbStrict || revStrict || trendPbEngulf;
+        }
       }
 
-      if (!qualified3) continue;
+      if (!qualifiedS) continue;
 
-      const sess3 = sessionProfileForTs(k.t * 1000, '3m');
+      const sessS = sessionProfileForTs(k.t * 1000, tf);
       if (!active) {
-        active = buildOrder(klines, i, dir, pat3, at, sess3, true);
+        active = buildOrder(klines, i, dir, patS, at, sessS, is3m);
         marks.push({
           i: i,
           t: k.t,
@@ -736,8 +861,8 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
           sl: active.origSl,
           tp1: active.tp1,
           tp2: active.tp2,
-          pattern: pat3,
-          session: sess3,
+          pattern: patS,
+          session: sessS,
         });
       } else if (active.hitTp1 && active.dir !== dir) {
         active.status = 'flip';
@@ -745,7 +870,7 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
         active.exitPx = k.c;
         lastClosed = active;
         history.push(active);
-        active = buildOrder(klines, i, dir, pat3, at, sess3, true);
+        active = buildOrder(klines, i, dir, patS, at, sessS, is3m);
         marks.push({
           i: i,
           t: k.t,
@@ -754,142 +879,107 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
           sl: active.origSl,
           tp1: active.tp1,
           tp2: active.tp2,
-          pattern: pat3,
-          session: sess3,
+          pattern: patS,
+          session: sessS,
         });
       }
       continue;
     }
 
-    if (isStrict && (active || i <= coolUntil || i < 20)) continue;
-
-    // 2. 检测本根已收盘 K 线的形态信号（含低延迟扫荡收回与均线回踩拒收）
-    let pat = detectBarPattern(klines, i, atrArr, mode);
-    if (!pat) {
-      pat = detectLowLatencyPattern(klines, i, atrArr, e9, e20);
-    }
-
-    // 经典/防追顶档保留 RF 翻转强实体突破（强势阳破 / 强势阴破）
-    if (!pat && !isStrict && rfFlipped) {
-      const m0 = candleMetrics(k);
-      if (m0.range >= effAt * 0.65 && m0.body >= m0.range * 0.58 && ((rfD > 0 && m0.bull) || (rfD < 0 && m0.bear))) {
-        pat = {
-          dir: rfD,
-          name: rfD > 0 ? '强势阳破' : '强势阴破',
-          code: rfD > 0 ? 'rf_break_up' : 'rf_break_dn',
-          weight: 2,
-          bars: 1,
-        };
-      }
-    }
-
-    if (!pat) continue;
-    // 剔除分钟级黄金实测胜率最低的孕线假突破；稳健档额外剔除噪音偏高的 EMA9 轻触拒收
-    if (pat.code === 'inside_up' || pat.code === 'inside_dn') continue;
-    if (isStrict && (pat.code === 'pb_reject_up' || pat.code === 'pb_reject_dn')) continue;
-
-    // 3. 结构突破与动能过滤
+    // 15m 及以上大周期：顺势 EMA20/EMA50 回踩均线强实体确认（避免大单边逆势摸顶抄底），严禁未达 TP1 提前割肉
     const m0 = candleMetrics(k);
-    const alignedRf = rfD === 0 || pat.dir === rfD;
-    const onEmaSide = pat.dir > 0 ? k.c >= e9[i] : k.c <= e9[i];
-    const isSweep = pat.code === 'sweep_up' || pat.code === 'sweep_dn';
-    const isPb = pat.code === 'pb_reject_up' || pat.code === 'pb_reject_dn';
+    const rangeAtr = m0.range / effAt;
+    if (rangeAtr < 0.40 || rangeAtr > 2.2) continue;
+    const erHt = efficiencyRatio(closes, i, 14);
+    let patHt = null;
+    for (let dIdx = 0; dIdx < 2; dIdx++) {
+      const dir = dIdx === 0 ? 1 : -1;
+      const withE50Slope = dir > 0
+        ? (e20[i] > e50[i] && e50[i] >= e50[Math.max(0, i - 5)] && e20[i] >= e20[Math.max(0, i - 3)])
+        : (e20[i] < e50[i] && e50[i] <= e50[Math.max(0, i - 5)] && e20[i] <= e20[Math.max(0, i - 3)]);
+      if (!withE50Slope) continue;
+      const dipped = dir > 0
+        ? (Math.min(k.l, klines[i - 1].l) <= Math.max(e9[i], e20[i]) + effAt * 0.25 && k.c > e9[i])
+        : (Math.max(k.h, klines[i - 1].h) >= Math.min(e9[i], e20[i]) - effAt * 0.25 && k.c < e9[i]);
+      const cp = dir > 0 ? m0.closePos : (1 - m0.closePos);
+      const candleOk = (dir > 0 ? m0.bull : m0.bear) && cp >= 0.60 && m0.body >= effAt * 0.35;
+      if (!dipped || !candleOk) continue;
 
-    let prev2Hi = -Infinity;
-    let prev2Lo = Infinity;
-    for (let j = Math.max(0, i - 2); j < i; j++) {
-      if (klines[j].h > prev2Hi) prev2Hi = klines[j].h;
-      if (klines[j].l < prev2Lo) prev2Lo = klines[j].l;
-    }
-    const broke2 = pat.dir > 0 ? k.c > prev2Hi : k.c < prev2Lo;
-    const mom3 = pat.dir * (k.c - klines[Math.max(0, i - 3)].c) / effAt;
-    const bodyAtr = m0.body / effAt;
-    const cp = pat.dir > 0 ? m0.closePos : (1 - m0.closePos);
-    const oppWickRatio = m0.range > 0 ? (pat.dir > 0 ? m0.upWick / m0.range : m0.dnWick / m0.range) : 0;
-    const withE50 = pat.dir > 0
-      ? (k.c > e50[i] && e20[i] >= e50[i] - effAt * 0.30)
-      : (k.c < e50[i] && e20[i] <= e50[i] + effAt * 0.30);
+      const z = boll.sd[i] > 0 ? (dir * (k.c - boll.mid[i]) / boll.sd[i]) : 0;
+      const pos24 = rangePosInDir(klines, i, dir, effAt, 24);
+      const chasingHt = useWall && isChasingExtreme(klines, i, dir, effAt, boll, { lookback: 24, maxPos: 0.78, maxZ: 1.4 });
+      const onE20 = dir > 0 ? k.c > e20[i] : k.c < e20[i];
 
-    // 墙体过滤：仅拦截逆 EMA50 撞墙或留明显阻滞影线的追顶/砸底，避免误杀顺大势的干净破位
-    const rawWall = useWall && isBlockedByWall(klines, i, pat.dir, effAt, boll);
-    const blockedByWall = rawWall && (!withE50 || oppWickRatio > 0.25);
+      let okHt = false;
+      if (mode === 'classic') {
+        okHt = z <= 1.5 && pos24 <= 0.85;
+      } else if (mode === 'safe') {
+        okHt = !chasingHt && z <= 1.2 && pos24 <= 0.75;
+      } else {
+        okHt = !chasingHt && (rfD === dir || onE20) && erHt >= 0.14 && cp >= 0.62;
+      }
+      if (!okHt) continue;
 
-    let baseOk = false;
-    let qualified = false;
-    if (!isStrict) {
-      // 经典 / 防追顶档：低延迟 RF + 微观结构突破（broke2）+ 动能过滤，减少横盘揉搓假信号
-      baseOk = (alignedRf || (pat.weight >= 2 && onEmaSide)) &&
-        (broke2 || pat.weight >= 3 || isPb) &&
-        (mom3 >= 0.35 || isSweep || isPb);
-      qualified = mode === 'safe'
-        ? (baseOk && !blockedByWall && (isSweep || oppWickRatio <= 0.30))
-        : baseOk;
-    } else {
-      // 稳健档：低延迟 RF + EMA20/EMA50 宏观顺势共振 + 结构确认 + 反震荡过滤
-      const prev20 = e20[Math.max(0, i - 3)];
-      const slopeOk = pat.dir > 0 ? (e20[i] >= prev20) : (e20[i] <= prev20);
-      const onE20 = pat.dir > 0 ? k.c > e20[i] : k.c < e20[i];
-      const er = efficiencyRatio(closes, i, 14);
-      const distE20 = pat.dir > 0 ? (k.c - e20[i]) / effAt : (e20[i] - k.c) / effAt;
-      const r = rsi14[i] != null ? rsi14[i] : 50;
-      const rDir = pat.dir > 0 ? r : (100 - r);
-      const isEngulf = pat.code === 'bull_engulf' || pat.code === 'bear_engulf';
-      const broke1 = pat.dir > 0 ? k.c > klines[i - 1].h : k.c < klines[i - 1].l;
-      qualified = !blockedByWall && rfD === pat.dir && slopeOk && onE20 && withE50 && er >= 0.14 &&
-        (pat.weight >= 2 || isPb) && (broke2 || (isEngulf && broke1 && bodyAtr >= 0.95) || isSweep || isPb) &&
-        (mom3 >= 0.40 || bodyAtr >= 0.95 || isSweep || isPb) &&
-        cp >= 0.62 && distE20 <= 2.2 && rDir <= 74;
+      const rawPat = detectSweepPattern(klines, i, atrArr, 8) || detectBarPattern(klines, i, atrArr, 'classic');
+      patHt = (rawPat && rawPat.dir === dir)
+        ? rawPat
+        : {
+          dir: dir,
+          name: dir > 0 ? '顺势回踩多' : '顺势反抽空',
+          code: dir > 0 ? 'trend_pb_up' : 'trend_pb_dn',
+          weight: 2,
+          bars: 2,
+        };
+      break;
     }
 
-    const sess = sessionProfileForTs(k.t * 1000, state.tf);
+    if (!patHt) continue;
+    const sessHt = sessionProfileForTs(k.t * 1000, tf);
     if (!active) {
-      if (!qualified) continue;
-      active = buildOrder(klines, i, pat.dir, pat, at, sess, false);
+      active = buildOrder(klines, i, patHt.dir, patHt, at, sessHt, false);
       marks.push({
         i: i,
         t: k.t,
-        dir: pat.dir,
+        dir: patHt.dir,
         entry: active.entry,
         sl: active.origSl,
         tp1: active.tp1,
         tp2: active.tp2,
-        pattern: pat,
-        session: sess,
+        pattern: patHt,
+        session: sessHt,
       });
-    } else if (!isStrict && active.dir !== pat.dir && baseOk && ((pat.weight >= 2 && broke2) || isSweep)) {
-      // 反向强结构突破先平仓风控；若新方向被防追顶墙拦截则平仓观望，不逆墙追单
+    } else if (active.hitTp1 && active.dir !== patHt.dir) {
       active.status = 'flip';
       active.exitI = i;
       active.exitPx = k.c;
       lastClosed = active;
       history.push(active);
-      if (qualified) {
-        active = buildOrder(klines, i, pat.dir, pat, at, sess, false);
-        marks.push({
-          i: i,
-          t: k.t,
-          dir: pat.dir,
-          entry: active.entry,
-          sl: active.origSl,
-          tp1: active.tp1,
-          tp2: active.tp2,
-          pattern: pat,
-          session: sess,
-        });
-      } else {
-        active = null;
-      }
+      active = buildOrder(klines, i, patHt.dir, patHt, at, sessHt, false);
+      marks.push({
+        i: i,
+        t: k.t,
+        dir: patHt.dir,
+        entry: active.entry,
+        sl: active.origSl,
+        tp1: active.tp1,
+        tp2: active.tp2,
+        pattern: patHt,
+        session: sessHt,
+      });
     }
   }
 
   // 未收盘 K 线只作预备提示，不提前确认开仓
   let forming = null;
   if (hasForming) {
-    const fPat = is3m
-      ? (detectSweepPattern(klines, n - 1, atrArr, 8) || detectBarPattern(klines, n - 1, atrArr, 'classic'))
+    const fAt = Math.max(atrArr[n - 1] || atrArr[end] || 0, floor);
+    const fPat = isShortTf
+      ? (detectSweepPattern(klines, n - 1, atrArr, 8) ||
+        detectBarPattern(klines, n - 1, atrArr, 'classic') ||
+        (tf === '5m' ? detectBbSnapPattern(klines, n - 1, fAt, boll) : null))
       : (detectBarPattern(klines, n - 1, atrArr, mode) || detectLowLatencyPattern(klines, n - 1, atrArr, e9, e20));
-    const skipForming = fPat && (is3m
-      ? (isStrict ? !STRICT_3M_CODES.has(fPat.code) : !CORE_3M_CODES.has(fPat.code))
+    const skipForming = fPat && (isShortTf
+      ? (isStrict ? !STRICT_SHORT_CODES.has(fPat.code) : !CORE_SHORT_CODES.has(fPat.code))
       : (fPat.code === 'inside_up' || fPat.code === 'inside_dn' ||
         (isStrict && (fPat.code === 'pb_reject_up' || fPat.code === 'pb_reject_dn'))));
     if (fPat && !skipForming && (!active || active.dir !== fPat.dir)) {
@@ -903,7 +993,8 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
   const emaDir = e20[end] > e50[end] ? 1 : (e20[end] < e50[end] ? -1 : 0);
   const cEnd = klines[end].c;
   const fEnd = rf.filt[end];
-  const chopFiltered = isStrict && erNow < (is3m ? STRICT_3M_ER_MIN : 0.14);
+  const chopMin = is3m || tf === '1m' ? STRICT_3M_ER_MIN : 0.14;
+  const chopFiltered = isStrict && erNow < chopMin;
 
   let trendDir = 0;
   if (rfDirNow > 0 && (emaDir >= 0 || cEnd >= fEnd)) trendDir = 1;
@@ -914,7 +1005,7 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
 
   const lastBar = klines[n - 1];
   const livePx = (ticker && Number.isFinite(ticker.last) && ticker.last > 0) ? ticker.last : lastBar.c;
-  const liveSess = sessionProfileForTs(now, state.tf);
+  const liveSess = sessionProfileForTs(now, tf);
   const atEnd = Math.max(atrArr[end] || 0, floor);
 
   // 空仓时给出参考建议（趋势回踩或压力/支撑反转观察）
@@ -922,7 +1013,14 @@ export function computePatternPlan(klines, ticker, nowMs, modeOverride) {
   if (!active && livePx != null && trendDir !== 0 && !chopFiltered) {
     let wDir = trendDir;
     let wKind = 'trend';
-    if (useWall && isBlockedByWall(klines, end, wDir, atEnd, boll)) {
+    const watchBlocked = useWall && (mode === 'safe'
+      ? isChasingExtreme(klines, end, wDir, atEnd, boll, {
+        lookback: 24,
+        maxPos: isShortTf ? 0.65 : 0.78,
+        maxZ: isShortTf ? 0.85 : 1.4,
+      })
+      : isBlockedByWall(klines, end, wDir, atEnd, boll));
+    if (watchBlocked) {
       if (mode === 'safe') { wDir = -wDir; wKind = 'rev'; }
       else wDir = 0;
     }

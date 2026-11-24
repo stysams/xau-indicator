@@ -7,12 +7,15 @@ import {
   computePatternPlan,
   computeRangeFilter,
   detectBarPattern,
+  detectBbSnapPattern,
   detectLowLatencyPattern,
   detectSweepPattern,
   efficiencyRatio,
   formatSessionMults,
   isBlockedByWall,
+  isChasingExtreme,
   normalizePatternMode,
+  rangePosInDir,
   sessionProfileForTs,
 } from '../src/indicators/pattern.js';
 import { findXaudzSetups } from '../src/indicators/xaudz.js';
@@ -614,6 +617,90 @@ function bar(t, o, h, l, c) {
   } else {
     assert(planAfter.active && planAfter.active.hitTp1 && planAfter.active.breakeven, '3m 触达 TP1 后进入保本保护状态');
   }
+}
+
+// 14. 防追顶护盾校验：严格拦截波段高位追多/低位砸空与双顶压力墙（不因顺 EMA50 旁路），避免防追顶失真
+{
+  const kl = [];
+  let pxVal = 3700;
+  for (let i = 0; i < 25; i++) {
+    const o = pxVal;
+    const c = o + 0.8;
+    kl.push(bar(1000 + i * 180, o, c + 0.2, o - 0.2, c));
+    pxVal = c;
+  }
+  const bollMock = { mid: new Array(25).fill(3708), sd: new Array(25).fill(4.0) };
+  // 最后一根收在 24 根区间最顶部（pos ≈ 0.99, z > 2）
+  const posLong = rangePosInDir(kl, 24, 1, 1.5, 24);
+  const posShort = rangePosInDir(kl, 24, -1, 1.5, 24);
+  assert(posLong > 0.90, '连续上涨末端做多区间分位应接近顶部 (>0.90)');
+  assert(posShort < 0.10, '连续上涨末端做空区间分位应接近底部 (<0.10)');
+  assert(isChasingExtreme(kl, 24, 1, 1.5, bollMock, { lookback: 24, maxPos: 0.65, maxZ: 0.85 }) === true, '防追顶护盾应拦截波段顶部追多');
+  assert(isChasingExtreme(kl, 24, -1, 1.5, bollMock, { lookback: 24, maxPos: 0.65, maxZ: 0.85 }) === false, '防追顶护盾不应误拦顶部反手做空');
+
+  // 1m 场景：价格在 EMA50 上方单边震荡推升至区间顶部反复走出看涨吞没 -> classic 放行追多，safe 防追顶必须拦截
+  state.tf = '1m';
+  state.mkt = 'xau';
+  const baseT = Math.floor(Date.UTC(2026, 5, 1, 2, 0, 0) / 1000);
+  const chaseBars = [];
+  let p = 3700;
+  for (let i = 0; i < 40; i++) {
+    const o = p;
+    const step = i === 38 ? -0.45 : (i === 39 ? 1.25 : (i % 2 === 0 ? 0.55 : -0.15));
+    const c = o + step;
+    chaseBars.push(bar(baseT + i * 60, o, Math.max(o, c) + 0.15, Math.min(o, c) - 0.15, c));
+    p = c;
+  }
+  const pClassic = computePatternPlan(chaseBars, { last: p }, (baseT + 41 * 60) * 1000, 'classic');
+  const pSafe = computePatternPlan(chaseBars, { last: p }, (baseT + 41 * 60) * 1000, 'safe');
+  assert(pClassic.marks.length > 0 && pClassic.active && pClassic.active.dir === 1, '1m 经典档在连涨推升段吞没应触发多单');
+  assert(pSafe.marks.length < pClassic.marks.length && !pSafe.active, '1m 防追顶档必须拦截波段顶部追多，不得与经典档雷同失真');
+}
+
+// 15. 布林 ±2σ 外轨刺破收回识别 + 15m 顺势均线回踩通道校验
+{
+  const bollMock = { mid: new Array(6).fill(3700), sd: new Array(6).fill(2.0) };
+  const snapBars = [
+    bar(100, 3700, 3701, 3699, 3700),
+    bar(200, 3700, 3700.5, 3697, 3697.5),
+    // 下探 3695.5 (z=-2.25) 后强阳收回至 3698.6 (z=-0.70, closePos=0.89)
+    bar(300, 3697.5, 3699.0, 3695.5, 3698.6),
+    // 上冲 3704.5 (z=+2.25) 后强阴收回至 3701.4 (z=+0.70, closePos=0.11)
+    bar(400, 3702.5, 3704.5, 3701.0, 3701.4),
+  ];
+  const pUp = detectBbSnapPattern(snapBars, 2, 2.0, bollMock);
+  const pDn = detectBbSnapPattern(snapBars, 3, 2.0, bollMock);
+  assert(pUp && pUp.dir === 1 && pUp.code === 'bb_snap_up', '应识别布林下轨 ±2σ 刺破强收回做多');
+  assert(pDn && pDn.dir === -1 && pDn.code === 'bb_snap_dn', '应识别布林上轨 ±2σ 刺破强收回做空');
+
+  // 15m 顺势多头回调至 EMA20 后强阳收复 EMA9 -> 触发多单
+  state.tf = '15m';
+  state.mkt = 'xau';
+  const baseT = Math.floor(Date.UTC(2026, 5, 1, 2, 0, 0) / 1000);
+  const bars15 = [];
+  let pxVal = 3650;
+  // 先横盘蓄势，再走出清晰多头波段，随后 4 根回踩至 EMA20 附近后强阳收复 EMA9
+  for (let i = 0; i < 34; i++) {
+    const o = pxVal;
+    const c = o + (i < 16 ? 0.15 : 2.1);
+    bars15.push(bar(baseT + i * 900, o, c + 0.5, o - 0.3, c));
+    pxVal = c;
+  }
+  for (let k = 0; k < 4; k++) {
+    const o = pxVal;
+    const c = o - 3.1;
+    bars15.push(bar(baseT + (34 + k) * 900, o, o + 0.4, c - 0.5, c));
+    pxVal = c;
+  }
+  // 第 38 根小阳止跌、第 39 根强阳收复 EMA9（回踩 EMA20 后顺势再启动）
+  const o38 = pxVal;
+  const c38 = o38 + 1.0;
+  bars15.push(bar(baseT + 38 * 900, o38, c38 + 0.4, o38 - 0.5, c38));
+  const o39 = c38;
+  const c39 = o39 + 3.0;
+  bars15.push(bar(baseT + 39 * 900, o39, c39 + 0.3, o39 - 0.5, c39));
+  const plan15 = computePatternPlan(bars15, { last: c39 }, (baseT + 40 * 900) * 1000, 'strict');
+  assert(plan15.ok && plan15.active && plan15.active.dir === 1 && plan15.active.i === 39, '15m 稳健档应在顺势回踩均线强阳收回后触发多单');
 }
 
 console.log('PASS pattern-plan');
